@@ -2,10 +2,6 @@
 #include <netdb.h>
 #include "is_seqnum.h"
 #define BACKLOG 50
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
 
 int main(int argc, char *argv[]) {
 	uint32_t seqNum;

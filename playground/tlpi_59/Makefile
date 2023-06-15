@@ -1,10 +1,10 @@
 all: test clean
 
-is_seqnum_sv: is_seqnum_sv.c
-	$(CC) $(CFLAGS) -o $@ $<
+is_seqnum_sv: is_seqnum_sv.c read_line.c
+	$(CC) $(CFLAGS) -o $@ $^
 
-is_seqnum_cl: is_seqnum_cl.c
-	$(CC) $(CFLAGS) -o $@ $<
+is_seqnum_cl: is_seqnum_cl.c read_line.c
+	$(CC) $(CFLAGS) -o $@ $^
 
 i6d_server: i6d_ucase_sv.c
 	$(CC) $(CFLAGS) -o $@ $<
