@@ -3,8 +3,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-void errExit(const char *msg) {
-	printf("%s\n", msg);
+#include <stdarg.h>
+void errExit(const char *msg, ...) {
+	va_list ap;
+	va_start(ap, msg);
+	vfprintf(stderr, msg, ap);
+	va_end(ap);
+	perror(" ");
 	exit(EXIT_FAILURE);
 }
 
