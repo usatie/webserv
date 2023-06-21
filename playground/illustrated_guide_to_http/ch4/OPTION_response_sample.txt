@@ -1,0 +1,4 @@
+200 Ok
+Allow: OPTIONS, GET, HEAD, POST, PUT
+Accept-Ranges: bytes
+Accept-Encoding: gzip

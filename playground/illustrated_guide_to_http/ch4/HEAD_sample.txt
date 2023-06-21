@@ -1,0 +1,8 @@
+Request:  HEAD /index.html HTTP/1.1
+Response: <The response headers for index.html>
+
+# conditional HEAD is not supported
+# If-Modified-Since header should be ignored
+Request:  HEAD /index.html HTTP/1.1
+		  If-Modified-Since: Wed, 25 Sep 1996 09:45:23 GMT
+Response: <The response headers for index.html>

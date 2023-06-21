@@ -1,0 +1,11 @@
+Request:  POST /cgi-bin/submit HTTP/1.0
+          Content-Length: 3819
+
+		  <3819 bytes of data>
+Response: <The output from the process submit>
+
+Request:  POST /cgi-bin/order HTTP/1.0
+          Content-Length: 6082
+
+		  <6082 bytes of data>
+Response: <The output from the process order>

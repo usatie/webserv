@@ -1,0 +1,33 @@
+```
+Request:
+GET /index.html HTTP/1.1
+Response:
+200 Ok
+
+<index.html>
+```
+
+```
+Request:
+GET /index.html HTTP/1.1
+If-Modified-Since: Wed, 25 Sep 1996 09:45:23 GMT
+Response:
+200 Ok
+
+<index.html>
+```
+
+```
+Request:
+GET /index.html HTTP/1.1
+If-Modified-Since: Wed, 25 Sep 1996 14:09:34 GMT
+Response:
+304 not modified
+```
+
+```
+Request:
+GET /cgi/search?http+book HTTP/1.1
+Response:
+<The output from the resource search given the two terms http and book>
+```

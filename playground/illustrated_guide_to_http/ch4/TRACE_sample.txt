@@ -1,0 +1,14 @@
+# TRACE is used by client applications to do loopback requests.
+# The TRACE method echoes the received request so that a client can see what (if any) changes or additions have been made by intermediate servers.
+Request:  TRACE / HTTP/1.1
+          Host: www.htk.edu
+		  Max-Forwards: 10
+		  User-Agent: JoeBrowser/10.0
+Response: 200 Ok
+          Content-Type: message/http
+		  Content-Length: 84
+
+		  TRACE / HTTP/1.1
+		  Max-Forwards: 10
+		  User-Agent: JoeBrowser/10.0
+          Host: www.htk.edu

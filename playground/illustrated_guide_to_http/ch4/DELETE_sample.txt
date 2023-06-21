@@ -1,0 +1,6 @@
+# It's recommended that always requiring authentication for DELETE requests.
+Request:  DELETE /catalog/sales/oct96.html HTTP/1.1
+Response: 204 No Content
+
+Request:  DELETE /company/about.html HTTP/1.1
+Response: 202 Accepted Pending Approval

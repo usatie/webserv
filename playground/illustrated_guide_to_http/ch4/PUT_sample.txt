@@ -1,0 +1,16 @@
+# PUT must respect any Content-* headers.
+Request:  PUT /users/phethmon/welcome.html HTTP/1.1
+          Content-Type: text/html
+		  Content-Length: 3109
+
+		  < 3109 bytes of entity >
+Response: 204 No Content
+          Server: 3wd/1.1
+
+Request:  PUT /catalog/sect1/pg34.html HTTP/1.1
+          Content-Type: text/html
+		  Content-Length: 4526
+
+		  < 4526 bytes of entity >
+Response: 501 Not Implemented
+          Server: 3wd/1.1
