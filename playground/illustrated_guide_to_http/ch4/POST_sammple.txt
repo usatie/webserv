@@ -1,0 +1,7 @@
+POST /cgi/search.cmd HTTP/1.1
+Host: hops.ag.utk.edu
+User-Agent: IBM-WebExplorer-DLL/v1.1b
+Content-Length: 22
+Content-Type: text/plain
+
+term=ibm&type=b&num=20

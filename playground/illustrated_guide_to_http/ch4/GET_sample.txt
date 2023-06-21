@@ -1,0 +1,4 @@
+GET /os2/index.html HTTP/1.1
+Host: hops.ag.utk.edu
+User-Agent: IBM-WebExplorer-DLL/v1.1b
+Referer: http://www.hethmon.com/index.html
