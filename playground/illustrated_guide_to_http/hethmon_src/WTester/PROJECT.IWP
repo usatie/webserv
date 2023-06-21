@@ -1,0 +1,14 @@
+-ProjectInfo
++name=Tester
++type=VACPP.IWS
+-BuildInfo
++target=tester.exe
++runOptions=
++makefile=makefile
+-LocationInfo
++defaultDir=h:\\book\\wtester
++dirs=h:\\book\\wtester
+-ConfigInfo
++filter=*
++position=0 1 -1 -1 -1 -1 50 150 698 550
+

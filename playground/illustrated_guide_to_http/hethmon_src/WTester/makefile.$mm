@@ -1,0 +1,49 @@
+:TARGET.SUFFIXES
+:DEPENDENCY.
+:TARGET.all
+:DEPENDENCY.
+.\tester.exe
+:TARGET..\socket.obj
+:DEPENDENCY.
+h:\book\wtester\socket.cpp
+{h:\book\wtester;$(INCLUDE);}socket.hpp
+{h:\book\wtester;$(INCLUDE);}defines.hpp
+:ACTION.Compile
+:COMMAND.
+icc.exe /Sp4 /Q /Fi /Si /Gm /Oc -qtune=486 /Gi /Gx /Fo".\%|fF.obj" /C h:\book\wtester\socket.cpp
+:TARGET..\headers.obj
+:DEPENDENCY.
+h:\book\wtester\headers.cpp
+{h:\book\wtester;$(INCLUDE);}socket.hpp
+{h:\book\wtester;$(INCLUDE);}defines.hpp
+{h:\book\wtester;$(INCLUDE);}headers.hpp
+:ACTION.Compile
+:COMMAND.
+icc.exe /Sp4 /Q /Fi /Si /Gm /Oc -qtune=486 /Gi /Gx /Fo".\%|fF.obj" /C h:\book\wtester\headers.cpp
+:TARGET..\tester.obj
+:DEPENDENCY.
+h:\book\wtester\tester.cpp
+{h:\book\wtester;$(INCLUDE);}socket.hpp
+{h:\book\wtester;$(INCLUDE);}defines.hpp
+{h:\book\wtester;$(INCLUDE);}headers.hpp
+:ACTION.Compile
+:COMMAND.
+icc.exe /Sp4 /Q /Fi /Si /Gm /Oc -qtune=486 /Gi /Gx /Fo".\%|fF.obj" /C h:\book\wtester\tester.cpp
+:TARGET..\tester.exe
+:DEPENDENCY.
+.\socket.obj
+.\tester.obj
+.\headers.obj
+{$(LIB)}wsock32.lib
+:ACTION.Link
+:COMMAND.
+icc.exe @<<
+ /B" /pmtype:vio /nologo /code:RX /data:RW"
+ /B" /def"
+ /B" /def:wsock32"
+ /Fetester.exe 
+ wsock32.lib 
+ .\socket.obj
+ .\tester.obj
+ .\headers.obj
+<<

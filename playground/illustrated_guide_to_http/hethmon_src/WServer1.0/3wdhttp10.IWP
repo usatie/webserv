@@ -1,0 +1,14 @@
+-ProjectInfo
++name=3wd HTTP/1.0
++type=VACPP.IWS
+-BuildInfo
++target=3wd.exe
++runOptions=
++makefile=makefile
+-LocationInfo
++defaultDir=h:\\book\\wserver1.0
++dirs=h:\\book\\wserver1.0
+-ConfigInfo
++filter=*
++position=1 1 396 528 -1 -1 2 137 660 554
+

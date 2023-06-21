@@ -1,0 +1,6 @@
+a1      = john.salesman:sales@www.example.com:5+5=10
+md5(a1) = d6c21e4ad73713764d32800decafd357
+a2      = GET:/private/prices.html
+md5(a2) = 254bd53db6966fa1387fa1973bb5e53c
+buf  = d6c21e4ad73713764d32800decafd357:dcd98b7102dd2f0e8b11d0f600bfb0c093:254bd53db6966fa1387fa1973bb5e53c
+calc = d87051c6f8ca76e671ba2d52f12ef976

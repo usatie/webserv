@@ -1,0 +1,29 @@
+-File::OPTBLDSM
++data=b4\0\0\0\0\0\0\0\0\0\0\0at\0
++date=2450289
++time=83452
+-File::OPTTEMPL
++data=/Tdp /Sp4 /Q \n /Fi /Si \n /Oc /Gm -qtune=486 /Gi \n /Gx \n\0
++date=2450289
++time=83566
+-File::C++ Compiler
++data=\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0 0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0B\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0b\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0¦„\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0ÿ\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\08Ë\0\0\0\0\0\0
++date=2450289
++time=83572
+-File::Linker
++data=\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0‚†y\0\0\0\0\0\0\0\0\0\0\0"\0<\0	\0\0\0\0/\07\0*\0\0\0\0\0\0\0\0D\0F\0\e\0\0\0\0\0H\0J\0\0\0\0\0\0\0\0\0\0\0\0WINDOWS\0%o\0wsock32\065536\0512\0256\01048576\04096\01048576\04096\04194304\04\00\00\00\0
++date=2450289
++time=83676
+-Project::IWFMMake::Timestamp
++data=838264579
++date=2450289
++time=83778
+-Project::IWFMMake::Action Set
++data=/action "C++ Compiler" /action "Linker" 
++date=2450289
++time=83779
+-Project::IWFMMake::File Set
++data=/file "h:\\book\\wserver1.1\\3wd.cpp" /file "h:\\book\\wserver1.1\\base64.cpp" /file "h:\\book\\wserver1.1\\cgiwin.cpp" /file "h:\\book\\wserver1.1\\config.cpp" /file "h:\\book\\wserver1.1\\headers.cpp" /file "h:\\book\\wserver1.1\\http10.cpp" /file "h:\\book\\wserver1.1\\http11.cpp" /file "h:\\book\\wserver1.1\\index.cpp" /file "h:\\book\\wserver1.1\\scodes.cpp" /file "h:\\book\\wserver1.1\\socket.cpp" /file "h:\\book\\wserver1.1\\util.cpp" 
++date=2450289
++time=83779
+

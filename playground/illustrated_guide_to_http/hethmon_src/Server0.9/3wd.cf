@@ -1,0 +1,27 @@
+#
+# w3d configuration file
+#
+
+ServerRoot \
+
+#
+HostName Warp.rmt.utk.edu
+
+#
+Port 8000
+
+#
+DNSLookup Off
+
+#
+Welcome index.html
+
+#
+AccessLog \src\server0.9\access.log
+
+#
+ErrorLog \src\server0.9\error.log
+
+#
+LogTime GMT
+

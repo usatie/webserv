@@ -1,0 +1,109 @@
+#
+# w3d configuration file
+#
+
+ServerRoot \
+
+#
+HostName Warp.rmt.utk.edu
+
+#
+Port 8000
+
+#
+DNSLookup On
+
+# The offset in minutes between local time and GMT
+# Where hhmm is the format. This value plus local time
+# should equal GMT.
+GMTOffset -0500
+
+#
+Welcome index.html
+
+#
+AccessLog \src\wserver1.0\access.log
+
+#
+ErrorLog \src\wserver1.0\error.log
+
+#
+LogTime GMT
+
+# Filename used for access authorizations
+AccessName 3wdauth
+
+#
+# PathAlias is used to map document tree aliases to real locations
+#
+# Up to 128 path aliases allowed.
+#
+PathAlias /apache /apache
+PathAlias /images /images/
+PathAlias /other /other
+PathAlias /rfc /rfc
+PathAlias /src /src
+PathAlias /std /std
+PathAlias /VisualAge /VisualAge
+PathAlias /w3c /w3c
+PathAlias /book /book
+PathAlias /syntax /syntax
+PathAlias /    /
+PathAlias /1.0 /src/server1.0/
+PathAlias /1.1 /src/server1.1/
+PathAlias /0.9 /src/server0.9/
+ 
+#
+# ExecAlias is used to map cgi-bin aliases to real locations
+#
+# Up to 128 exec aliases allowed.
+#
+ExecAlias /cgi-bin /src/wserver1.0/cgi-bin
+
+#
+# ExtType is used to map file extensions to the appropriate MIME type.
+# MIME types beginning with "text/" are assumed to be text format, all
+# others are assumed binary and transmitted as such.
+#
+# Up to 256 extensions allowed.
+#
+ExtType html    text/html
+ExtType htm     text/html
+ExtType txt     text/plain
+ExtType text    text/plain
+ExtType readme  text/plain
+ExtType me      text/plain
+ExtType cmd     text/plain
+ExtType doc     text/plain
+ExtType faq     text/plain
+ExtType cpp     text/plain
+ExtType hpp     text/plain
+ExtType c       text/plain
+ExtType h       text/plain
+ExtType jpeg    image/jpeg
+ExtType jpg     image/jpeg
+ExtType jpe     image/jpeg
+ExtType gif     image/gif
+ExtType tiff    image/tiff
+ExtType tif     image/tiff
+ExtType bmp     image/bmp
+ExtType au      audio/basic
+ExtType wav     audio/x-wav
+ExtType wave    audio/x-wav
+ExtType snd     audio/basic
+ExtType mid     audio/x-midi
+ExtType midi    audio/x-midi
+ExtType avi     video/avi
+ExtType mpeg    video/mpeg
+ExtType mpg     video/mpeg
+ExtType mpe     video/mpeg
+ExtType inf     application/x-view
+ExtType pdf     application/pdf
+ExtType zip     application/unzip
+ExtType exe     application/octet-stream
+ExtType ps      application/postscript
+ExtType dvi     application/x-dvi
+
+
+
+

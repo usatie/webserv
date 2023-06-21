@@ -1,0 +1,14 @@
+-ProjectInfo
++name=WServer 1.1
++type=VACPP.IWS
+-BuildInfo
++target=3wd.exe
++runOptions=
++makefile=makefile
+-LocationInfo
++defaultDir=h:\\book\\wserver1.1
++dirs=h:\\book\\wserver1.1
+-ConfigInfo
++filter=*
++position=0 1 -1 -1 -1 -1 50 150 743 550
+

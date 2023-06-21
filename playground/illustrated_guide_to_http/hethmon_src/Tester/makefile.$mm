@@ -1,0 +1,48 @@
+:TARGET.SUFFIXES
+:DEPENDENCY..cpp .obj 
+:TARGET.all
+:DEPENDENCY.
+.\Tester.exe
+:RULE..cpp.obj
+:ACTION.Compile::C++ Compiler
+:COMMAND.
+icc.exe /Q /Fi /Si /Ti /Gm /G4 /Gf /Gi /Gx /C %s
+:RULE.{h:\book\tester}.cpp.obj
+:ACTION.Compile::C++ Compiler
+:COMMAND.
+icc.exe /Q /Fi /Si /Ti /Gm /G4 /Gf /Gi /Gx /C %s
+:TARGET..\Tester.exe
+:DEPENDENCY.
+.\socket.obj
+.\tester.obj
+.\headers.obj
+{$(LIB)}so32dll.lib
+{$(LIB)}tcp32dll.lib
+:ACTION.Link::Linker
+:COMMAND.
+icc.exe @<<
+ /B" /de /exepack:2 /packd /align:1 /nologo /l"
+ /FeTester.exe 
+ so32dll.lib 
+ tcp32dll.lib 
+ .\socket.obj
+ .\tester.obj
+ .\headers.obj
+<<
+:TARGET..\socket.obj
+:DEPENDENCY.
+h:\book\tester\socket.cpp
+{h:\book\tester;$(INCLUDE);}socket.hpp
+{h:\book\tester;$(INCLUDE);}defines.hpp
+:TARGET..\headers.obj
+:DEPENDENCY.
+h:\book\tester\headers.cpp
+{h:\book\tester;$(INCLUDE);}socket.hpp
+{h:\book\tester;$(INCLUDE);}defines.hpp
+{h:\book\tester;$(INCLUDE);}headers.hpp
+:TARGET..\tester.obj
+:DEPENDENCY.
+h:\book\tester\tester.cpp
+{h:\book\tester;$(INCLUDE);}socket.hpp
+{h:\book\tester;$(INCLUDE);}defines.hpp
+{h:\book\tester;$(INCLUDE);}headers.hpp

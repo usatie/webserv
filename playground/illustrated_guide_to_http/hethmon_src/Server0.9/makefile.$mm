@@ -1,0 +1,64 @@
+:TARGET.SUFFIXES
+:DEPENDENCY..cpp .obj 
+:TARGET.all
+:DEPENDENCY.
+.\3wd.exe
+:RULE..cpp.obj
+:ACTION.Compile::C++ Compiler
+:COMMAND.
+icc.exe /Q /Fi /Si /O /Gm /G4 /Gf /Gi /Gx /C %s
+:RULE.{h:\book\server0.9b}.cpp.obj
+:ACTION.Compile::C++ Compiler
+:COMMAND.
+icc.exe /Q /Fi /Si /O /Gm /G4 /Gf /Gi /Gx /C %s
+:TARGET..\3wd.exe
+:DEPENDENCY.
+.\scodes.obj
+.\socket.obj
+.\3wd.obj
+.\config.obj
+.\index.obj
+{$(LIB)}so32dll.lib
+{$(LIB)}tcp32dll.lib
+:ACTION.Link::Linker
+:COMMAND.
+icc.exe @<<
+ /B" /exepack:2 /packd /align:1 /nologo"
+ /Fe3wd.exe 
+ so32dll.lib 
+ tcp32dll.lib 
+ .\scodes.obj
+ .\socket.obj
+ .\3wd.obj
+ .\config.obj
+ .\index.obj
+<<
+:TARGET..\scodes.obj
+:DEPENDENCY.
+h:\book\server0.9b\scodes.cpp
+:TARGET..\index.obj
+:DEPENDENCY.
+h:\book\server0.9b\index.cpp
+{h:\book\server0.9b;$(INCLUDE);}socket.hpp
+{h:\book\server0.9b;$(INCLUDE);}defines.hpp
+{h:\book\server0.9b;$(INCLUDE);}3wd.hpp
+{h:\book\server0.9b;$(INCLUDE);}config.hpp
+{h:\book\server0.9b;$(INCLUDE);}scodes.hpp
+:TARGET..\config.obj
+:DEPENDENCY.
+h:\book\server0.9b\config.cpp
+{h:\book\server0.9b;$(INCLUDE);}defines.hpp
+{h:\book\server0.9b;$(INCLUDE);}config.hpp
+:TARGET..\3wd.obj
+:DEPENDENCY.
+h:\book\server0.9b\3wd.cpp
+{h:\book\server0.9b;$(INCLUDE);}socket.hpp
+{h:\book\server0.9b;$(INCLUDE);}defines.hpp
+{h:\book\server0.9b;$(INCLUDE);}3wd.hpp
+{h:\book\server0.9b;$(INCLUDE);}config.hpp
+{h:\book\server0.9b;$(INCLUDE);}scodes.hpp
+:TARGET..\socket.obj
+:DEPENDENCY.
+h:\book\server0.9b\socket.cpp
+{h:\book\server0.9b;$(INCLUDE);}socket.hpp
+{h:\book\server0.9b;$(INCLUDE);}defines.hpp

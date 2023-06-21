@@ -1,0 +1,28 @@
+POST /cgi-bin/child.exe HTTP/1.0
+Connection: close
+Host: warp.rmt.utk.edu
+Content-Type: text/plain
+Content-Length: 147
+
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+12345
+

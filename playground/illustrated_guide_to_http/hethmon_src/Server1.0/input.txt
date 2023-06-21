@@ -1,0 +1,21 @@
+
+The volume label in drive H is SAM.
+The Volume Serial Number is A6F0:0015.
+Directory of H:\book\server1.0
+
+[.]                [..]               3wd                3wd.cf           
+3wd.cpp            3wd.exe            3wd.hpp            3wd.obj          
+3wdauth            access.log         base64.cpp         base64.hpp       
+base64.obj         btest.cpp          btest.exe          btest.obj        
+cgios2.cp!         cgios2.cpp         cgios2.exe         cgios2.obj       
+config.cpp         config.hpp         config.obj         defines.hpp      
+gohttp.v20         http10.cpp         http10.hpp         http10.obj       
+httpd.conf.cern    index.cpp          index.html         index.obj        
+input.txt          makefile           makefile.$mm       Page1.html       
+password           port80.log         prot.conf          readme           
+scodes.cpp         scodes.hpp         scodes.obj         scrap.cpp        
+socket.cpp         socket.hpp         socket.obj         test.cpp         
+test.exe           test.obj           util.cpp           util.hpp         
+util.obj           welcome.html       x2b.cmd            
+       55 file(s)    1168155 bytes used
+                   829595648 bytes free
