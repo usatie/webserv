@@ -1,0 +1,8 @@
+userid         : phethmon
+password       : sambo
+concatenated   : phethmon:sambo
+base64         : cGhldGhtb246c2FtYm8=
+Basic Header   : Authorization: Basic cGhldGhtb246c2FtYm8=
+
+Request        : GET /private/prices.html HTTP/1.1
+                 Authorization: Basic cGhldGhtb246c2FtYm8=
