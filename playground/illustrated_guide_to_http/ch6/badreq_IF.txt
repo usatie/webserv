@@ -1,0 +1,7 @@
+# 1. Invalid period
+If-Modified-Since:   Sat, 29 Oct 1994 20:43:31 GMT
+If-Unmodified-Since: Sat, 29 Oct 1994 19:43:31 GMT
+
+# 2. Invalid match
+If-Match:       "xyzzy"
+If-None-Match:  "xyzzy"

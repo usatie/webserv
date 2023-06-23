@@ -1,0 +1,11 @@
+HTTP/1.1 200 OK
+Date: Thu, 28 Nov 1996 16:09:21 GMT
+Server: 3wd/1.1
+ETag: "849196010"
+Last-Modified: Thu, 28 Nov 1996 15:46:23 GMT
+Cache-Control: max-age=604800
+Expires: Thu, 05 Dec 1996 16:09:21 GMT
+Content-Type: text/html
+Content-Length: 3488
+
+[3488 bytes of entity body]

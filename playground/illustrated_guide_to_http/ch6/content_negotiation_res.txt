@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+Server: 3wd/1.1
+Date: Tue, 03 Dec 1996 02:40:56 GMT
+Last-Modified: Mon, 25 Nov 1996 13:03:22 GMT
+ETag: "dks936npe210eqq584"
+Cache-Control: max-age=1209600
+Vary: Accept, Accept-Charset, Accept-Language
+Content-Type: text/html, charset=ISO-8859-1
+Content-Language: en
+Content-Length: 5288
+
+[5288 bytes of entity data]

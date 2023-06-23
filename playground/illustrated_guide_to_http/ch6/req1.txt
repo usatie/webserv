@@ -1,0 +1,7 @@
+GET /public/products.html HTTP/1.1
+Host: www.example.com
+User-Agent: JoeBrowser/1.1
+From: phethmon@hethmon.com
+Accept-Encoding:
+Accept: text/html, text/plain
+If-Modified-Since: Fri, 15 Nov 1996 04:33:29 GMT

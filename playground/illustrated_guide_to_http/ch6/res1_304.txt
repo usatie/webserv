@@ -1,0 +1,8 @@
+HTTP/1.1 304 OK
+Date: Thu, 28 Nov 1996 16:09:21 GMT
+Server: 3wd/1.1
+ETag: "849196010"
+Last-Modified: Fri, 15 Nov 1996 04:33:29 GMT
+Cache-Control: max-age=1209600
+Expires: Thu, 05 Dec 1996 16:09:21 GMT
+

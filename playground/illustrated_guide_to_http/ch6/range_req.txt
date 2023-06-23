@@ -1,0 +1,6 @@
+GET /public/products.html HTTP/1.1
+Host: www.example.com
+User-Agent: JoeBrowser/1.1
+From: zach@zacaroo.com
+If-Match: "729473730912"
+Range: bytes=0-300,1200-1250,1500-

@@ -1,0 +1,8 @@
+GET /public/sales.html HTTP/1.1
+Host: www.example.com
+User-Agent: JoeBrowser/2.2
+From: zach@zacaroo.com
+Accept: text/html, text/plain;q=0.8
+Accept-Charset: ISO-8859-1, UNICODE-1-1;q=0.5
+Accept-Language: en, en-gb;q=0.7, fr;q=0.2
+
