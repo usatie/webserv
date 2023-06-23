@@ -1,0 +1,31 @@
+# 5.2.1 Connection
+Syntax : Connection = "Connection" ":" 1#(connection-token)
+		 connection-token = token
+Example: Connection: close
+
+# 5.2.2 Date
+Syntax : Date = "Date" ":" HTTP-date
+Example: Date: Sat, 20 Jul 1996 15:35:00 GMT
+
+# 5.2.3 Pragma
+Syntax : Pragma = "Pragma" ":" 1#pragma-directive
+		 pragma-directive = "no-cache" | extension-pragma
+		 extension-pragma = token [ "=" ( token | quoted-string ) ]
+Example: Pragma: no-cache
+
+# 5.2.4 Transfer-Encoding
+Syntax : Transfer-Encoding = "Transfer-Encoding" ":" 1#transfer-coding
+Example: Transfer-Encoding: chunked
+
+# 5.2.5 Upgrade
+Syntax : Upgrade = "Upgrade" ":" 1#product
+Example: Upgrade: HTTP/2.0
+
+# 5.2.6 Via
+Syntax : Via = "Via" ":" 1#( received-protocol received-by [ comment ] )
+		 received-protocol = [ protocol-name "/" ] protocol-version
+		 protocol-name = token
+		 protocol-version = token
+		 received-by = ( host [ ":" port ] ) | pseudonym
+		 pseudonym = token
+Example: Via: 1.0 proxy.ag.utk.edu

@@ -1,0 +1,50 @@
+# 5.1.1 Allow
+Syntax : Allow = "Allow" ":" 1#Method
+Example: Allow: GET, HEAD
+
+# 5.1.2 Content-Base
+Syntax : Content-Base = "Content-Base" ":" absoluteURI
+Example: Content-Base: apacweb.ag.utk.edu/etpcug/
+
+# 5.1.3 Content-Encoding
+Syntax : Content-Encoding = "Content-Encoding" ":" 1#content-coding
+Example: Content-Encoding: compress
+
+# 5.1.4 Content-Language
+Syntax : Content-Language = "Content-Language" ":" 1#language-tag
+Example: Content-Language: en
+
+# 5.1.5 Content-Length
+Syntax : Content-Length = "Content-Length" ":" 1*DIGIT
+Example: Content-Length: 1964
+
+# 5.1.6 Content-Location
+Syntax : Content-Location = "Content-Location" ":" (absoluteURI | relativeURI)
+Example: Content-Location: /home/lang/en/
+
+# 5.1.7 Content-MD5
+Syntax : Content-MD5 = "Content-MD5" ":" md5-digest
+         md5-digest = <base64 of 128 bit MD5 digest as per RFC 1864>
+Example: Content-MD5: Q2hlY2sgSW50ZWdyaXR5IQ==
+
+# 5.1.8 Content-Range
+Syntax : Content-Range = "Content-Range" ":" content-range-spec
+		 content-range-spec = byte-content-range-spec
+		 byte-content-range-spec = bytes-unit SP first-byte-pos "-" last-byte-pos "/" entity-length
+		 bytes-unit = "bytes"
+		 first-byte-pos = 1*DIGIT
+		 last-byte-pos = 1*DIGIT
+		 entity-length = 1*DIGIT
+Example: Content-Range: bytes 459-2408/4707
+
+# 5.1.9 Content-Type
+Syntax : Content-Type = "Content-Type" ":" media-type
+Example: Content-Type: image/gif
+
+# 5.1.10 ETag
+Syntax : ETag = "ETag" ":" entity-tag
+Example: ETag: "472497203910"
+
+# 5.1.11 Last-Modified
+Syntax : Last-Modified = "Last-Modified" ":" HTTP-date
+Example: Last-Modified: Sat, 20 Jul 1996 19:05:28 GMT

@@ -1,0 +1,61 @@
+# 5.3.1 What is cachable?
+
+# 5.3.2 Age
+Age       = "Age" ":" age-value
+age-value = delta-seconds
+
+# 5.3.3 Cache-Control
+Syntax : Cache-Control   = "Cache-Control" ":" 1#cache-directive
+         cache-directive = cache-request-directive | cache-response-directive
+		 cache-request-directive =
+			   "no-cache"                          ; Section 14.9.1
+			 | "no-store"                          ; Section 14.9.2
+			 | "max-age" "=" delta-seconds         ; Section 14.9.3, 14.9.4
+			 | "max-stale" [ "=" delta-seconds ]   ; Section 14.9.3
+			 | "min-fresh" "=" delta-seconds       ; Section 14.9.3
+			 | "only-if-cached"                    ; Section 14.9.4
+			 | cache-extension                     ; Section 14.9.6
+		 cache-response-directive =
+			   "public"                               ; Section 14.9.1
+			 | "private" [ "=" <"> 1#field-name <"> ] ; Section 14.9.1
+			 | "no-cache" [ "=" <"> 1#field-name <"> ]; Section 14.9.1
+			 | "no-store"                             ; Section 14.9.2
+			 | "no-transform"                         ; Section 14.9.5
+			 | "must-revalidate"                      ; Section 14.9.4
+			 | "proxy-revalidate"                     ; Section 14.9.4
+			 | "max-age" "=" delta-seconds            ; Section 14.9.3
+			 | cache-extension                        ; Section 14.9.6
+		 cache-extension = token [ "=" ( token | quoted-string ) ]
+
+# 5.3.4 Expires
+Syntax : Expires = "Expires" ":" HTTP-date
+Example: Expires: Sat, 20 Jul 1997 15:35:00 GMT
+
+# 5.3.5 Warning
+Syntax : Warning = "Warning" ":" 1#warning-value
+		 warning-value = warn-code SP warn-agent SP warn-text
+		 warn-code  = 2DIGIT
+		 warn-agent = ( host [ ":" port ] ) | pseudonym
+		 warn-text  = quoted-string
+Example: Warning: 10 "Response is stale"
+
+# 5.3.6 Cache operation
+Cache-Control: no-cache
+Cache-Control: no-store
+Cache-Control: max-age=<seconds>
+Cache-Control: max-stale[=<seconds>]
+Cache-Control: min-fresh=<seconds>
+Cache-Control: only-if-cached
+Cache-Control: public
+Cache-Control: private=<field-name>
+Cache-Control: no-transform
+Cache-Control: must-revalidate
+Cache-Control: proxy-revalidate
+
+# 5.3.7 Expiration of responses
+1. For the origin server to explicitly set an expiration time
+Expires : HTTP/1.0 compatible (disregarded if max-age is set)
+max-age : HTTP/1.1 or greater
+2. For the cache may apply a heuristic expiration time
+Last-Modified :
+Date          : 
