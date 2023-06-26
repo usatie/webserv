@@ -5,10 +5,14 @@
 #include <unistd.h>
 using namespace std;
 
+#include "receiveline.hpp"
+
 //int socket(int family, int type, int protocol);
 //int bind(int socket, struct sockaddr *addr, int addrlen);
 //int listen(int socket, int backlog);
 //int accept(int socket, struct sockaddr *addr, int *addrlen);
+
+void  TalkToClient(int iSocket);
 
 int  main(int argc, char *argv[])
 {
@@ -37,6 +41,7 @@ int  main(int argc, char *argv[])
     cerr << "Error! Bind failed." << endl ;
     return (1);
   }
+
   rc = listen(s, SOMAXCONN);
   if (rc < 0)
   {
@@ -47,6 +52,7 @@ int  main(int argc, char *argv[])
   for ( ; ; )
   {
     bzero(&client, len);
+    cout << "server accept() " << endl;
     c = accept(s, (struct sockaddr *)&client, (socklen_t *)&len);
     if ( c < 0 )
     {
@@ -54,6 +60,60 @@ int  main(int argc, char *argv[])
       return (1);
     }
     // do some work with new socket c to client
-    close(c);
+    if (fork() == 0)
+    {
+      close(s);
+      TalkToClient(c);
+      return 0;
+    }
   }
+}
+
+void  TalkToClient(int iSocket)
+{
+  int   iRc,
+        bNotDone;
+  char  szBuf[256],
+        szOk[] = "OK\r\n",
+        szErr[] = "ERR\r\n";
+  bNotDone = TRUE;
+
+  while (bNotDone == TRUE)
+  {
+    cout << "server recv() " << endl;
+    iRc = RecvLine(iSocket, szBuf, 256);
+    if (iRc < 0)
+    {
+      cerr << "Error! RecvLine failed." << endl;
+      bNotDone = FALSE;
+    }
+    if (strcmp(szBuf, "HELLO") == 0)
+    {
+      cout << "server got HELLO, send() " << endl;
+      iRc = send(iSocket, szOk, strlen(szOk), 0);
+      if (iRc < 0)
+      {
+        cerr << "Error! Send failed." << endl;
+        bNotDone = FALSE;
+      }
+    }
+    else if (strcmp(szBuf, "GOODBYE") == 0)
+    {
+      cout << "server got GOODBYE, send() " << endl;
+      iRc = send(iSocket, szOk, strlen(szOk), 0);
+      if (iRc < 0)
+      {
+        cerr << "Error! Send failed." << endl;
+        bNotDone = FALSE;
+      }
+      bNotDone = FALSE; // close connection on GOODBYE
+    }
+    else // Unknown message
+    {
+      cout << "server got unknown message, send() " << endl;
+      send(iSocket, szErr, strlen(szErr), 0);
+      bNotDone = FALSE;
+    }
+  }
+  close(iSocket);
 }
