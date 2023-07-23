@@ -1,28 +1,31 @@
 #ifndef SOCKET_HPP
-# define SOCKET_HPP
+#define SOCKET_HPP
 
-#include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
 #include <unistd.h>
-#include <iostream>
+
 #include <fstream>
+#include <iostream>
 #include <string>
 
-class FatalError: public std::exception {
-public:
-  FatalError(std::string msg) throw(): msg(msg) {}
+#include "webserv.hpp"
+
+class FatalError : public std::exception {
+ public:
+  explicit FatalError(const std::string &msg) throw() : msg(msg) {}
   ~FatalError() throw() {}
-  virtual const char *what() const throw() {
-    return msg.c_str();
-  }
-private:
+  virtual const char *what() const throw() { return msg.c_str(); }
+
+ private:
   std::string msg;
 };
 
 class Socket {
-public:
-  Socket(): fd(-1), server_addr(), client_addr(), client_addrlen() {}
-  Socket(int fd, struct sockaddr_in addr, socklen_t addrlen): fd(fd), server_addr(), client_addr(addr), client_addrlen(addrlen) {}
+ public:
+  Socket() : fd(-1), server_addr(), client_addr(), client_addrlen() {}
+  Socket(int fd, struct sockaddr_in addr, socklen_t addrlen)
+      : fd(fd), server_addr(), client_addr(addr), client_addrlen(addrlen) {}
   ~Socket() {
     if (::close(fd) < 0) {
       std::cerr << "close() failed\n";
@@ -60,10 +63,10 @@ public:
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
     int client_fd = ::accept(fd, (struct sockaddr *)&addr, &addrlen);
-    // TODO: handle error
     if (client_fd < 0) {
       std::cerr << "accept() failed\n";
-      throw;
+      // TODO: handle error
+      exit(EXIT_FAILURE);
     }
     return Socket(client_fd, addr, addrlen);
   }
@@ -108,10 +111,9 @@ public:
 
   int readline(std::string &ptr) {
     char prev = '\0', c;
-    ssize_t rc;
 
     while (1) {
-      if ((rc = read(fd, &c, 1)) == 1) {
+      if (read(fd, &c, 1) == 1) {
         ptr += c;
         if (prev == '\r' && c == '\n') {
           ptr.pop_back();
@@ -124,7 +126,8 @@ public:
       }
     }
   }
-private:
+
+ private:
   int fd;
   struct sockaddr_in server_addr;
   struct sockaddr_in client_addr;

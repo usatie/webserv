@@ -1,13 +1,14 @@
 #include <iostream>
+
+#include "GetHandler.hpp"
 #include "Header.hpp"
 #include "Socket.hpp"
-#include "GetHandler.hpp"
+#include "webserv.hpp"
 #define PORT 8181
 #define BACKLOG 5
 #define ERROR 1
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   (void)argc, (void)argv;
   // If initialize server socket failed, exit.
   Socket server_socket;
@@ -18,7 +19,7 @@ int main(int argc, char *argv[])
     return ERROR;
   }
   while (1) {
-    // If some error occured, must handle the error.
+    // TODO: If some error occured, must handle the error.
     Socket client_socket = server_socket.accept();
     Header header(client_socket);
     if (header.method == "GET") {
