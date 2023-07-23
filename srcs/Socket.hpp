@@ -62,6 +62,24 @@ public:
     (void)client_addrlen;
   }
   int send_file(std::string filepath);
+  int readline(std::string &ptr) {
+    char prev = '\0', c;
+    ssize_t rc;
+
+    while (1) {
+      if ((rc = read(fd, &c, 1)) == 1) {
+        ptr += c;
+        if (prev == '\r' && c == '\n') {
+          ptr.pop_back();
+          ptr.pop_back();
+          return 0;
+        }
+        prev = c;
+      } else {
+        return -1;
+      }
+    }
+  }
 private:
   int fd;
   struct sockaddr_in server_addr;
