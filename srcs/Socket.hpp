@@ -61,6 +61,7 @@ public:
     (void)client_addr;
     (void)client_addrlen;
   }
+  int send_file(std::string filepath);
 private:
   int fd;
   struct sockaddr_in server_addr;
