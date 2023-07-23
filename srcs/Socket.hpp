@@ -4,6 +4,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <iostream>
+#include <fstream>
+#include <string>
 
 class Socket {
 public:
@@ -61,7 +64,36 @@ public:
     (void)client_addr;
     (void)client_addrlen;
   }
-  int send_file(std::string filepath);
+  int send_file(std::string filepath) {
+    std::ifstream ifs(filepath);
+    std::size_t sent = 0;
+    ssize_t ret = 0;
+    std::string line;
+
+    if (!ifs.is_open()) {
+      std::cerr << "file open failed\n";
+      return -1;
+    }
+    while (std::getline(ifs, line)) {
+      // TODO: portable newline
+      line += "\n";
+      ret = send(line.c_str(), line.size());
+      if (ret < 0) {
+        std::cerr << "send() failed\n";
+        return -1;
+      }
+      // TODO: handle partial send
+      sent += ret;
+    }
+    ret = send("\r\n", 1);
+    if (ret < 0) {
+      std::cerr << "send() failed\n";
+      return -1;
+    }
+    // TODO: handle partial send
+    return sent + ret;
+  }
+
   int readline(std::string &ptr) {
     char prev = '\0', c;
     ssize_t rc;
