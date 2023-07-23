@@ -48,7 +48,7 @@ int Select(int nfds, fd_set *restrict readfds, fd_set *restrict writefds,
 int Accept(int socket, struct sockaddr *restrict address,
          socklen_t *restrict address_len) {
 	int fd;
-	if ((fd = accept(socket, (SA *) &address, &address_len)) < 0) {
+	if ((fd = accept(socket, (SA *) &address, address_len)) < 0) {
 		fprintf(stderr, "accept() failed");
 		exit(1);
 	}
@@ -131,7 +131,7 @@ int main(int argc, char **argv) {
 
 		if (FD_ISSET(listenfd, &rset)) {
 			clilen = sizeof(cliaddr);
-			connfd = Accept(listen, (SA *) &cliaddr, &clilen);
+			connfd = Accept(listenfd, (SA *) &cliaddr, &clilen);
 
 			for (i = 0; i < FD_SETSIZE; i++) {
 				if (client[i] < 0) {
