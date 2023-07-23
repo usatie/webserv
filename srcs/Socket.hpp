@@ -8,26 +8,39 @@
 #include <fstream>
 #include <string>
 
+class FatalError: public std::exception {
+public:
+  FatalError(std::string msg) throw(): msg(msg) {}
+  ~FatalError() throw() {}
+  virtual const char *what() const throw() {
+    return msg.c_str();
+  }
+private:
+  std::string msg;
+};
+
 class Socket {
 public:
-  Socket(): fd(-1), server_addr(), client_addr(), client_addrlen() {
-    fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (fd < 0) {
-      std::cerr << "socket() failed\n";
-      throw;
-    }
-  }
+  Socket(): fd(-1), server_addr(), client_addr(), client_addrlen() {}
   Socket(int fd, struct sockaddr_in addr, socklen_t addrlen): fd(fd), server_addr(), client_addr(addr), client_addrlen(addrlen) {}
   ~Socket() {
     if (::close(fd) < 0) {
       std::cerr << "close() failed\n";
     }
   }
+  void initServer(int port, int backlog) {
+    fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (fd < 0) {
+      throw FatalError("socket() failed");
+    }
+    reuseaddr();
+    bind(port);
+    listen(backlog);
+  }
   void reuseaddr() {
     int optval = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
-      std::cerr << "setsockopt() failed\n";
-      throw;
+      throw FatalError("setsockopt() failed");
     }
   }
   void bind(int port) {
@@ -35,20 +48,19 @@ public:
     server_addr.sin_port = htons(port);
     server_addr.sin_addr.s_addr = INADDR_ANY;
     if (::bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-      std::cerr << "bind() failed\n";
-      throw;
+      throw FatalError("bind() failed");
     }
   }
   void listen(int backlog) {
     if (::listen(fd, backlog) < 0) {
-      std::cerr << "listen() failed\n";
-      throw;
+      throw FatalError("listen() failed");
     }
   }
   Socket accept() {
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
     int client_fd = ::accept(fd, (struct sockaddr *)&addr, &addrlen);
+    // TODO: handle error
     if (client_fd < 0) {
       std::cerr << "accept() failed\n";
       throw;

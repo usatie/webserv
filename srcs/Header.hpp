@@ -13,11 +13,13 @@ public:
     method = keywords[0];
     path = keywords[1];
     version = keywords[2];
+    // TODO: parse header fields
   }
   std::string method;
   std::string path;
   std::string version;
 
+  // TODO: refactor? fix?
   std::vector<std::string> split(std::string str, char delim) {
     std::vector<std::string> ret;
     int idx = 0;
