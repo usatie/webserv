@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "Header.hpp"
 #include "Socket.hpp"
 #include "webserv.hpp"
 ssize_t get_content_length(const std::string& filepath) {
