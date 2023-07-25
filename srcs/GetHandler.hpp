@@ -38,12 +38,7 @@ class GetHandler {
     ss << "\r\n";
     client_socket.send(ss.str().c_str(), ss.str().size());
     client_socket.send_file(header.path);
-    // GET /a.text HTTP/1.1
-    // GET /b.text HTTP/1.1
-    // GET /b.text HTTP/1.1
-    // if (client_socket.send(RESPONSE.c_str(), RESPONSE.size()) < 0) {
-    //   std::cerr << "send() failed\n";
-    // }
+    client_socket.flushall();
   }
 };
 #endif

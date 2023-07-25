@@ -9,7 +9,9 @@ class Header {
  public:
   explicit Header(Socket &client_socket) {
     std::string line;
-    client_socket.readline(line);
+    while (client_socket.readline(line) < 0) {
+      client_socket.recv();
+    }
     std::vector<std::string> keywords = split(line, ' ');
     // TODO: validate keywords
     method = keywords[0];

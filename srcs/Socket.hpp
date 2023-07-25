@@ -8,6 +8,8 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#define MAXLINE 1024
+#include <fcntl.h>
 
 #include "webserv.hpp"
 
@@ -31,6 +33,7 @@ class Socket {
       std::cerr << "close() failed\n";
     }
   }
+
   void initServer(int port, int backlog) {
     fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (fd < 0) {
@@ -39,13 +42,16 @@ class Socket {
     reuseaddr();
     bind(port);
     listen(backlog);
+    //set_nonblock();
   }
+
   void reuseaddr() {
     int optval = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
       throw FatalError("setsockopt() failed");
     }
   }
+
   void bind(int port) {
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
@@ -54,11 +60,13 @@ class Socket {
       throw FatalError("bind() failed");
     }
   }
+
   void listen(int backlog) {
     if (::listen(fd, backlog) < 0) {
       throw FatalError("listen() failed");
     }
   }
+
   Socket accept() {
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
@@ -70,65 +78,94 @@ class Socket {
     }
     return Socket(client_fd, addr, addrlen);
   }
-  int send(const void *buf, size_t len) {
-    static const int flags = 0;
-    return ::send(fd, buf, len, flags);
-  }
+
   // TODO: Resolve client address and name
   void resolve() {
     (void)client_addr;
     (void)client_addrlen;
   }
+
+  int send(const char *msg, size_t len) {
+    sendbuf.insert(sendbuf.end(), msg, msg + len);
+    return 0;
+  }
+
   int send_file(std::string filepath) {
     std::ifstream ifs(filepath);
-    std::size_t sent = 0;
-    ssize_t ret = 0;
-    std::string line;
 
     if (!ifs.is_open()) {
       std::cerr << "file open failed\n";
       return -1;
     }
-    while (std::getline(ifs, line)) {
-      // TODO: portable newline
-      line += "\n";
-      ret = send(line.c_str(), line.size());
-      if (ret < 0) {
-        std::cerr << "send() failed\n";
-        return -1;
+    sendbuf.insert(sendbuf.end(), std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
+    std::string line = "\r\n";
+    // Append line to sendbuf
+    sendbuf.insert(sendbuf.end(), line.begin(), line.end());
+    return 0;
+  }
+
+  // Read line from buffer, if found, remove it from buffer and return 0
+  // Otherwise, return -1
+  int readline(std::string &line) {
+    char prev = '\0', c;
+
+    for (size_t i = 0; i < recvbuf.size(); i++) {
+      c = recvbuf[i];
+      if (prev == '\r' && c == '\n') {
+        line.assign(recvbuf.begin(), recvbuf.begin() + i - 1); // Remove "\r\n"
+        recvbuf.erase(recvbuf.begin(), recvbuf.begin() + i + 1);
+        return 0;
       }
-      // TODO: handle partial send
-      sent += ret;
+      prev = c;
     }
-    ret = send("\r\n", 2);
+    return -1;
+  }
+
+  // Actually send data on socket
+  int flush() {
+    if (sendbuf.empty()) {
+      return 0;
+    }
+    ssize_t ret = ::send(fd, &sendbuf[0], sendbuf.size(), 0);
     if (ret < 0) {
       std::cerr << "send() failed\n";
       return -1;
     }
-    // TODO: handle partial send
-    return sent + ret;
+    sendbuf.erase(sendbuf.begin(), sendbuf.begin() + ret);
+    return ret;
   }
 
-  int readline(std::string &ptr) {
-    char prev = '\0', c;
+  void flushall() {
+    while (flush() > 0)
+      ;
+  }
 
-    while (1) {
-      if (read(fd, &c, 1) == 1) {
-        ptr += c;
-        if (prev == '\r' && c == '\n') {
-          ptr.pop_back();
-          ptr.pop_back();
-          return 0;
-        }
-        prev = c;
-      } else {
-        return -1;
-      }
+  // Actually receive data from socket
+  int recv() {
+    char buf[MAXLINE];
+    static const int flags = 0;
+    ssize_t ret = ::recv(fd, buf, sizeof(buf) - 1, flags);
+    if (ret < 0) {
+      std::cerr << "recv() failed\n";
+      return -1;
+    }
+    recvbuf.insert(recvbuf.end(), buf, buf + ret);
+    return ret;
+  }
+
+  void set_nonblock() {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0) {
+      throw FatalError("fcntl() failed");
+    }
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+      throw FatalError("fcntl() failed");
     }
   }
 
  private:
   int fd;
+  std::vector<char> recvbuf, sendbuf;
   struct sockaddr_in server_addr;
   struct sockaddr_in client_addr;
   socklen_t client_addrlen;
