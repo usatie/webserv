@@ -100,7 +100,7 @@ class Socket {
       // TODO: handle partial send
       sent += ret;
     }
-    ret = send("\r\n", 1);
+    ret = send("\r\n", 2);
     if (ret < 0) {
       std::cerr << "send() failed\n";
       return -1;
