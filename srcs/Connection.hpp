@@ -35,7 +35,7 @@ class Connection {
       case REQ_START_LINE:
         parse_start_line();
       case REQ_HEADER_FIELDS:
-        parse_header_filelds();
+        parse_header_fields();
       case REQ_BODY:
         parse_body();
       case HANDLE:
@@ -69,7 +69,7 @@ class Connection {
     return 0;
   }
 
-  int parse_header_filelds() {
+  int parse_header_fields() {
     // TODO: implement
     status = REQ_BODY;
     return 0;
