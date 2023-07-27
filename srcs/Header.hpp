@@ -7,7 +7,7 @@
 
 class Header {
  public:
-   // TODO: deprecate 
+  // TODO: deprecate
   explicit Header(Socket &client_socket) {
     std::string line;
     while (client_socket.readline(line) < 0) {

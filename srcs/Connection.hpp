@@ -1,13 +1,12 @@
 #ifndef CONNECTION_HPP
 #define CONNECTION_HPP
 
-#include "Socket.hpp"
-#include "Header.hpp"
 #include "GetHandler.hpp"
+#include "Header.hpp"
+#include "Socket.hpp"
 
-class Connection
-{
-private:
+class Connection {
+ private:
   Socket *client_socket;
   Header header;
   typedef enum Status {
@@ -18,12 +17,18 @@ private:
     RESPONSE,
     DONE
   } Status;
-public:
-  Status status ;
+
+ public:
+  Connection(Socket *client_socket) : client_socket(client_socket) {}
+  ~Connection() { delete client_socket; }
+  Status status;
+  int get_fd() { return client_socket->get_fd(); }
+  Socket *get_socket() { return client_socket; }
+  bool is_done() { return status == DONE; }
   int resume() {
-    if ( shouldRecv() ) {
+    if (shouldRecv()) {
       client_socket->recv();
-    } else if ( shouldSend() ) {
+    } else if (shouldSend()) {
       client_socket->flush();
     }
     switch (status) {
@@ -43,12 +48,11 @@ public:
   }
 
   bool shouldRecv() {
-    return status == REQ_START_LINE || status == REQ_HEADER_FIELDS || status == REQ_BODY;
+    return status == REQ_START_LINE || status == REQ_HEADER_FIELDS ||
+           status == REQ_BODY;
   }
 
-  bool shouldSend() {
-    return status == RESPONSE;
-  }
+  bool shouldSend() { return status == RESPONSE; }
 
   int parse_start_line() {
     std::string line;

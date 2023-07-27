@@ -23,7 +23,7 @@ ssize_t get_content_length(const std::string& filepath) {
 
 class GetHandler {
  public:
-  static void handle(Socket *client_socket, const Header& header) {
+  static void handle(Socket* client_socket, const Header& header) {
     // TODO: Write response headers
     std::stringstream ss;
     ssize_t content_length = get_content_length(header.path);

@@ -42,7 +42,7 @@ class Socket {
     reuseaddr();
     bind(port);
     listen(backlog);
-    //set_nonblock();
+    // set_nonblock();
   }
 
   void reuseaddr() {
@@ -67,7 +67,7 @@ class Socket {
     }
   }
 
-  Socket accept() {
+  Socket* accept() {
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
     int client_fd = ::accept(fd, (struct sockaddr *)&addr, &addrlen);
@@ -76,7 +76,7 @@ class Socket {
       // TODO: handle error
       exit(EXIT_FAILURE);
     }
-    return Socket(client_fd, addr, addrlen);
+    return new Socket(client_fd, addr, addrlen);
   }
 
   // TODO: Resolve client address and name
@@ -97,7 +97,8 @@ class Socket {
       std::cerr << "file open failed\n";
       return -1;
     }
-    sendbuf.insert(sendbuf.end(), std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
+    sendbuf.insert(sendbuf.end(), std::istreambuf_iterator<char>(ifs),
+                   std::istreambuf_iterator<char>());
     std::string line = "\r\n";
     // Append line to sendbuf
     sendbuf.insert(sendbuf.end(), line.begin(), line.end());
@@ -112,7 +113,7 @@ class Socket {
     for (size_t i = 0; i < recvbuf.size(); i++) {
       c = recvbuf[i];
       if (prev == '\r' && c == '\n') {
-        line.assign(recvbuf.begin(), recvbuf.begin() + i - 1); // Remove "\r\n"
+        line.assign(recvbuf.begin(), recvbuf.begin() + i - 1);  // Remove "\r\n"
         recvbuf.erase(recvbuf.begin(), recvbuf.begin() + i + 1);
         return 0;
       }
@@ -164,6 +165,9 @@ class Socket {
   }
 
   std::vector<char> recvbuf, sendbuf;
+
+  int get_fd() { return fd; }
+
  private:
   int fd;
   struct sockaddr_in server_addr;
