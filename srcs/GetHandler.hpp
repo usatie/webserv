@@ -23,7 +23,7 @@ ssize_t get_content_length(const std::string& filepath) {
 
 class GetHandler {
  public:
-  static void handle(Socket& client_socket, const Header& header) {
+  static void handle(Socket *client_socket, const Header& header) {
     // TODO: Write response headers
     std::stringstream ss;
     ssize_t content_length = get_content_length(header.path);
@@ -36,9 +36,8 @@ class GetHandler {
     // ss << "Date: Tue, 11 Jul 2023 07:36:50 GMT\r\n";
     ss << "Content-Length: " << content_length << "\r\n";
     ss << "\r\n";
-    client_socket.send(ss.str().c_str(), ss.str().size());
-    client_socket.send_file(header.path);
-    client_socket.flushall();
+    client_socket->send(ss.str().c_str(), ss.str().size());
+    client_socket->send_file(header.path);
   }
 };
 #endif

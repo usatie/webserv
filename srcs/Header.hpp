@@ -7,6 +7,7 @@
 
 class Header {
  public:
+   // TODO: deprecate 
   explicit Header(Socket &client_socket) {
     std::string line;
     while (client_socket.readline(line) < 0) {
@@ -19,6 +20,7 @@ class Header {
     version = keywords[2];
     // TODO: parse header fields
   }
+  Header() {}
   std::string method;
   std::string path;
   std::string version;

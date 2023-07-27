@@ -163,9 +163,9 @@ class Socket {
     }
   }
 
+  std::vector<char> recvbuf, sendbuf;
  private:
   int fd;
-  std::vector<char> recvbuf, sendbuf;
   struct sockaddr_in server_addr;
   struct sockaddr_in client_addr;
   socklen_t client_addrlen;
