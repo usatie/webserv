@@ -22,10 +22,7 @@ class Server {
   }
 
   int init(int port, int backlog) {
-    try {
-      server_socket.initServer(port, backlog);
-    } catch (FatalError &e) {
-      std::cerr << e.what() << std::endl;
+    if (server_socket.initServer(port, backlog) < 0) {
       return -1;
     }
     monitor_list.push_back(&server_socket);

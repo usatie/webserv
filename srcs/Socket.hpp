@@ -13,16 +13,6 @@
 
 #include "webserv.hpp"
 
-class FatalError : public std::exception {
- public:
-  explicit FatalError(const std::string &msg) throw() : msg(msg) {}
-  ~FatalError() throw() {}
-  virtual const char *what() const throw() { return msg.c_str(); }
-
- private:
-  std::string msg;
-};
-
 class Socket {
  public:
   Socket() : fd(-1), server_addr(), client_addr(), client_addrlen() {}
@@ -34,37 +24,52 @@ class Socket {
     }
   }
 
-  void initServer(int port, int backlog) {
-    fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (fd < 0) {
-      throw FatalError("socket() failed");
+  int initServer(int port, int backlog) {
+    if ( (fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+      std::cerr << "socket() failed\n";
+      return -1;
     }
-    reuseaddr();
-    bind(port);
-    listen(backlog);
-    // set_nonblock();
+    if (reuseaddr() < 0) {
+      return -1;
+    }
+    if (bind(port) < 0) {
+      return -1;
+    }
+    if (listen(backlog) < 0) {
+      return -1;
+    }
+    if (set_nonblock() < 0) {
+      return -1;
+    }
+    return 0;
   }
 
-  void reuseaddr() {
+  int reuseaddr() {
     int optval = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
-      throw FatalError("setsockopt() failed");
+      std::cerr << "setsockopt() failed\n";
+      return -1;
     }
+    return 0;
   }
 
-  void bind(int port) {
+  int bind(int port) {
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
     server_addr.sin_addr.s_addr = INADDR_ANY;
     if (::bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-      throw FatalError("bind() failed");
+      std::cerr << "bind() failed\n";
+      return -1;
     }
+    return 0;
   }
 
-  void listen(int backlog) {
+  int listen(int backlog) {
     if (::listen(fd, backlog) < 0) {
-      throw FatalError("listen() failed");
+      std::cerr << "listen() failed\n";
+      return -1;
     }
+    return 0;
   }
 
   Socket *accept() {
@@ -154,14 +159,17 @@ class Socket {
     return ret;
   }
 
-  void set_nonblock() {
+  int set_nonblock() {
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0) {
-      throw FatalError("fcntl() failed");
+      std::cerr << "fcntl() failed\n";
+      return -1;
     }
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-      throw FatalError("fcntl() failed");
+      std::cerr << "fcntl() failed\n";
+      return -1;
     }
+    return 0;
   }
 
   std::vector<char> recvbuf, sendbuf;
