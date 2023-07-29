@@ -67,7 +67,7 @@ class Socket {
     }
   }
 
-  Socket* accept() {
+  Socket *accept() {
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
     int client_fd = ::accept(fd, (struct sockaddr *)&addr, &addrlen);
