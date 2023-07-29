@@ -26,7 +26,6 @@ class Connection {
   Socket *get_socket() { return client_socket; }
   bool is_done() { return status == DONE; }
   int resume() {
-    std::cerr << "resume()\n";
     if (shouldRecv()) {
       client_socket->recv();
     } else if (shouldSend()) {
@@ -85,10 +84,8 @@ class Connection {
         status = DONE;
         return 1;
       }
-      std::cerr << "readline() failed\n";
       return 0;
     }
-    std::cerr << "64\n";
     std::vector<std::string> keywords = Header::split(line, ' ');
     // TODO: validate keywords
     header.method = keywords[0];
@@ -99,21 +96,18 @@ class Connection {
   }
 
   int parse_header_fields() {
-    std::cerr << "parse_header_fields()\n";
     // TODO: implement
     status = REQ_BODY;
     return 1;
   }
 
   int parse_body() {
-    std::cerr << "parse_body()\n";
     // TODO: implement
     status = HANDLE;
     return 1;
   }
 
   int handle() {
-    std::cerr << "handle()\n";
     if (header.method == "GET") {
       GetHandler::handle(client_socket, header);
     } else {
@@ -125,13 +119,10 @@ class Connection {
   }
 
   int response() {
-    std::cerr << "response()\n";
     if (client_socket->sendbuf.empty()) {
-      std::cerr << "109\n";
       status = DONE;
       return 1;
     }
-    std::cerr << "111\n";
     return 0;
   }
 };

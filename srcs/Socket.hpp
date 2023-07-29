@@ -91,7 +91,6 @@ class Socket {
   }
 
   int send(const char *msg, size_t len) {
-    std::cerr << "send(): " << msg << std::endl;
     sendbuf.insert(sendbuf.end(), msg, msg + len);
     return 0;
   }
@@ -133,7 +132,6 @@ class Socket {
     if (sendbuf.empty()) {
       return 0;
     }
-    std::cout << "flush()\n";
     ssize_t ret = ::send(fd, &sendbuf[0], sendbuf.size(), SO_NOSIGPIPE);
     if (ret < 0) {
       std::cerr << "send() failed\n";
@@ -150,7 +148,6 @@ class Socket {
 
   // Actually receive data from socket
   int recv() {
-    std::cerr << "recv()\n";
     char buf[MAXLINE];
     static const int flags = 0;
     ssize_t ret = ::recv(fd, buf, sizeof(buf) - 1, flags);
@@ -162,10 +159,6 @@ class Socket {
     if (ret == 0) {
       closed = true;
     }
-    for (size_t i = 0; i < recvbuf.size(); i++) {
-      std::cerr << int(recvbuf[i]) << ",";
-    }
-    std::cerr << ret << std::endl;
     return ret;
   }
 

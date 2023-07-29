@@ -27,7 +27,6 @@ class GetHandler {
     // TODO: Write response headers
     std::stringstream ss;
     ssize_t content_length = get_content_length(header.path);
-    std::cerr << "content_length: " << content_length << std::endl;
     if (content_length < 0) {
       std::cerr << "get_content_length() failed\n";
       return;
