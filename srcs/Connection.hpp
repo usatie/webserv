@@ -30,8 +30,10 @@ class Connection {
       client_socket->recv();
     } else if (shouldSend()) {
       if (client_socket->flush() < 0) {
-        status = DONE;
-        return -1;
+        if (client_socket->closed) {
+          std::cerr << "client_socket->closed\n";
+          status = DONE;
+        }
       }
     }
     while (1) {

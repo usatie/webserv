@@ -85,6 +85,7 @@ class Server {
       accept();
       return;
     }
+    // TODO: equally distribute the processing time to each connection
     for (std::vector<Connection *>::iterator it = connection_list.begin();
          it != connection_list.end(); it++) {
       if (canConnectionResume(readfds, writefds, *it)) {
