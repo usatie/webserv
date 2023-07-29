@@ -7,19 +7,6 @@
 
 class Header {
  public:
-  // TODO: deprecate
-  explicit Header(Socket &client_socket) {
-    std::string line;
-    while (client_socket.readline(line) < 0) {
-      client_socket.recv();
-    }
-    std::vector<std::string> keywords = split(line, ' ');
-    // TODO: validate keywords
-    method = keywords[0];
-    path = keywords[1];
-    version = keywords[2];
-    // TODO: parse header fields
-  }
   Header() {}
   std::string method;
   std::string path;
