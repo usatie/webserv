@@ -26,25 +26,44 @@ class Connection {
   Socket *get_socket() { return client_socket; }
   bool is_done() { return status == DONE; }
   int resume() {
+    std::cerr << "resume()\n";
     if (shouldRecv()) {
       client_socket->recv();
     } else if (shouldSend()) {
       client_socket->flush();
     }
-    switch (status) {
-      case REQ_START_LINE:
-        parse_start_line();
-      case REQ_HEADER_FIELDS:
-        parse_header_fields();
-      case REQ_BODY:
-        parse_body();
-      case HANDLE:
-        handle();
-      case RESPONSE:
-        response();
-      case DONE:
-        return 0;
+    while (1) {
+      switch (status) {
+        case REQ_START_LINE:
+          if (parse_start_line() <= 0) {
+            return 0;
+          }
+          break;
+        case REQ_HEADER_FIELDS:
+          if (parse_header_fields() <= 0) {
+            return 0;
+          }
+          break;
+        case REQ_BODY:
+          if (parse_body() <= 0) {
+            return 0;
+          }
+          break;
+        case HANDLE:
+          if (handle() <= 0) {
+            return 0;
+          }
+          break;
+        case RESPONSE:
+          if (response() <= 0) {
+            return 0;
+          }
+          break;
+        case DONE:
+          return 0;
+      }
     }
+    return 0;
   }
 
   bool shouldRecv() {
@@ -52,36 +71,46 @@ class Connection {
            status == REQ_BODY;
   }
 
-  bool shouldSend() { return status == RESPONSE; }
+  bool shouldSend() { return status == HANDLE || status == RESPONSE; }
 
   int parse_start_line() {
     std::string line;
 
     if (client_socket->readline(line) < 0) {
-      return -1;
+      if (client_socket->closed) {
+        std::cerr << "client_socket->closed\n";
+        status = DONE;
+        return 1;
+      }
+      std::cerr << "readline() failed\n";
+      return 0;
     }
+    std::cerr << "64\n";
     std::vector<std::string> keywords = Header::split(line, ' ');
     // TODO: validate keywords
     header.method = keywords[0];
     header.path = keywords[1];
     header.version = keywords[2];
     status = REQ_HEADER_FIELDS;
-    return 0;
+    return 1;
   }
 
   int parse_header_fields() {
+    std::cerr << "parse_header_fields()\n";
     // TODO: implement
     status = REQ_BODY;
-    return 0;
+    return 1;
   }
 
   int parse_body() {
+    std::cerr << "parse_body()\n";
     // TODO: implement
-    status = RESPONSE;
-    return 0;
+    status = HANDLE;
+    return 1;
   }
 
   int handle() {
+    std::cerr << "handle()\n";
     if (header.method == "GET") {
       GetHandler::handle(client_socket, header);
     } else {
@@ -89,13 +118,17 @@ class Connection {
       client_socket->send("HTTP/1.1 405 Method Not Allowed\r\n", 34);
     }
     status = RESPONSE;
-    return 0;
+    return 1;
   }
 
   int response() {
+    std::cerr << "response()\n";
     if (client_socket->sendbuf.empty()) {
+      std::cerr << "109\n";
       status = DONE;
+      return 1;
     }
+    std::cerr << "111\n";
     return 0;
   }
 };

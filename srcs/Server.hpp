@@ -91,6 +91,7 @@ class Server {
         (*it)->resume();
         if ((*it)->is_done()) {
           remove_connection(*it);
+          std::cerr << "connection removed" << std::endl;
         }
         break;
       }

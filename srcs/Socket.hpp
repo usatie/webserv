@@ -91,6 +91,7 @@ class Socket {
   }
 
   int send(const char *msg, size_t len) {
+    std::cerr << "send(): " << msg << std::endl;
     sendbuf.insert(sendbuf.end(), msg, msg + len);
     return 0;
   }
@@ -148,6 +149,7 @@ class Socket {
 
   // Actually receive data from socket
   int recv() {
+    std::cerr << "recv()\n";
     char buf[MAXLINE];
     static const int flags = 0;
     ssize_t ret = ::recv(fd, buf, sizeof(buf) - 1, flags);
@@ -156,6 +158,13 @@ class Socket {
       return -1;
     }
     recvbuf.insert(recvbuf.end(), buf, buf + ret);
+    if (ret == 0) {
+      closed = true;
+    }
+    for (size_t i = 0; i < recvbuf.size(); i++) {
+      std::cerr << int(recvbuf[i]) << ",";
+    }
+    std::cerr << ret << std::endl;
     return ret;
   }
 
@@ -175,6 +184,7 @@ class Socket {
   std::vector<char> recvbuf, sendbuf;
 
   int get_fd() { return fd; }
+  bool closed;
 
  private:
   int fd;
