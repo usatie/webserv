@@ -30,7 +30,10 @@ class Connection {
     if (shouldRecv()) {
       client_socket->recv();
     } else if (shouldSend()) {
-      client_socket->flush();
+      if (client_socket->flush() < 0) {
+        status = DONE;
+        return -1;
+      }
     }
     while (1) {
       switch (status) {

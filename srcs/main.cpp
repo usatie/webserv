@@ -8,6 +8,10 @@ int main(int argc, char *argv[]) {
   // If initialize server socket failed, exit.
   Server server;
 
+  if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+    std::cerr << "signal() failed\n";
+    return ERROR;
+  }
   if (server.init(PORT, BACKLOG) < 0) {
     return ERROR;
   }

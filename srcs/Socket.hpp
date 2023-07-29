@@ -133,7 +133,8 @@ class Socket {
     if (sendbuf.empty()) {
       return 0;
     }
-    ssize_t ret = ::send(fd, &sendbuf[0], sendbuf.size(), 0);
+    std::cout << "flush()\n";
+    ssize_t ret = ::send(fd, &sendbuf[0], sendbuf.size(), SO_NOSIGPIPE);
     if (ret < 0) {
       std::cerr << "send() failed\n";
       return -1;
