@@ -6,7 +6,7 @@ WEBSERV_PORT=8181
 # disown for not make the shell script failure when the server is pkilled
 ./webserv & disown
 # wait for server warm up
-sleep 0.1
+sleep 0.5
 
 # 2. Tests
 echo -n "Test1    : "
