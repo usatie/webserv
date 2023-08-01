@@ -10,15 +10,19 @@
 
 class Server {
  private:
-   typedef std::vector<Connection *>::iterator ConnIterator;
+   typedef std::vector< std::shared_ptr<Connection> > ConnVector;
+   typedef ConnVector::iterator ConnIterator;
  public:
+  // Member data
   Socket server_socket;
-  std::vector<Connection *> connections;
+  ConnVector connections;
+  // Constructor/Destructor
+  Server() {}
+  ~Server() {}
 
-  void remove_connection(Connection *connection) {
+  void remove_connection(std::shared_ptr<Connection> connection) {
     connections.erase(
         std::find(connections.begin(), connections.end(), connection));
-    delete connection;
   }
 
   int init(int port, int backlog) {
@@ -59,15 +63,16 @@ class Server {
     return writefds;
   }
   void accept() {
-    Socket *client_socket = server_socket.accept();
+    std::shared_ptr<Socket> client_socket = server_socket.accept();
     client_socket->set_nonblock();
-    connections.push_back(new Connection(client_socket));
+    std::shared_ptr<Connection> conn(new Connection(client_socket));
+    connections.push_back(conn);
   }
   bool canServerAccept(fd_set &readfds) {
     return FD_ISSET(server_socket.get_fd(), &readfds);
   }
   bool canConnectionResume(fd_set &readfds, fd_set &writefds,
-                           Connection *conn) {
+                           std::shared_ptr<Connection> conn) {
     if ((conn->shouldRecv() && FD_ISSET(conn->get_fd(), &readfds)) ||
         (conn->shouldSend() && FD_ISSET(conn->get_fd(), &writefds))) {
       return true;

@@ -11,19 +11,21 @@
 
 #include "Header.hpp"
 #include "Socket.hpp"
+#include "Connection.hpp"
 #include "webserv.hpp"
-ssize_t get_content_length(const std::string& filepath) {
-  struct stat st;
-  if (stat(filepath.c_str(), &st) < 0) {
-    std::cerr << "stat() failed\n";
-    return -1;
-  }
-  return st.st_size;
-}
-
 class GetHandler {
+ private:
+  static ssize_t get_content_length(const std::string& filepath) {
+    struct stat st;
+    if (stat(filepath.c_str(), &st) < 0) {
+      std::cerr << "stat() failed\n";
+      return -1;
+    }
+    return st.st_size;
+  }
+
  public:
-  static void handle(Socket* client_socket, const Header& header) {
+  static void handle(std::shared_ptr<Socket> client_socket, const Header& header) {
     // TODO: Write response headers
     std::stringstream ss;
     ssize_t content_length = get_content_length(header.path);

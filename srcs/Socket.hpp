@@ -15,9 +15,12 @@
 
 class Socket {
  public:
-  Socket() : fd(-1), server_addr(), client_addr(), client_addrlen() {}
-  Socket(int fd, struct sockaddr_in addr, socklen_t addrlen)
-      : fd(fd), server_addr(), client_addr(addr), client_addrlen(addrlen) {}
+  // Constructor/Destructor
+  Socket() : fd(-1), server_addr() {}
+  Socket(int fd): fd(fd), server_addr() {}
+  Socket(const Socket& other)
+      : fd(other.fd),
+        server_addr(other.server_addr){}
   ~Socket() {
     if (::close(fd) < 0) {
       std::cerr << "close() failed\n";
@@ -72,7 +75,7 @@ class Socket {
     return 0;
   }
 
-  Socket *accept() {
+  std::shared_ptr<Socket> accept() {
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
     int client_fd = ::accept(fd, (struct sockaddr *)&addr, &addrlen);
@@ -81,13 +84,7 @@ class Socket {
       // TODO: handle error
       exit(EXIT_FAILURE);
     }
-    return new Socket(client_fd, addr, addrlen);
-  }
-
-  // TODO: Resolve client address and name
-  void resolve() {
-    (void)client_addr;
-    (void)client_addrlen;
+    return std::shared_ptr<Socket>(new Socket(client_fd));
   }
 
   int send(const char *msg, size_t len) {
@@ -210,8 +207,6 @@ class Socket {
  private:
   int fd;
   struct sockaddr_in server_addr;
-  struct sockaddr_in client_addr;
-  socklen_t client_addrlen;
 };
 
 #endif

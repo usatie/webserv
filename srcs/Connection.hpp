@@ -7,7 +7,7 @@
 
 class Connection {
  private:
-  Socket *client_socket;
+  std::shared_ptr<Socket> client_socket;
   Header header;
   typedef enum Status {
     REQ_START_LINE,
@@ -19,11 +19,20 @@ class Connection {
   } Status;
 
  public:
-  Connection(Socket *client_socket) : client_socket(client_socket) {}
-  ~Connection() { delete client_socket; }
+  Connection() {}
+  Connection(std::shared_ptr<Socket> client_socket) : client_socket(client_socket) {}
+  ~Connection() {}
+  Connection(const Connection &other) { *this = other; }
+  Connection &operator=(const Connection &other) {
+    if (this != &other) {
+      client_socket = other.client_socket;
+      header = other.header;
+    }
+    return *this;
+  }
+
   Status status;
   int get_fd() { return client_socket->get_fd(); }
-  Socket *get_socket() { return client_socket; }
   bool is_done() { return status == DONE; }
   int resume() {
     if (shouldRecv()) {

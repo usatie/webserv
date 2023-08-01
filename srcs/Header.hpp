@@ -7,11 +7,15 @@
 
 class Header {
  public:
-  Header() {}
+  // Member data
   std::string method;
   std::string path;
   std::string version;
+  // Constructor/Destructor
+  Header() {}
+  ~Header() {}
 
+  // Other member functions
   // TODO: refactor? fix?
   static std::vector<std::string> split(std::string str, char delim) {
     std::vector<std::string> ret;
