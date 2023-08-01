@@ -96,7 +96,7 @@ class Socket {
   }
 
   int send_file(std::string filepath) {
-    std::ifstream ifs(filepath);
+    std::ifstream ifs(filepath.c_str(), std::ios::binary);
 
     if (!ifs.is_open()) {
       std::cerr << "file open failed\n";
@@ -104,9 +104,9 @@ class Socket {
     }
     sendbuf.insert(sendbuf.end(), std::istreambuf_iterator<char>(ifs),
                    std::istreambuf_iterator<char>());
-    std::string line = "\r\n";
-    // Append line to sendbuf
-    sendbuf.insert(sendbuf.end(), line.begin(), line.end());
+    // Append CRLF to sendbuf
+    sendbuf.push_back('\r');
+    sendbuf.push_back('\n');
     return 0;
   }
 
@@ -132,9 +132,9 @@ class Socket {
     if (sendbuf.empty()) {
       return 0;
     }
+    usleep(500000);
     //ssize_t ret = ::send(fd, &sendbuf[0], sendbuf.size(), SO_NOSIGPIPE);
     ssize_t ret = ::send(fd, &sendbuf[0], std::min(10, (int)sendbuf.size()), 0);
-    sleep(1);
     if (ret < 0) {
       perror("send");
       std::cerr << "errno: " << errno << "\n";

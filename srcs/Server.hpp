@@ -6,6 +6,7 @@
 #include "Header.hpp"
 #include "Socket.hpp"
 #include "webserv.hpp"
+#include <algorithm> // std::find
 
 class Server {
  public:
@@ -91,6 +92,7 @@ class Server {
       if (canConnectionResume(readfds, writefds, *it)) {
         (*it)->resume();
         if ((*it)->is_done()) {
+          std::cout << "connection done" << std::endl;
           remove_connection(*it);
         }
         break;
