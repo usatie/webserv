@@ -9,16 +9,15 @@
 #include <algorithm> // std::find
 
 class Server {
+ private:
+   typedef std::vector<Connection *>::iterator ConnIterator;
  public:
   Socket server_socket;
-  std::vector<Socket *> monitor_list;
-  std::vector<Connection *> connection_list;
+  std::vector<Connection *> connections;
 
   void remove_connection(Connection *connection) {
-    monitor_list.erase(std::find(monitor_list.begin(), monitor_list.end(),
-                                 connection->get_socket()));
-    connection_list.erase(
-        std::find(connection_list.begin(), connection_list.end(), connection));
+    connections.erase(
+        std::find(connections.begin(), connections.end(), connection));
     delete connection;
   }
 
@@ -26,37 +25,43 @@ class Server {
     if (server_socket.initServer(port, backlog) < 0) {
       return -1;
     }
-    monitor_list.push_back(&server_socket);
     return 0;
   }
 
   fd_set get_readfds(int &maxfd) {
     fd_set readfds;
     FD_ZERO(&readfds);
-    for (std::vector<Socket *>::iterator it = monitor_list.begin();
-         it != monitor_list.end(); it++) {
-      int fd = (*it)->get_fd();
-      maxfd = std::max(fd, maxfd);
-      FD_SET(fd, &readfds);
+    // Server socket
+    FD_SET(server_socket.get_fd(), &readfds);
+    maxfd = std::max(server_socket.get_fd(), maxfd);
+    // Connections' sockets
+    for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
+      if ((*it)->shouldRecv()) {
+        int fd = (*it)->get_fd();
+        maxfd = std::max(fd, maxfd);
+        FD_SET(fd, &readfds);
+      }
     }
     return readfds;
   }
   fd_set get_writefds(int &maxfd) {
     fd_set writefds;
     FD_ZERO(&writefds);
-    for (std::vector<Socket *>::iterator it = monitor_list.begin();
-         it != monitor_list.end(); it++) {
-      int fd = (*it)->get_fd();
-      maxfd = std::max(fd, maxfd);
-      FD_SET(fd, &writefds);
+    // Server socket is unnecessary
+    // Connections' sockets
+    for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
+      if ((*it)->shouldSend()) {
+        int fd = (*it)->get_fd();
+        maxfd = std::max(fd, maxfd);
+        FD_SET(fd, &writefds);
+      }
     }
     return writefds;
   }
   void accept() {
     Socket *client_socket = server_socket.accept();
     client_socket->set_nonblock();
-    monitor_list.push_back(client_socket);
-    connection_list.push_back(new Connection(client_socket));
+    connections.push_back(new Connection(client_socket));
   }
   bool canServerAccept(fd_set &readfds) {
     return FD_ISSET(server_socket.get_fd(), &readfds);
@@ -87,8 +92,7 @@ class Server {
       return;
     }
     // TODO: equally distribute the processing time to each connection
-    for (std::vector<Connection *>::iterator it = connection_list.begin();
-         it != connection_list.end(); it++) {
+    for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
       if (canConnectionResume(readfds, writefds, *it)) {
         (*it)->resume();
         if ((*it)->is_done()) {
