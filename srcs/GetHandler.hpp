@@ -14,17 +14,10 @@
 #include "Connection.hpp"
 #include "webserv.hpp"
 class GetHandler {
- private:
-  static ssize_t get_content_length(const std::string& filepath) {
-    struct stat st;
-    if (stat(filepath.c_str(), &st) < 0) {
-      std::cerr << "stat() failed\n";
-      return -1;
-    }
-    return st.st_size;
-  }
-
  public:
+  // Member data
+  // Constructor/Destructor
+  // Member functions
   static void handle(std::shared_ptr<Socket> client_socket, const Header& header) {
     // TODO: Write response headers
     std::stringstream ss;
@@ -40,6 +33,16 @@ class GetHandler {
     ss << "\r\n";
     client_socket->send(ss.str().c_str(), ss.str().size());
     client_socket->send_file(header.path);
+  }
+
+ private:
+  static ssize_t get_content_length(const std::string& filepath) {
+    struct stat st;
+    if (stat(filepath.c_str(), &st) < 0) {
+      std::cerr << "stat() failed\n";
+      return -1;
+    }
+    return st.st_size;
   }
 };
 #endif

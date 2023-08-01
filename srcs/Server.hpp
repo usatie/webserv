@@ -16,10 +16,12 @@ class Server {
   // Member data
   Socket server_socket;
   ConnVector connections;
+
   // Constructor/Destructor
   Server() {}
   ~Server() {}
 
+  // Member functions
   void remove_connection(std::shared_ptr<Connection> connection) {
     connections.erase(
         std::find(connections.begin(), connections.end(), connection));

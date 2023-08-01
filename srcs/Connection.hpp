@@ -7,8 +7,7 @@
 
 class Connection {
  private:
-  std::shared_ptr<Socket> client_socket;
-  Header header;
+  // Class private enum
   typedef enum Status {
     REQ_START_LINE,
     REQ_HEADER_FIELDS,
@@ -18,7 +17,12 @@ class Connection {
     DONE
   } Status;
 
+  // Member data
+  std::shared_ptr<Socket> client_socket;
+  Header header;
+  Status status;
  public:
+  // Constructor/Destructor
   Connection() {}
   Connection(std::shared_ptr<Socket> client_socket) : client_socket(client_socket) {}
   ~Connection() {}
@@ -31,15 +35,17 @@ class Connection {
     return *this;
   }
 
-  Status status;
+  // Accessors
   int get_fd() { return client_socket->get_fd(); }
   bool is_done() { return status == DONE; }
+
+  // Member functions
   int resume() {
     if (shouldRecv()) {
       client_socket->recv();
     } else if (shouldSend()) {
       if (client_socket->flush() < 0) {
-        if (client_socket->closed) {
+        if (client_socket->isClosed()) {
           std::cerr << "client_socket->closed\n";
           status = DONE;
         }
@@ -86,18 +92,39 @@ class Connection {
 
   bool shouldSend() { return status == HANDLE || status == RESPONSE; }
 
+private:
+  // TODO: refactor? fix?
+  static std::vector<std::string> split(std::string str, char delim) {
+    std::vector<std::string> ret;
+    int idx = 0;
+    while (str[idx]) {
+      std::string line;
+      while (str[idx] && str[idx] != delim) {
+        line += str[idx];
+        idx++;
+      }
+      while (str[idx] && str[idx] == delim) {
+        idx++;
+      }
+      if (!line.empty()) {
+        ret.push_back(line);
+      }
+    }
+    return ret;
+  }
+
   int parse_start_line() {
     std::string line;
 
     if (client_socket->readline(line) < 0) {
-      if (client_socket->closed) {
+      if (client_socket->isClosed()) {
         std::cerr << "client_socket->closed\n";
         status = DONE;
         return 1;
       }
       return 0;
     }
-    std::vector<std::string> keywords = Header::split(line, ' ');
+    std::vector<std::string> keywords = split(line, ' ');
     // TODO: validate keywords
     header.method = keywords[0];
     header.path = keywords[1];
@@ -130,7 +157,7 @@ class Connection {
   }
 
   int response() {
-    if (client_socket->sendbuf.empty()) {
+    if (client_socket->isSendBufEmpty()) {
       status = DONE;
       return 1;
     }

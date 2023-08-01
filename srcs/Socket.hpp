@@ -14,6 +14,13 @@
 #include "webserv.hpp"
 
 class Socket {
+  // Member data
+ public:
+ private:
+  int fd;
+  struct sockaddr_in server_addr;
+  bool closed;
+  std::vector<char> recvbuf, sendbuf;
  public:
   // Constructor/Destructor
   Socket() : fd(-1), server_addr() {}
@@ -27,6 +34,12 @@ class Socket {
     }
   }
 
+  // Accessors
+  int get_fd() const { return fd; }
+  bool isClosed() const { return closed; }
+  bool isSendBufEmpty() const { return sendbuf.empty(); }
+
+  // Member functions
   int initServer(int port, int backlog) {
     if ( (fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
       std::cerr << "socket() failed\n";
@@ -129,36 +142,14 @@ class Socket {
     if (sendbuf.empty()) {
       return 0;
     }
-    usleep(500000);
     //ssize_t ret = ::send(fd, &sendbuf[0], sendbuf.size(), SO_NOSIGPIPE);
     ssize_t ret = ::send(fd, &sendbuf[0], std::min(10, (int)sendbuf.size()), 0);
     if (ret < 0) {
       perror("send");
       std::cerr << "errno: " << errno << "\n";
-      // Question: What is the best practice to handle ETIMEDOUT?
-      // Answer in my words: If the client is not responding, we should close
-      // the connection.
-      //
-      // Why send returns ETIMEDOUT instead of EPIPE?
-      // Answer in my words: Because the client is not responding, the server
-      // cannot know if the client has closed the connection. So the server
-      // keeps sending data to the client. After a while, the server will
-      // timeout and return ETIMEDOUT.
-      //
-      // But before ignoring SIGPIPE, send gave us SIGPIPE signal. Why?
-      // Answer in my words: Because the client is not responding, the server
-      // cannot know if the client has closed the connection. So the server
-      // keeps sending data to the client. After a while, the server will
-      // timeout and return ETIMEDOUT. But before that, the client has closed
-      // the connection. So the server will receive SIGPIPE signal.
-      if (errno == ETIMEDOUT) {
-        std::cerr << "ETIMEDOUT\n";
-        closed = true;
-      }
-      if (errno == EPIPE) {
-        std::cerr << "EPIPE\n";
-        closed = true;
-      }
+      // TODO: handle EINTR
+      // ETIMEDOUT, EPIPE in any case means the connection is closed
+      closed = true;
       return -1;
     }
     sendbuf.erase(sendbuf.begin(), sendbuf.begin() + ret);
@@ -198,15 +189,6 @@ class Socket {
     }
     return 0;
   }
-
-  std::vector<char> recvbuf, sendbuf;
-
-  int get_fd() { return fd; }
-  bool closed;
-
- private:
-  int fd;
-  struct sockaddr_in server_addr;
 };
 
 #endif
