@@ -162,7 +162,7 @@ class Socket {
   }
 
   // Actually receive data from socket
-  int recv() {
+  int fill() {
     char buf[MAXLINE];
     static const int flags = 0;
     ssize_t ret = ::recv(fd, buf, sizeof(buf) - 1, flags);

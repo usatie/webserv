@@ -42,7 +42,7 @@ class Connection {
   // Member functions
   int resume() {
     if (shouldRecv()) {
-      client_socket->recv();
+      client_socket->fill();
     } else if (shouldSend()) {
       if (client_socket->flush() < 0) {
         if (client_socket->isClosed()) {
