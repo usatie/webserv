@@ -3,7 +3,7 @@
 
 #include "GetHandler.hpp"
 #include "Header.hpp"
-#include "Socket.hpp"
+#include "SocketBuf.hpp"
 
 class Connection {
  private:
@@ -18,13 +18,13 @@ class Connection {
   } Status;
 
   // Member data
-  std::shared_ptr<Socket> client_socket;
+  std::shared_ptr<SocketBuf> client_socket;
   Header header;
   Status status;
  public:
   // Constructor/Destructor
   Connection() {}
-  Connection(std::shared_ptr<Socket> client_socket) : client_socket(client_socket) {}
+  Connection(std::shared_ptr<SocketBuf> client_socket) : client_socket(client_socket) {}
   ~Connection() {}
   Connection(const Connection &other) { *this = other; }
   Connection &operator=(const Connection &other) {

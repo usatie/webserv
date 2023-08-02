@@ -20,14 +20,13 @@ class Socket {
   int fd;
   struct sockaddr_in server_addr;
   bool closed;
-  std::vector<char> recvbuf, sendbuf;
+
+  Socket(const Socket& other);
+  Socket() : fd(-1), server_addr(), closed(false) {}
+
  public:
   // Constructor/Destructor
-  Socket() : fd(-1), server_addr() {}
-  Socket(int fd): fd(fd), server_addr() {}
-  Socket(const Socket& other)
-      : fd(other.fd),
-        server_addr(other.server_addr){}
+  Socket(int fd): fd(fd), server_addr(), closed(false) {}
   ~Socket() {
     if (::close(fd) < 0) {
       std::cerr << "close() failed\n";
@@ -37,7 +36,7 @@ class Socket {
   // Accessors
   int get_fd() const { return fd; }
   bool isClosed() const { return closed; }
-  bool isSendBufEmpty() const { return sendbuf.empty(); }
+  void beClosed() { closed = true; }
 
   // Member functions
   int initServer(int port, int backlog) {
@@ -100,82 +99,83 @@ class Socket {
     return std::shared_ptr<Socket>(new Socket(client_fd));
   }
 
-  int send(const char *msg, size_t len) {
-    sendbuf.insert(sendbuf.end(), msg, msg + len);
-    return 0;
-  }
+  // int send(const char *msg, size_t len) {
+    // sendbuf.insert(sendbuf.end(), msg, msg + len);
+    // return -1;
+  // }
 
-  int send_file(std::string filepath) {
-    std::ifstream ifs(filepath.c_str(), std::ios::binary);
+  // int send_file(std::string filepath) {
+    // std::ifstream ifs(filepath.c_str(), std::ios::binary);
 
-    if (!ifs.is_open()) {
-      std::cerr << "file open failed\n";
-      return -1;
-    }
-    sendbuf.insert(sendbuf.end(), std::istreambuf_iterator<char>(ifs),
-                   std::istreambuf_iterator<char>());
-    // Append CRLF to sendbuf
-    sendbuf.push_back('\r');
-    sendbuf.push_back('\n');
-    return 0;
-  }
+    // if (!ifs.is_open()) {
+    //   std::cerr << "file open failed\n";
+    //   return -1;
+    // }
+    // sendbuf.insert(sendbuf.end(), std::istreambuf_iterator<char>(ifs),
+    //                std::istreambuf_iterator<char>());
+    // // Append CRLF to sendbuf
+    // sendbuf.push_back('\r');
+    // sendbuf.push_back('\n');
+    // return -1;
+  // }
 
   // Read line from buffer, if found, remove it from buffer and return 0
   // Otherwise, return -1
-  int readline(std::string &line) {
-    char prev = '\0', c;
+  // int readline(std::string &line) {
+    // char prev = '\0', c;
 
-    for (size_t i = 0; i < recvbuf.size(); i++) {
-      c = recvbuf[i];
-      if (prev == '\r' && c == '\n') {
-        line.assign(recvbuf.begin(), recvbuf.begin() + i - 1);  // Remove "\r\n"
-        recvbuf.erase(recvbuf.begin(), recvbuf.begin() + i + 1);
-        return 0;
-      }
-      prev = c;
-    }
-    return -1;
-  }
+    // for (size_t i = 0; i < recvbuf.size(); i++) {
+    //   c = recvbuf[i];
+    //   if (prev == '\r' && c == '\n') {
+    //     line.assign(recvbuf.begin(), recvbuf.begin() + i - 1);  // Remove "\r\n"
+    //     recvbuf.erase(recvbuf.begin(), recvbuf.begin() + i + 1);
+    //     return 0;
+    //   }
+    //   prev = c;
+    // }
+  //   return -1;
+  // }
 
   // Actually send data on socket
-  int flush() {
-    if (sendbuf.empty()) {
-      return 0;
-    }
-    //ssize_t ret = ::send(fd, &sendbuf[0], sendbuf.size(), SO_NOSIGPIPE);
-    ssize_t ret = ::send(fd, &sendbuf[0], std::min(10, (int)sendbuf.size()), 0);
-    if (ret < 0) {
-      perror("send");
-      std::cerr << "errno: " << errno << "\n";
-      // TODO: handle EINTR
-      // ETIMEDOUT, EPIPE in any case means the connection is closed
-      closed = true;
-      return -1;
-    }
-    sendbuf.erase(sendbuf.begin(), sendbuf.begin() + ret);
-    return ret;
-  }
+  // int flush() {
+    // if (sendbuf.empty()) {
+    //   return 0;
+    // }
+    // //ssize_t ret = ::send(fd, &sendbuf[0], sendbuf.size(), SO_NOSIGPIPE);
+    // ssize_t ret = ::send(fd, &sendbuf[0], std::min(10, (int)sendbuf.size()), 0);
+    // if (ret < 0) {
+    //   perror("send");
+    //   std::cerr << "errno: " << errno << "\n";
+    //   // TODO: handle EINTR
+    //   // ETIMEDOUT, EPIPE in any case means the connection is closed
+    //   closed = true;
+    //   return -1;
+    // }
+    // sendbuf.erase(sendbuf.begin(), sendbuf.begin() + ret);
+    // return ret;
+	// return -1;
+  // }
 
-  void flushall() {
-    while (flush() > 0)
-      ;
-  }
+  // void flushall() {
+    // while (flush() > 0) ;
+  // }
 
   // Actually receive data from socket
-  int fill() {
-    char buf[MAXLINE];
-    static const int flags = 0;
-    ssize_t ret = ::recv(fd, buf, sizeof(buf) - 1, flags);
-    if (ret < 0) {
-      std::cerr << "recv() failed\n";
-      return -1;
-    }
-    recvbuf.insert(recvbuf.end(), buf, buf + ret);
-    if (ret == 0) {
-      closed = true;
-    }
-    return ret;
-  }
+  // int fill() {
+    // char buf[MAXLINE];
+    // static const int flags = 0;
+    // ssize_t ret = ::recv(fd, buf, sizeof(buf) - 1, flags);
+    // if (ret < 0) {
+    //   std::cerr << "recv() failed\n";
+    //   return -1;
+    // }
+    // recvbuf.insert(recvbuf.end(), buf, buf + ret);
+    // if (ret == 0) {
+    //   closed = true;
+    // }
+    // return ret;
+	// return -1;
+  // }
 
   int set_nonblock() {
     int flags = fcntl(fd, F_GETFL, 0);

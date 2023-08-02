@@ -15,8 +15,12 @@ fclean: clean
 
 re: fclean all
 
+debug: CXXFLAGS = -std=c++98 -Wall -Wextra -pedantic -MMD -MP -fsanitize=address -fsanitize=undefined
+debug: re
+d: debug
+
 $(NAME): $(OBJS)
-	$(CXX) $(OBJS) -o $(NAME)
+	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
 
 test: $(NAME)
 	./tests/test.sh

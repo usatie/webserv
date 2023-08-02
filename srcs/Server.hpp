@@ -4,7 +4,7 @@
 #include "Connection.hpp"
 #include "GetHandler.hpp"
 #include "Header.hpp"
-#include "Socket.hpp"
+#include "SocketBuf.hpp"
 #include "webserv.hpp"
 #include <algorithm> // std::find
 
@@ -14,7 +14,7 @@ class Server {
    typedef ConnVector::iterator ConnIterator;
  public:
   // Member data
-  Socket server_socket;
+  SocketBuf server_socket;
   ConnVector connections;
 
   // Constructor/Destructor
@@ -37,7 +37,7 @@ class Server {
   fd_set get_readfds(int &maxfd) {
     fd_set readfds;
     FD_ZERO(&readfds);
-    // Server socket
+    // Server socketBuf
     FD_SET(server_socket.get_fd(), &readfds);
     maxfd = std::max(server_socket.get_fd(), maxfd);
     // Connections' sockets
@@ -53,7 +53,7 @@ class Server {
   fd_set get_writefds(int &maxfd) {
     fd_set writefds;
     FD_ZERO(&writefds);
-    // Server socket is unnecessary
+    // Server socketBuf is unnecessary
     // Connections' sockets
     for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
       if ((*it)->shouldSend()) {
@@ -65,7 +65,7 @@ class Server {
     return writefds;
   }
   void accept() {
-    std::shared_ptr<Socket> client_socket = server_socket.accept();
+    std::shared_ptr<SocketBuf> client_socket = server_socket.accept();
     client_socket->set_nonblock();
     std::shared_ptr<Connection> conn(new Connection(client_socket));
     connections.push_back(conn);
