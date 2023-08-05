@@ -126,17 +126,20 @@ class SocketBuf {
 
   // Actually receive data from socket
   int fill() {
-    char buf[MAXLINE];
     static const int flags = 0;
-    ssize_t ret = ::recv(socket.get_fd(), buf, sizeof(buf) - 1, flags);
+    int prev_size = recvbuf.size();
+    recvbuf.resize(prev_size + MAXLINE);
+    ssize_t ret = ::recv(socket.get_fd(), \
+        &recvbuf[prev_size], MAXLINE, flags);
     if (ret < 0) {
       std::cerr << "recv() failed\n";
+      recvbuf.resize(prev_size);
       return -1;
     }
-    recvbuf.insert(recvbuf.end(), buf, buf + ret);
     if (ret == 0) {
       socket.beClosed();
     }
+    recvbuf.resize(prev_size + ret);
     return ret;
   }
 
