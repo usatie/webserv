@@ -17,6 +17,11 @@ echo -n "Test2    : "
 nc localhost $WEBSERV_PORT <tests/requests/2 >out
 diff tests/responses/2 out && echo "OK" || echo "NG"
 
+# 3. Big file, small memory
+echo -n "Bad Alloc Test : "
+
+
+
 # 3. Clean up
 rm -f out
 pkill webserv
