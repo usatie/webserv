@@ -110,7 +110,14 @@ class Server {
     // TODO: equally distribute the processing time to each connection
     for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
       if (canConnectionResume(readfds, writefds, *it)) {
-        (*it)->resume();
+        try {
+          (*it)->resume();
+        } catch (std::exception &e) {
+          std::cerr << e.what() << std::endl;
+          remove_connection(*it);
+          return;
+        }
+
         if ((*it)->is_done()) {
           std::cout << "connection done" << std::endl;
           remove_connection(*it);

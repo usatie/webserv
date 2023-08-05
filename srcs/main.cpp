@@ -17,7 +17,11 @@ int main(int argc, char *argv[]) {
     return ERROR;
   }
   while (1) {
-    server.process();
+    try {
+      server.process();
+    } catch (std::exception &e) {
+      std::cerr << e.what() << std::endl;
+    }
   }
   return 0;
 }
