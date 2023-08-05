@@ -23,14 +23,15 @@ class Connection {
   Status status;
  public:
   // Constructor/Destructor
-  Connection() {}
-  Connection(std::shared_ptr<SocketBuf> client_socket) : client_socket(client_socket) {}
+  Connection(): client_socket(NULL), header(), status(REQ_START_LINE) {}
+  Connection(std::shared_ptr<SocketBuf> client_socket) : client_socket(client_socket), header(), status(REQ_START_LINE) {}
   ~Connection() {}
   Connection(const Connection &other) { *this = other; }
   Connection &operator=(const Connection &other) {
     if (this != &other) {
       client_socket = other.client_socket;
       header = other.header;
+      status = other.status;
     }
     return *this;
   }
