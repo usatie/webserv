@@ -128,9 +128,9 @@ class SocketBuf {
   int fill() {
     static const int flags = 0;
     int prev_size = recvbuf.size();
-    recvbuf.resize(recvbuf.size() + MAXLINE);
+    recvbuf.resize(prev_size + MAXLINE);
     ssize_t ret = ::recv(socket.get_fd(), \
-        &recvbuf[recvbuf.size() - MAXLINE], MAXLINE, flags);
+        &recvbuf[prev_size], MAXLINE, flags);
     if (ret < 0) {
       std::cerr << "recv() failed\n";
       recvbuf.resize(prev_size);
@@ -139,7 +139,7 @@ class SocketBuf {
     if (ret == 0) {
       socket.beClosed();
     }
-    recvbuf.resize(recvbuf.size() - MAXLINE + ret);
+    recvbuf.resize(prev_size + ret);
     return ret;
   }
 
