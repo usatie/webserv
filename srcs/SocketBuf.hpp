@@ -35,34 +35,6 @@ class SocketBuf {
   bool isSendBufEmpty() const { return sendbuf.empty(); }
 
   // Member functions
-  int initServer(int port, int backlog) {
-    return socket.initServer(port, backlog);
-  }
-
-  int reuseaddr() {
-    return socket.reuseaddr();
-  }
-
-  int bind(int port) {
-    return socket.bind(port);
-  }
-
-  int listen(int backlog) {
-    return socket.listen(backlog);
-  }
-
-  std::shared_ptr<SocketBuf> accept() {
-    struct sockaddr_in addr;
-    socklen_t addrlen = sizeof(addr);
-    int client_fd = ::accept(socket.get_fd(), (struct sockaddr *)&addr, &addrlen);
-    if (client_fd < 0) {
-      std::cerr << "accept() failed\n";
-      // TODO: handle error
-      exit(EXIT_FAILURE);
-    }
-    return std::shared_ptr<SocketBuf>(new SocketBuf(client_fd));
-  }
-
   int send(const char msg[], size_t len) {
     sendbuf.insert(sendbuf.end(), msg, msg + len);
     return 0;

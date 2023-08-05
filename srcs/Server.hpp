@@ -14,7 +14,7 @@ class Server {
    typedef ConnVector::iterator ConnIterator;
  public:
   // Member data
-  SocketBuf server_socket;
+  Socket server_socket;
   ConnVector connections;
 
   // Constructor/Destructor
@@ -65,7 +65,16 @@ class Server {
     return writefds;
   }
   void accept() {
-    std::shared_ptr<SocketBuf> client_socket = server_socket.accept();
+    struct sockaddr_in addr;
+    socklen_t addrlen = sizeof(addr);
+    int client_fd = ::accept(server_socket.get_fd(), (struct sockaddr *)&addr, &addrlen);
+    if (client_fd < 0) {
+      std::cerr << "accept() failed\n";
+      // TODO: handle error
+      return;
+    }
+    std::shared_ptr<SocketBuf> client_socket = \
+        std::shared_ptr<SocketBuf>(new SocketBuf(client_fd));
     client_socket->set_nonblock();
     std::shared_ptr<Connection> conn(new Connection(client_socket));
     connections.push_back(conn);
