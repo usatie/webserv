@@ -49,6 +49,7 @@ class SocketBuf {
     }
     sendbuf.insert(sendbuf.end(), std::istreambuf_iterator<char>(ifs),
                    std::istreambuf_iterator<char>());
+    // TODO ifstreambuf_iterator cannot handle error
     // Append CRLF to sendbuf
     sendbuf.push_back('\r');
     sendbuf.push_back('\n');
@@ -113,6 +114,10 @@ class SocketBuf {
     }
     recvbuf.resize(prev_size + ret);
     return ret;
+  }
+
+  void clear_sendbuf() {
+    sendbuf.clear();
   }
 
   int set_nonblock() {

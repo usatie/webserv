@@ -23,6 +23,10 @@ class GetHandler {
     std::stringstream ss;
     ssize_t content_length = get_content_length(header.path);
     if (content_length < 0) {
+      ss << "HTTP/1.1 404 Resource Not Found\r\n";
+      // TODO send some error message
+      ss << "\r\n";
+      client_socket->send(ss.str().c_str(), ss.str().size());
       std::cerr << "get_content_length() failed\n";
       return;
     }
@@ -32,7 +36,16 @@ class GetHandler {
     ss << "Content-Length: " << content_length << "\r\n";
     ss << "\r\n";
     client_socket->send(ss.str().c_str(), ss.str().size());
-    client_socket->send_file(header.path);
+    if (client_socket->send_file(header.path) < 0) {
+      client_socket->clear_sendbuf();
+      ss.str("");
+      ss << "HTTP/1.1 500 Internal Server Error\r\n";
+      // TODO send some error message
+      ss << "\r\n";
+      client_socket->send(ss.str().c_str(), ss.str().size());
+      std::cerr << "send_file() failed\n";
+      return;
+    }
   }
 
  private:
