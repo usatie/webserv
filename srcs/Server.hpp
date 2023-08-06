@@ -14,7 +14,7 @@ class Server {
    typedef ConnVector::iterator ConnIterator;
  public:
   // Member data
-  Socket server_socket;
+  Socket sock;
   ConnVector connections;
 
   // Constructor/Destructor
@@ -28,7 +28,19 @@ class Server {
   }
 
   int init(int port, int backlog) {
-    if (server_socket.initServer(port, backlog) < 0) {
+    if (sock.get_fd() < 0) {
+      return -1;
+    }
+    if (sock.reuseaddr() < 0) {
+      return -1;
+    }
+    if (sock.bind(port) < 0) {
+      return -1;
+    }
+    if (sock.listen(backlog) < 0) {
+      return -1;
+    }
+    if (sock.set_nonblock() < 0) {
       return -1;
     }
     return 0;
@@ -37,9 +49,9 @@ class Server {
   fd_set get_readfds(int &maxfd) {
     fd_set readfds;
     FD_ZERO(&readfds);
-    // Server socketBuf
-    FD_SET(server_socket.get_fd(), &readfds);
-    maxfd = std::max(server_socket.get_fd(), maxfd);
+    // Server socket
+    FD_SET(sock.get_fd(), &readfds);
+    maxfd = std::max(sock.get_fd(), maxfd);
     // Connections' sockets
     for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
       if ((*it)->shouldRecv()) {
@@ -53,7 +65,7 @@ class Server {
   fd_set get_writefds(int &maxfd) {
     fd_set writefds;
     FD_ZERO(&writefds);
-    // Server socketBuf is unnecessary
+    // Server socket is unnecessary
     // Connections' sockets
     for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
       if ((*it)->shouldSend()) {
@@ -67,7 +79,7 @@ class Server {
   void accept() {
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
-    int client_fd = ::accept(server_socket.get_fd(), (struct sockaddr *)&addr, &addrlen);
+    int client_fd = ::accept(sock.get_fd(), (struct sockaddr *)&addr, &addrlen);
     if (client_fd < 0) {
       std::cerr << "accept() failed\n";
       // TODO: handle error
@@ -80,7 +92,7 @@ class Server {
     connections.push_back(conn);
   }
   bool canServerAccept(fd_set &readfds) {
-    return FD_ISSET(server_socket.get_fd(), &readfds);
+    return FD_ISSET(sock.get_fd(), &readfds);
   }
   bool canConnectionResume(fd_set &readfds, fd_set &writefds,
                            std::shared_ptr<Connection> conn) {

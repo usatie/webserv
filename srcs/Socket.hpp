@@ -25,7 +25,11 @@ class Socket {
 
  public:
   // Constructor/Destructor
-  Socket() : fd(-1), server_addr(), closed(false) {}
+  Socket() : server_addr(), closed(false) {
+    if ( (fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+      std::cerr << "socket() failed\n";
+    }
+  }
   Socket(int fd): fd(fd), server_addr(), closed(false) {}
   ~Socket() {
     if (fd < 0) {
@@ -42,26 +46,6 @@ class Socket {
   void beClosed() { closed = true; }
 
   // Member functions
-  int initServer(int port, int backlog) {
-    if ( (fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-      std::cerr << "socket() failed\n";
-      return -1;
-    }
-    if (reuseaddr() < 0) {
-      return -1;
-    }
-    if (bind(port) < 0) {
-      return -1;
-    }
-    if (listen(backlog) < 0) {
-      return -1;
-    }
-    if (set_nonblock() < 0) {
-      return -1;
-    }
-    return 0;
-  }
-
   int reuseaddr() {
     int optval = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
