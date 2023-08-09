@@ -13,6 +13,7 @@ class Server {
   typedef std::vector< std::shared_ptr<Connection> > ConnVector;
   typedef ConnVector::iterator ConnIterator;
   fd_set readfds, writefds;
+  int maxfd;
 
  public:
   // Member data
@@ -20,13 +21,25 @@ class Server {
   ConnVector connections;
 
   // Constructor/Destructor
-  Server() {}
+  Server() {
+    FD_ZERO(&readfds);
+    FD_ZERO(&writefds);
+    maxfd = 0;
+  }
   ~Server() {}
 
   // Member functions
   void remove_connection(std::shared_ptr<Connection> connection) {
     connections.erase(
         std::find(connections.begin(), connections.end(), connection));
+    FD_CLR(connection->get_fd(), &readfds);
+    FD_CLR(connection->get_fd(), &writefds);
+    if (connection->get_fd() == maxfd) {
+      maxfd = sock.get_fd();
+      for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
+        maxfd = std::max(maxfd, (*it)->get_fd());
+      }
+    }
   }
 
   int init(int port, int backlog) {
@@ -45,35 +58,11 @@ class Server {
     if (sock.set_nonblock() < 0) {
       return -1;
     }
+    FD_SET(sock.get_fd(), &readfds);
+    maxfd = sock.get_fd();
     return 0;
   }
 
-  void update_readfds(int &maxfd) {
-    FD_ZERO(&readfds);
-    // Server socket
-    FD_SET(sock.get_fd(), &readfds);
-    maxfd = std::max(sock.get_fd(), maxfd);
-    // Connections' sockets
-    for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
-      if ((*it)->shouldRecv()) {
-        int fd = (*it)->get_fd();
-        maxfd = std::max(fd, maxfd);
-        FD_SET(fd, &readfds);
-      }
-    }
-  }
-  void update_writefds(int &maxfd) {
-    FD_ZERO(&writefds);
-    // Server socket is unnecessary
-    // Connections' sockets
-    for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
-      if ((*it)->shouldSend()) {
-        int fd = (*it)->get_fd();
-        maxfd = std::max(fd, maxfd);
-        FD_SET(fd, &writefds);
-      }
-    }
-  }
   void accept() {
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
@@ -88,6 +77,8 @@ class Server {
     client_socket->set_nonblock();
     std::shared_ptr<Connection> conn(new Connection(client_socket));
     connections.push_back(conn);
+    FD_SET(client_fd, &readfds);
+    maxfd = std::max(client_fd, maxfd);
   }
   bool canServerAccept(fd_set &readfds) {
     return FD_ISSET(sock.get_fd(), &readfds);
@@ -101,10 +92,8 @@ class Server {
     return false;
   }
   void process() {
-    int maxfd = 0;
-    update_readfds(maxfd);
-    update_writefds(maxfd);
-    int result = ::select(maxfd + 1, &readfds, &writefds, NULL, NULL);
+    fd_set rfds = this->readfds, wfds = this->writefds;
+    int result = ::select(maxfd + 1, &rfds, &wfds, NULL, NULL);
     if (result < 0) {
       std::cerr << "select error" << std::endl;
       return;
@@ -113,13 +102,13 @@ class Server {
       std::cerr << "select timeout" << std::endl;
       return;
     }
-    if (canServerAccept(readfds)) {
+    if (canServerAccept(rfds)) {
       accept();
       return;
     }
     // TODO: equally distribute the processing time to each connection
     for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
-      if (canConnectionResume(readfds, writefds, *it)) {
+      if (canConnectionResume(rfds, wfds, *it)) {
         try {
           (*it)->resume();
         } catch (std::exception &e) {
@@ -128,6 +117,16 @@ class Server {
           return;
         }
 
+        if ((*it)->shouldRecv()) {
+          FD_SET((*it)->get_fd(), &readfds);
+        } else {
+          FD_CLR((*it)->get_fd(), &readfds);
+        }
+        if (((*it)->shouldSend())) {
+          FD_SET((*it)->get_fd(), &writefds);
+        } else {
+          FD_CLR((*it)->get_fd(), &writefds);
+        }
         if ((*it)->is_done()) {
           std::cout << "connection done" << std::endl;
           remove_connection(*it);
