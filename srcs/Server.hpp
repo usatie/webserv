@@ -10,11 +10,13 @@
 
 class Server {
  private:
-   typedef std::vector< std::shared_ptr<Connection> > ConnVector;
-   typedef ConnVector::iterator ConnIterator;
+  typedef std::vector< std::shared_ptr<Connection> > ConnVector;
+  typedef ConnVector::iterator ConnIterator;
+  fd_set readfds, writefds;
+
  public:
   // Member data
-  Socket sock;
+  Socket server_sock;
   ConnVector connections;
 
   // Constructor/Destructor
@@ -28,30 +30,28 @@ class Server {
   }
 
   int init(int port, int backlog) {
-    if (sock.get_fd() < 0) {
+    if (server_sock.get_fd() < 0) {
       return -1;
     }
-    if (sock.reuseaddr() < 0) {
+    if (server_sock.reuseaddr() < 0) {
       return -1;
     }
-    if (sock.bind(port) < 0) {
+    if (server_sock.bind(port) < 0) {
       return -1;
     }
-    if (sock.listen(backlog) < 0) {
+    if (server_sock.listen(backlog) < 0) {
       return -1;
     }
-    if (sock.set_nonblock() < 0) {
+    if (server_sock.set_nonblock() < 0) {
       return -1;
     }
     return 0;
   }
 
-  fd_set get_readfds(int &maxfd) {
-    fd_set readfds;
+  void update_readfds(int &maxfd) {
     FD_ZERO(&readfds);
-    // Server socket
-    FD_SET(sock.get_fd(), &readfds);
-    maxfd = std::max(sock.get_fd(), maxfd);
+    FD_SET(server_sock.get_fd(), &readfds);
+    maxfd = std::max(server_sock.get_fd(), maxfd);
     // Connections' sockets
     for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
       if ((*it)->shouldRecv()) {
@@ -60,10 +60,8 @@ class Server {
         FD_SET(fd, &readfds);
       }
     }
-    return readfds;
   }
-  fd_set get_writefds(int &maxfd) {
-    fd_set writefds;
+  void update_writefds(int &maxfd) {
     FD_ZERO(&writefds);
     // Server socket is unnecessary
     // Connections' sockets
@@ -74,12 +72,11 @@ class Server {
         FD_SET(fd, &writefds);
       }
     }
-    return writefds;
   }
   void accept() {
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
-    int client_fd = ::accept(sock.get_fd(), (struct sockaddr *)&addr, &addrlen);
+    int client_fd = ::accept(server_sock.get_fd(), (struct sockaddr *)&addr, &addrlen);
     if (client_fd < 0) {
       std::cerr << "accept() failed\n";
       // TODO: handle error
@@ -92,7 +89,7 @@ class Server {
     connections.push_back(conn);
   }
   bool canServerAccept(fd_set &readfds) {
-    return FD_ISSET(sock.get_fd(), &readfds);
+    return FD_ISSET(server_sock.get_fd(), &readfds);
   }
   bool canConnectionResume(fd_set &readfds, fd_set &writefds,
                            std::shared_ptr<Connection> conn) {
@@ -104,8 +101,8 @@ class Server {
   }
   void process() {
     int maxfd = 0;
-    fd_set readfds = get_readfds(maxfd);
-    fd_set writefds = get_writefds(maxfd);
+    update_readfds(maxfd);
+    update_writefds(maxfd);
     int result = ::select(maxfd + 1, &readfds, &writefds, NULL, NULL);
     if (result < 0) {
       std::cerr << "select error" << std::endl;
