@@ -20,7 +20,7 @@ re: fclean all
 linux: CXXFLAGS = -std=c++11 -Wall -Wextra -pedantic -MMD -MP
 linux: re
 
-debug: CXXFLAGS = -std=c++98 -Wall -Wextra -pedantic -MMD -MP -fsanitize=address -fsanitize=undefined
+debug: CXXFLAGS = -std=c++98 -Wall -Wextra -pedantic -MMD -MP -fsanitize=address -fsanitize=undefined -DDEBUG
 debug: re
 d: debug
 

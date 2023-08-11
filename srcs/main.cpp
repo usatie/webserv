@@ -1,4 +1,5 @@
 #include "Server.hpp"
+#include "Logger.hpp"
 #include <signal.h>
 #define PORT 8181
 #define BACKLOG 5
@@ -6,6 +7,9 @@
 
 int main(int argc, char *argv[]) {
   (void)argc, (void)argv;
+  Logger logger;
+  int x = 10; 
+  logger.log("The result: %d\n", x);
   // If initialize server socket failed, exit.
   Server server;
 
