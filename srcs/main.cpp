@@ -1,5 +1,4 @@
 #include "Server.hpp"
-#include "Logger.hpp"
 #include <signal.h>
 #define PORT 8181
 #define BACKLOG 5
