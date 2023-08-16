@@ -126,6 +126,12 @@ private:
       return 0;
     }
     std::vector<std::string> keywords = split(line, ' ');
+    if (keywords.size() != 3) {
+      std::cerr << "Invalid start line: " << line << std::endl;
+      client_socket->send("HTTP/1.1 400 Bad Request\r\n", 26);
+      status = RESPONSE;
+      return 1;
+    }
     // TODO: validate keywords
     header.method = keywords[0];
     header.path = keywords[1];
