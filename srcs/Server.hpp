@@ -99,10 +99,10 @@ class Server {
     }
     return false;
   }
-  void process() {
+  void process(int timeout) {
     fd_set rfds = this->readfds, wfds = this->writefds;
     struct timeval tv;
-    tv.tv_sec = 7;
+    tv.tv_sec = timeout;
     tv.tv_usec = 0;
     int result = ::select(maxfd + 1, &rfds, &wfds, NULL, &tv);
     if (result < 0) {
