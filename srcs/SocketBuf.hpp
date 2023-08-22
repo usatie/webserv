@@ -25,8 +25,12 @@ class SocketBuf {
 
  public:
   // Constructor/Destructor
-  SocketBuf(): socket(-1) {}
-  SocketBuf(int fd): socket(fd) {}
+  SocketBuf(); // Do not implement this
+  explicit SocketBuf(int listen_fd): socket(listen_fd) {
+    if (socket.set_nonblock() < 0) {
+      throw std::runtime_error("socket.set_nonblock() failed");
+    }
+  }
   ~SocketBuf() {}
 
   // Accessors

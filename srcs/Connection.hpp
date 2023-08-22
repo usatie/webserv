@@ -23,8 +23,11 @@ class Connection {
   Status status;
  public:
   // Constructor/Destructor
-  Connection(): client_socket(NULL), header(), status(REQ_START_LINE) {}
-  Connection(std::shared_ptr<SocketBuf> client_socket) : client_socket(client_socket), header(), status(REQ_START_LINE) {}
+  Connection(); // Do not implement this
+  explicit Connection(int listen_fd) : 
+    client_socket(new SocketBuf(listen_fd)),
+    header(),
+    status(REQ_START_LINE) {}
   ~Connection() {}
   Connection(const Connection &other) { *this = other; }
   Connection &operator=(const Connection &other) {
