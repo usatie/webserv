@@ -42,6 +42,14 @@ class Server {
     }
   }
 
+  void remove_all_connections() {
+    connections.clear();
+    FD_ZERO(&readfds);
+    FD_ZERO(&writefds);
+    FD_SET(sock.get_fd(), &readfds);
+    maxfd = sock.get_fd();
+  }
+
   int init(int port, int backlog) {
     if (sock.get_fd() < 0) {
       return -1;
@@ -91,15 +99,19 @@ class Server {
     }
     return false;
   }
-  void process() {
+  void process(int timeout) {
     fd_set rfds = this->readfds, wfds = this->writefds;
-    int result = ::select(maxfd + 1, &rfds, &wfds, NULL, NULL);
+    struct timeval tv;
+    tv.tv_sec = timeout;
+    tv.tv_usec = 0;
+    int result = ::select(maxfd + 1, &rfds, &wfds, NULL, &tv);
     if (result < 0) {
       std::cerr << "select error" << std::endl;
       return;
     }
     if (result == 0) {
       std::cerr << "select timeout" << std::endl;
+      remove_all_connections();
       return;
     }
     if (canServerAccept(rfds)) {

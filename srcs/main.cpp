@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
   }
   while (1) {
     try {
-      server.process();
+      server.process(7);
     } catch (std::exception &e) {
       std::cerr << e.what() << std::endl;
     }
