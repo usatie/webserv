@@ -21,10 +21,24 @@ class Server {
   ConnVector connections;
 
   // Constructor/Destructor
-  Server() {
+  Server(); // Do not implement this
+  Server(int port, int backlog) : sock(), connections() {
     FD_ZERO(&readfds);
     FD_ZERO(&writefds);
-    maxfd = 0;
+    if (sock.reuseaddr() < 0) {
+      throw std::runtime_error("sock.reuseaddr() failed");
+    }
+    if (sock.bind(port) < 0) {
+      throw std::runtime_error("sock.bind() failed");
+    }
+    if (sock.listen(backlog) < 0) {
+      throw std::runtime_error("sock.listen() failed");
+    }
+    if (sock.set_nonblock() < 0) {
+      throw std::runtime_error("sock.set_nonblock() failed");
+    }
+    FD_SET(sock.get_fd(), &readfds);
+    maxfd = sock.get_fd();
   }
   ~Server() {}
 
@@ -50,43 +64,17 @@ class Server {
     maxfd = sock.get_fd();
   }
 
-  int init(int port, int backlog) {
-    if (sock.get_fd() < 0) {
-      return -1;
-    }
-    if (sock.reuseaddr() < 0) {
-      return -1;
-    }
-    if (sock.bind(port) < 0) {
-      return -1;
-    }
-    if (sock.listen(backlog) < 0) {
-      return -1;
-    }
-    if (sock.set_nonblock() < 0) {
-      return -1;
-    }
-    FD_SET(sock.get_fd(), &readfds);
-    maxfd = sock.get_fd();
-    return 0;
-  }
-
   void accept() {
-    struct sockaddr_in addr;
-    socklen_t addrlen = sizeof(addr);
-    int client_fd = ::accept(sock.get_fd(), (struct sockaddr *)&addr, &addrlen);
-    if (client_fd < 0) {
-      std::cerr << "accept() failed\n";
-      // TODO: handle error
-      return;
-    }
-    std::shared_ptr<SocketBuf> client_socket = \
-        std::shared_ptr<SocketBuf>(new SocketBuf(client_fd));
-    client_socket->set_nonblock();
-    std::shared_ptr<Connection> conn(new Connection(client_socket));
+    // The call to the allocation function (operator new) is indeterminately
+    // sequenced with respect to (until C++17) the evaluation of the constructor
+    // arguments in a new-expression.
+    //
+    // So, ::accept() must be called inside the constructor of Connection.
+    // Actually, it is called inside the constructor of Socket class.
+    std::shared_ptr<Connection> conn(new Connection(sock.get_fd()));
     connections.push_back(conn);
-    FD_SET(client_fd, &readfds);
-    maxfd = std::max(client_fd, maxfd);
+    FD_SET(conn->get_fd(), &readfds);
+    maxfd = std::max(conn->get_fd(), maxfd);
   }
   bool canServerAccept(fd_set &readfds) {
     return FD_ISSET(sock.get_fd(), &readfds);

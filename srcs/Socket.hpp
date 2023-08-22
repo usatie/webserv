@@ -28,13 +28,16 @@ class Socket {
   Socket() : server_addr(), closed(false) {
     if ( (fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
       std::cerr << "socket() failed\n";
+      throw std::runtime_error("socket() failed");
     }
   }
-  Socket(int fd): fd(fd), server_addr(), closed(false) {}
-  ~Socket() {
-    if (fd < 0) {
-      return;
+  explicit Socket(int listen_fd): server_addr(), closed(false) {
+    if ( (fd = accept(listen_fd, NULL, NULL)) < 0) {
+      std::cerr << "accept() failed\n";
+      throw std::runtime_error("accept() failed");
     }
+  }
+  ~Socket() {
     if (::close(fd) < 0) {
       std::cerr << "close() failed\n";
     }
