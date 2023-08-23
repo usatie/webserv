@@ -40,48 +40,47 @@ class Connection {
   bool is_done() const throw() { return status == DONE; }
 
   // Member functions
-  // TODO: make this noexcept
-  int resume() {
+  // Returns negative value when an exception is thrown from STL containers
+  int resume() throw() {
     if (shouldRecv()) {
       client_socket->fill();
     } else if (shouldSend()) {
-      if (client_socket->flush() < 0) {
-        if (client_socket->isClosed()) {
-          Log::info("client_socket->closed");
-          status = DONE;
-        }
-      }
+      client_socket->flush();
     }
-    while (1) {
+    bool cont = true;
+    // After recv/send, check if the socket is still open
+    if (client_socket->isClosed()) {
+      Log::info("client_socket->closed");
+      status = DONE;
+      cont = false;
+    }
+    // If the socket is closed, we don't need to do anything
+    while (cont) {
       switch (status) {
         case REQ_START_LINE:
-          if (parse_start_line() <= 0) {
-            return 0;
-          }
+          cont = parse_start_line();
           break;
         case REQ_HEADER_FIELDS:
-          if (parse_header_fields() <= 0) {
-            return 0;
-          }
+          cont = parse_header_fields();
           break;
         case REQ_BODY:
-          if (parse_body() <= 0) {
-            return 0;
-          }
+          cont = parse_body();
           break;
         case HANDLE:
-          if (handle() <= 0) {
-            return 0;
-          }
+          cont = handle();
           break;
         case RESPONSE:
-          if (response() <= 0) {
-            return 0;
-          }
+          cont = response();
           break;
         case DONE:
-          return 0;
+          cont = false;
       }
+    }
+    // Finally, check if there is any error while handling the request
+    if (client_socket->get_stl_error()) {
+      Log::info("client_socket->get_stl_error()");
+      status = DONE;
+      return -1;
     }
     return 0;
   }

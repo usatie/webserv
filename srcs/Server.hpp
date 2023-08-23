@@ -67,18 +67,21 @@ class Server {
     maxfd = sock.get_fd();
   }
 
-  // TODO: make this noexcept
-  void accept() {
+  void accept() throw() {
     // The call to the allocation function (operator new) is indeterminately
     // sequenced with respect to (until C++17) the evaluation of the constructor
     // arguments in a new-expression.
     //
     // So, ::accept() must be called inside the constructor of Connection.
     // Actually, it is called inside the constructor of Socket class.
-    std::shared_ptr<Connection> conn(new Connection(sock.get_fd()));
-    connections.push_back(conn);
-    FD_SET(conn->get_fd(), &readfds);
-    maxfd = std::max(conn->get_fd(), maxfd);
+    try {
+      std::shared_ptr<Connection> conn(new Connection(sock.get_fd()));
+      connections.push_back(conn);
+      FD_SET(conn->get_fd(), &readfds);
+      maxfd = std::max(conn->get_fd(), maxfd);
+    } catch (std::exception &e) {
+      Log::cerror() << "Server::accept() failed: " << e.what() << std::endl;
+    }
   }
 
   bool canServerAccept(fd_set &readfds) const throw() {
@@ -133,8 +136,7 @@ class Server {
     return NULL;
   }
 
-  // TODO: make this noexcept
-  void process(int timeout) {
+  void process(int timeout) throw() {
     if (wait(timeout) < 0) {
       return;
     }
@@ -142,11 +144,8 @@ class Server {
     if (canServerAccept(ready_rfds)) {
       accept();
     } else if ((conn = get_ready_connection())) {
-      // conn->resume() may throw an exception from STL containers
-      try {
-        conn->resume();
-      } catch (std::exception &e) {
-        Log::cerror() << "connection aborted: " << e.what() << std::endl;
+      if (conn->resume() < 0) {
+        Log::cerror() << "connection aborted" << std::endl;
         remove_connection(conn);
         return;
       }
