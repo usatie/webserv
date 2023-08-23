@@ -3,9 +3,7 @@
 static Log::Level log_level_ = Log::Debug;
 static std::ofstream devnull_;
 
-void Log::setLevel(Level level) throw() {
-  log_level_ = level;
-}
+void Log::setLevel(Level level) throw() { log_level_ = level; }
 
 // debug, info, warn, error, fatal are for use with printf-style formatting
 void Log::debug(const char* format, ...) throw() {
@@ -58,7 +56,7 @@ void Log::fatal(const char* format, ...) throw() {
     va_list args;
     va_start(args, format);
     vsnprintf(buf, MAX_LOG_LENGTH, format, args);
-    std::cerr << "[FATAL] "<< buf << std::endl;
+    std::cerr << "[FATAL] " << buf << std::endl;
     va_end(args);
   }
 }

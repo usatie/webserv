@@ -14,20 +14,26 @@
 #include "webserv.hpp"
 
 class GetHandler {
+ private:
+  // Constructor/Destructor/Assignment Operator
+  GetHandler() throw();                              // Do not implement this
+  GetHandler(const GetHandler&) throw();             // Do not implement this
+  GetHandler& operator=(const GetHandler&) throw();  // Do not implement this
+  ~GetHandler() throw();                             // Do not implement this
  public:
-  // Member data
-  // Constructor/Destructor
   // Member functions
-  static void handle(std::shared_ptr<SocketBuf> client_socket, const Header& header) {
+  static void handle(std::shared_ptr<SocketBuf> client_socket,
+                     const Header& header) throw() {
     // TODO: Write response headers
     std::stringstream ss;
-    ssize_t content_length = get_content_length(header.path);
-    if (content_length < 0) {
+    ssize_t content_length;
+
+    if ((content_length = get_content_length(header.path)) < 0) {
+      Log::error("get_content_length() failed");
       ss << "HTTP/1.1 404 Resource Not Found\r\n";
       // TODO send some error message
       ss << "\r\n";
       client_socket->send(ss.str().c_str(), ss.str().size());
-      std::cerr << "get_content_length() failed\n";
       return;
     }
     ss << "HTTP/1.1 200 OK\r\n";
@@ -37,19 +43,19 @@ class GetHandler {
     ss << "\r\n";
     client_socket->send(ss.str().c_str(), ss.str().size());
     if (client_socket->send_file(header.path) < 0) {
+      Log::error("send_file() failed");
       client_socket->clear_sendbuf();
       ss.str("");
       ss << "HTTP/1.1 500 Internal Server Error\r\n";
       // TODO send some error message
       ss << "\r\n";
       client_socket->send(ss.str().c_str(), ss.str().size());
-      std::cerr << "send_file() failed\n";
       return;
     }
   }
 
  private:
-  static ssize_t get_content_length(const std::string& filepath) {
+  static ssize_t get_content_length(const std::string& filepath) throw() {
     struct stat st;
     if (stat(filepath.c_str(), &st) < 0) {
       std::cerr << "stat() failed\n";

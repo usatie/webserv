@@ -21,70 +21,71 @@ class Socket {
   struct sockaddr_in server_addr;
   bool closed;
 
-  Socket(const Socket& other);
+  Socket(const Socket& other) throw();             // Do not implement this
+  Socket& operator=(const Socket& other) throw();  // Do not implement this
 
  public:
   // Constructor/Destructor
   Socket() : server_addr(), closed(false) {
-    if ( (fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-      std::cerr << "socket() failed\n";
+    if ((fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+      Log::fatal("socket() failed");
       throw std::runtime_error("socket() failed");
     }
   }
-  explicit Socket(int listen_fd): server_addr(), closed(false) {
-    if ( (fd = accept(listen_fd, NULL, NULL)) < 0) {
-      std::cerr << "accept() failed\n";
+  explicit Socket(int listen_fd) : server_addr(), closed(false) {
+    if ((fd = accept(listen_fd, NULL, NULL)) < 0) {
+      Log::error("accept() failed");
       throw std::runtime_error("accept() failed");
     }
   }
-  ~Socket() {
+  ~Socket() throw() {
     if (::close(fd) < 0) {
-      std::cerr << "close() failed\n";
+      Log::error("close() failed");
     }
   }
 
   // Accessors
-  int get_fd() const { return fd; }
-  bool isClosed() const { return closed; }
-  void beClosed() { closed = true; }
+  int get_fd() const throw() { return fd; }
+  bool isClosed() const throw() { return closed; }
+  void beClosed() throw() { closed = true; }
 
   // Member functions
-  int reuseaddr() {
+  int reuseaddr() throw() {
     int optval = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
-      std::cerr << "setsockopt() failed\n";
+      Log::error("setsockopt() failed");
       return -1;
     }
     return 0;
   }
 
-  int bind(int port) {
+  int bind(int port) throw() {
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    if (::bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-      std::cerr << "bind() failed\n";
+    if (::bind(fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+      Log::error("bind() failed");
       return -1;
     }
     return 0;
   }
 
-  int listen(int backlog) {
+  int listen(int backlog) throw() {
     if (::listen(fd, backlog) < 0) {
-      std::cerr << "listen() failed\n";
+      Log::error("listen() failed");
       return -1;
     }
     return 0;
   }
 
-  int set_nonblock() {
+  int set_nonblock() throw() {
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0) {
-      std::cerr << "fcntl() failed\n";
+      Log::error("fcntl() failed");
       return -1;
     }
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-      std::cerr << "fcntl() failed\n";
+      Log::error("fcntl() failed");
       return -1;
     }
     return 0;
