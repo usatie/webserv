@@ -1,6 +1,7 @@
 #ifndef CONNECTION_HPP
 #define CONNECTION_HPP
 
+#include "webserv.hpp"
 #include "GetHandler.hpp"
 #include "Header.hpp"
 #include "SocketBuf.hpp"
@@ -46,7 +47,7 @@ class Connection {
     } else if (shouldSend()) {
       if (client_socket->flush() < 0) {
         if (client_socket->isClosed()) {
-          std::cerr << "client_socket->closed\n";
+          Log::info("client_socket->closed");
           status = DONE;
         }
       }
@@ -121,7 +122,7 @@ class Connection {
 
     if (client_socket->readline(line) < 0) {
       if (client_socket->isClosed()) {
-        std::cerr << "client_socket->closed\n";
+        Log::info("client_socket->closed");
         status = DONE;
         return 1;
       }
@@ -129,7 +130,7 @@ class Connection {
     }
     std::vector<std::string> keywords = split(line, ' ');
     if (keywords.size() != 3) {
-      std::cerr << "Invalid start line: " << line << std::endl;
+      Log::cinfo() << "Invalid start line: " << line << std::endl;
       client_socket->send("HTTP/1.1 400 Bad Request\r\n", 26);
       status = RESPONSE;
       return 1;
@@ -158,7 +159,7 @@ class Connection {
     if (header.method == "GET") {
       GetHandler::handle(client_socket, header);
     } else {
-      std::cerr << "Unsupported method: " << header.method << std::endl;
+      Log::cinfo() << "Unsupported method: " << header.method << std::endl;
       client_socket->send("HTTP/1.1 405 Method Not Allowed\r\n", 34);
     }
     status = RESPONSE;

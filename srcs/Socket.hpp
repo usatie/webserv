@@ -28,19 +28,19 @@ class Socket {
   // Constructor/Destructor
   Socket() : server_addr(), closed(false) {
     if ((fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-      std::cerr << "socket() failed\n";
+      Log::fatal("socket() failed");
       throw std::runtime_error("socket() failed");
     }
   }
   explicit Socket(int listen_fd) : server_addr(), closed(false) {
     if ((fd = accept(listen_fd, NULL, NULL)) < 0) {
-      std::cerr << "accept() failed\n";
+      Log::error("accept() failed");
       throw std::runtime_error("accept() failed");
     }
   }
   ~Socket() throw() {
     if (::close(fd) < 0) {
-      std::cerr << "close() failed\n";
+      Log::error("close() failed");
     }
   }
 
@@ -53,7 +53,7 @@ class Socket {
   int reuseaddr() throw() {
     int optval = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
-      std::cerr << "setsockopt() failed\n";
+      Log::error("setsockopt() failed");
       return -1;
     }
     return 0;
@@ -64,7 +64,7 @@ class Socket {
     server_addr.sin_port = htons(port);
     server_addr.sin_addr.s_addr = INADDR_ANY;
     if (::bind(fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
-      std::cerr << "bind() failed\n";
+      Log::error("bind() failed");
       return -1;
     }
     return 0;
@@ -72,7 +72,7 @@ class Socket {
 
   int listen(int backlog) throw() {
     if (::listen(fd, backlog) < 0) {
-      std::cerr << "listen() failed\n";
+      Log::error("listen() failed");
       return -1;
     }
     return 0;
@@ -81,11 +81,11 @@ class Socket {
   int set_nonblock() throw() {
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0) {
-      std::cerr << "fcntl() failed\n";
+      Log::error("fcntl() failed");
       return -1;
     }
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-      std::cerr << "fcntl() failed\n";
+      Log::error("fcntl() failed");
       return -1;
     }
     return 0;

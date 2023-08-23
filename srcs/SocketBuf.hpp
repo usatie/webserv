@@ -54,7 +54,7 @@ class SocketBuf {
     std::ifstream ifs(filepath.c_str(), std::ios::binary);
 
     if (!ifs.is_open()) {
-      std::cerr << "file open failed\n";
+      Log::error("file open failed");
       return -1;
     }
     // try/catch
@@ -99,8 +99,7 @@ class SocketBuf {
     ssize_t ret = ::send(socket.get_fd(), &sendbuf[0],
                          std::min(10, (int)sendbuf.size()), 0);
     if (ret < 0) {
-      perror("send");
-      std::cerr << "errno: " << errno << "\n";
+      Log::cerror() << "send() failed, errno: " << errno << "\n";
       // TODO: handle EINTR
       // ETIMEDOUT, EPIPE in any case means the connection is closed
       socket.beClosed();
@@ -126,7 +125,7 @@ class SocketBuf {
     recvbuf.resize(prev_size + MAXLINE);
     ssize_t ret = ::recv(socket.get_fd(), &recvbuf[prev_size], MAXLINE, flags);
     if (ret < 0) {
-      std::cerr << "recv() failed\n";
+      Log::error("recv() failed");
       // won't throw because it will shrink
       recvbuf.resize(prev_size);
       return -1;

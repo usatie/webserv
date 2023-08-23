@@ -106,11 +106,11 @@ class Server {
     tv.tv_usec = 0;
     int result = ::select(maxfd + 1, &ready_rfds, &ready_wfds, NULL, &tv);
     if (result < 0) {
-      std::cerr << "select error" << std::endl;
+      Log::error("select error");
       return -1;
     }
     if (result == 0) {
-      std::cerr << "select timeout" << std::endl;
+      Log::info("select timeout");
       remove_all_connections();
       return -1;
     }
@@ -146,12 +146,12 @@ class Server {
       try {
         conn->resume();
       } catch (std::exception &e) {
-        std::cerr << "connection aborted: " << e.what() << std::endl;
+        Log::cerror() << "connection aborted: " << e.what() << std::endl;
         remove_connection(conn);
         return;
       }
       if (conn->is_done()) {
-        std::cout << "connection done" << std::endl;
+        Log::info("connection done");
         remove_connection(conn);
       } else {
         update_fdset(conn);

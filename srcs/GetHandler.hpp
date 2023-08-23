@@ -33,7 +33,7 @@ class GetHandler {
       // TODO send some error message
       ss << "\r\n";
       client_socket->send(ss.str().c_str(), ss.str().size());
-      std::cerr << "get_content_length() failed\n";
+      Log::error("get_content_length() failed");
       return;
     }
     ss << "HTTP/1.1 200 OK\r\n";
@@ -49,7 +49,7 @@ class GetHandler {
       // TODO send some error message
       ss << "\r\n";
       client_socket->send(ss.str().c_str(), ss.str().size());
-      std::cerr << "send_file() failed\n";
+      Log::error("send_file() failed");
       return;
     }
   }

@@ -1,5 +1,5 @@
 #include <signal.h>
-#include "Log.hpp"
+#include "webserv.hpp"
 #include "Server.hpp"
 #define PORT 8181
 #define BACKLOG 5
@@ -12,15 +12,16 @@ int main(int argc, char *argv[]) {
   // Just end this program in that case.
   Server server(PORT, BACKLOG);
 
+  Log::setLevel(Log::Debug);
   if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
-    std::cerr << "signal() failed\n";
+    Log::fatal("signal() failed");
     return ERROR;
   }
   while (1) {
     try {
       server.process(7);
     } catch (std::exception &e) {
-      std::cerr << e.what() << std::endl;
+      Log::cerror() << "Exception: " << e.what() << std::endl;
     }
   }
   return 0;
