@@ -23,7 +23,7 @@ class Server {
   ConnVector connections;
 
   // Constructor/Destructor
-  Server();  // Do not implement this
+  Server() throw();  // Do not implement this
   Server(int port, int backlog) : sock(), connections() {
     FD_ZERO(&readfds);
     FD_ZERO(&writefds);
@@ -42,10 +42,10 @@ class Server {
     FD_SET(sock.get_fd(), &readfds);
     maxfd = sock.get_fd();
   }
-  ~Server() {}
+  ~Server() throw() {}
 
   // Member functions
-  void remove_connection(std::shared_ptr<Connection> connection) {
+  void remove_connection(std::shared_ptr<Connection> connection) throw() {
     connections.erase(
         std::find(connections.begin(), connections.end(), connection));
     FD_CLR(connection->get_fd(), &readfds);
@@ -53,13 +53,13 @@ class Server {
     if (connection->get_fd() == maxfd) {
       maxfd = sock.get_fd();
       for (ConnIterator it = connections.begin(); it != connections.end();
-           it++) {
+           ++it) {
         maxfd = std::max(maxfd, (*it)->get_fd());
       }
     }
   }
 
-  void remove_all_connections() {
+  void remove_all_connections() throw() {
     connections.clear();
     FD_ZERO(&readfds);
     FD_ZERO(&writefds);
@@ -67,6 +67,7 @@ class Server {
     maxfd = sock.get_fd();
   }
 
+  // TODO: make this noexcept
   void accept() {
     // The call to the allocation function (operator new) is indeterminately
     // sequenced with respect to (until C++17) the evaluation of the constructor
@@ -79,19 +80,12 @@ class Server {
     FD_SET(conn->get_fd(), &readfds);
     maxfd = std::max(conn->get_fd(), maxfd);
   }
-  bool canServerAccept(fd_set &readfds) {
+
+  bool canServerAccept(fd_set &readfds) const throw() {
     return FD_ISSET(sock.get_fd(), &readfds);
   }
-  bool canConnectionResume(fd_set &readfds, fd_set &writefds,
-                           std::shared_ptr<Connection> conn) {
-    if ((conn->shouldRecv() && FD_ISSET(conn->get_fd(), &readfds)) ||
-        (conn->shouldSend() && FD_ISSET(conn->get_fd(), &writefds))) {
-      return true;
-    }
-    return false;
-  }
 
-  void update_fdset(std::shared_ptr<Connection> conn) {
+  void update_fdset(std::shared_ptr<Connection> conn) throw() {
     if (conn->shouldRecv()) {
       FD_SET(conn->get_fd(), &readfds);
     } else {
@@ -104,7 +98,7 @@ class Server {
     }
   }
 
-  int wait(int timeout) {
+  int wait(int timeout) throw() {
     ready_rfds = this->readfds;
     ready_wfds = this->writefds;
     struct timeval tv;
@@ -123,16 +117,23 @@ class Server {
     return 0;
   }
 
-  std::shared_ptr<Connection> get_ready_connection() {
+  bool canResume(std::shared_ptr<Connection> conn) const throw() {
+    return (conn->shouldRecv() && FD_ISSET(conn->get_fd(), &ready_rfds)) ||
+           (conn->shouldSend() && FD_ISSET(conn->get_fd(), &ready_wfds));
+  }
+
+  // This can be const, but it returns pointer, so logically it is not const.
+  std::shared_ptr<Connection> get_ready_connection() throw() {
     // TODO: equally distribute the processing time to each connection
-    for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
-      if (canConnectionResume(ready_rfds, ready_wfds, *it)) {
+    for (ConnIterator it = connections.begin(); it != connections.end(); ++it) {
+      if (canResume(*it)) {
         return *it;
       }
     }
     return NULL;
   }
 
+  // TODO: make this noexcept
   void process(int timeout) {
     if (wait(timeout) < 0) {
       return;
