@@ -165,9 +165,9 @@ class SocketBuf {
     return ret;
   }
 
-  void clear_sendbuf() { sendbuf.clear(); }
+  void clear_sendbuf() throw() { sendbuf.clear(); }
 
-  int set_nonblock() { return socket.set_nonblock(); }
+  int set_nonblock() throw() { return socket.set_nonblock(); }
 };
 
 #endif

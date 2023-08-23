@@ -19,11 +19,7 @@ int main(int argc, char *argv[]) {
     return ERROR;
   }
   while (1) {
-    try {
-      server.process(7);
-    } catch (std::exception &e) {
-      Log::cerror() << "Exception: " << e.what() << std::endl;
-    }
+    server.process(7);
   }
   return 0;
 }

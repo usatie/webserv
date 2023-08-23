@@ -127,6 +127,7 @@ class Connection {
       }
       return 0;
     }
+    Log::cdebug() << "start line: " << line << std::endl;
     std::vector<std::string> keywords = split(line, ' ');
     if (keywords.size() != 3) {
       Log::cinfo() << "Invalid start line: " << line << std::endl;
@@ -136,7 +137,7 @@ class Connection {
     }
     // TODO: validate keywords
     header.method = keywords[0];
-    header.path = keywords[1];
+    header.path = "./" + keywords[1];
     header.version = keywords[2];
     status = REQ_HEADER_FIELDS;
     return 1;

@@ -39,6 +39,22 @@ class GetHandler {
     ss << "HTTP/1.1 200 OK\r\n";
     ss << "Server: " << SERVER_NAME << "\r\n";
     // ss << "Date: Tue, 11 Jul 2023 07:36:50 GMT\r\n";
+    if (header.path.find(".css") != std::string::npos)
+      ss << "Content-Type: text/css\r\n";
+    else if (header.path.find(".js") != std::string::npos)
+      ss << "Content-Type: text/javascript\r\n";
+    else if (header.path.find(".jpg") != std::string::npos)
+      ss << "Content-Type: image/jpeg\r\n";
+    else if (header.path.find(".png") != std::string::npos)
+      ss << "Content-Type: image/png\r\n";
+    else if (header.path.find(".gif") != std::string::npos)
+      ss << "Content-Type: image/gif\r\n";
+    else if (header.path.find(".ico") != std::string::npos)
+      ss << "Content-Type: image/x-icon\r\n";
+    else if (header.path.find(".html") != std::string::npos) 
+      ss << "Content-Type: text/html\r\n";
+    else
+      ss << "Content-Type: text/plain\r\n";
     ss << "Content-Length: " << content_length << "\r\n";
     ss << "\r\n";
     client_socket->send(ss.str().c_str(), ss.str().size());
@@ -58,6 +74,7 @@ class GetHandler {
   static ssize_t get_content_length(const std::string& filepath) throw() {
     struct stat st;
     if (stat(filepath.c_str(), &st) < 0) {
+      Log::cerror() << "stat() failed: " << filepath << ", errno:" << strerror(errno) << std::endl;
       std::cerr << "stat() failed\n";
       return -1;
     }
