@@ -23,12 +23,14 @@ class SocketBuf {
   bool stl_error;
 
   SocketBuf() throw();  // Do not implement this
-  SocketBuf& operator=(const SocketBuf& other) throw();  // Do not implement this
+  SocketBuf& operator=(
+      const SocketBuf& other) throw();  // Do not implement this
   SocketBuf(SocketBuf& other) throw();  // Do not implement this
 
  public:
   // Constructor/Destructor
-  explicit SocketBuf(int listen_fd) : socket(listen_fd), recvbuf(), sendbuf(), stl_error(false) {
+  explicit SocketBuf(int listen_fd)
+      : socket(listen_fd), recvbuf(), sendbuf(), stl_error(false) {
     if (socket.set_nonblock() < 0) {
       throw std::runtime_error("socket.set_nonblock() failed");
     }
@@ -94,7 +96,8 @@ class SocketBuf {
       if (prev == '\r' && c == '\n') {
         // try/catch
         try {
-          line.assign(recvbuf.begin(), recvbuf.begin() + i - 1);  // Remove "\r\n"
+          line.assign(recvbuf.begin(),
+                      recvbuf.begin() + i - 1);  // Remove "\r\n"
         } catch (const std::exception& e) {
           Log::fatal("line.assign() failed");
           stl_error = true;
@@ -152,13 +155,13 @@ class SocketBuf {
     ssize_t ret = ::recv(socket.get_fd(), &recvbuf[prev_size], MAXLINE, flags);
     if (ret < 0) {
       Log::error("recv() failed");
-      recvbuf.resize(prev_size); // won't throw because it will shrink
+      recvbuf.resize(prev_size);  // won't throw because it will shrink
       return -1;
     }
     if (ret == 0) {
       socket.beClosed();
     }
-    recvbuf.resize(prev_size + ret); // won't throw because it will shrink
+    recvbuf.resize(prev_size + ret);  // won't throw because it will shrink
     return ret;
   }
 

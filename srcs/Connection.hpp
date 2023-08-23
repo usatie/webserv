@@ -1,10 +1,10 @@
 #ifndef CONNECTION_HPP
 #define CONNECTION_HPP
 
-#include "webserv.hpp"
 #include "GetHandler.hpp"
 #include "Header.hpp"
 #include "SocketBuf.hpp"
+#include "webserv.hpp"
 
 class Connection {
  private:
