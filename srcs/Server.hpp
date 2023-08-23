@@ -13,6 +13,7 @@ class Server {
   typedef std::vector< std::shared_ptr<Connection> > ConnVector;
   typedef ConnVector::iterator ConnIterator;
   fd_set readfds, writefds;
+  fd_set ready_rfds, ready_wfds;
   int maxfd;
 
  public:
@@ -87,51 +88,70 @@ class Server {
     }
     return false;
   }
-  void process(int timeout) {
-    fd_set rfds = this->readfds, wfds = this->writefds;
+  
+  void update_fdset(std::shared_ptr<Connection> conn) {
+    if (conn->shouldRecv()) {
+      FD_SET(conn->get_fd(), &readfds);
+    } else {
+      FD_CLR(conn->get_fd(), &readfds);
+    }
+    if (conn->shouldSend()) {
+      FD_SET(conn->get_fd(), &writefds);
+    } else {
+      FD_CLR(conn->get_fd(), &writefds);
+    }
+  }
+
+  int wait(int timeout) {
+    ready_rfds = this->readfds;
+    ready_wfds = this->writefds;
     struct timeval tv;
     tv.tv_sec = timeout;
     tv.tv_usec = 0;
-    int result = ::select(maxfd + 1, &rfds, &wfds, NULL, &tv);
+    int result = ::select(maxfd + 1, &ready_rfds, &ready_wfds, NULL, &tv);
     if (result < 0) {
       std::cerr << "select error" << std::endl;
-      return;
+      return -1;
     }
     if (result == 0) {
       std::cerr << "select timeout" << std::endl;
       remove_all_connections();
-      return;
+      return -1;
     }
-    if (canServerAccept(rfds)) {
-      accept();
-      return;
-    }
+    return 0;
+  }
+
+  std::shared_ptr<Connection> get_ready_connection() {
     // TODO: equally distribute the processing time to each connection
     for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
-      if (canConnectionResume(rfds, wfds, *it)) {
-        try {
-          (*it)->resume();
-        } catch (std::exception &e) {
-          std::cerr << e.what() << std::endl;
-          remove_connection(*it);
-          return;
-        }
+      if (canConnectionResume(ready_rfds, ready_wfds, *it)) {
+        return *it;
+      }
+    }
+    return NULL;
+  }
 
-        if ((*it)->shouldRecv()) {
-          FD_SET((*it)->get_fd(), &readfds);
-        } else {
-          FD_CLR((*it)->get_fd(), &readfds);
-        }
-        if (((*it)->shouldSend())) {
-          FD_SET((*it)->get_fd(), &writefds);
-        } else {
-          FD_CLR((*it)->get_fd(), &writefds);
-        }
-        if ((*it)->is_done()) {
-          std::cout << "connection done" << std::endl;
-          remove_connection(*it);
-        }
-        break;
+  void process(int timeout) {
+    if (wait(timeout) < 0) {
+      return;
+    }
+    std::shared_ptr<Connection> conn;
+    if (canServerAccept(ready_rfds)) {
+      accept();
+    } else if (conn = get_ready_connection()) {
+      // conn->resume() may throw an exception from STL containers
+      try {
+        conn->resume();
+      } catch (std::exception &e) {
+        std::cerr << "connection aborted: " << e.what() << std::endl;
+        remove_connection(conn);
+        return;
+      }
+      if (conn->is_done()) {
+        std::cout << "connection done" << std::endl;
+        remove_connection(conn);
+      } else {
+        update_fdset(conn);
       }
     }
   }
