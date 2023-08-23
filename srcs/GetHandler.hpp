@@ -18,7 +18,8 @@ class GetHandler {
   // Member data
   // Constructor/Destructor
   // Member functions
-  static void handle(std::shared_ptr<SocketBuf> client_socket, const Header& header) {
+  static void handle(std::shared_ptr<SocketBuf> client_socket,
+                     const Header& header) {
     // TODO: Write response headers
     std::stringstream ss;
     ssize_t content_length = get_content_length(header.path);

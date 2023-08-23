@@ -11,8 +11,8 @@
 #define MAXLINE 1024
 #include <fcntl.h>
 
-#include "webserv.hpp"
 #include "Socket.hpp"
+#include "webserv.hpp"
 
 class SocketBuf {
   // Member data
@@ -25,8 +25,8 @@ class SocketBuf {
 
  public:
   // Constructor/Destructor
-  SocketBuf(); // Do not implement this
-  explicit SocketBuf(int listen_fd): socket(listen_fd) {
+  SocketBuf();  // Do not implement this
+  explicit SocketBuf(int listen_fd) : socket(listen_fd) {
     if (socket.set_nonblock() < 0) {
       throw std::runtime_error("socket.set_nonblock() failed");
     }
@@ -62,7 +62,7 @@ class SocketBuf {
 
   // Read line from buffer, if found, remove it from buffer and return 0
   // Otherwise, return -1
-  int readline(std::string &line) {
+  int readline(std::string& line) {
     char prev = '\0', c;
 
     for (size_t i = 0; i < recvbuf.size(); i++) {
@@ -82,14 +82,15 @@ class SocketBuf {
     if (sendbuf.empty()) {
       return 0;
     }
-    //ssize_t ret = ::send(fd, &sendbuf[0], sendbuf.size(), SO_NOSIGPIPE);
-    ssize_t ret = ::send(socket.get_fd(), &sendbuf[0], std::min(10, (int)sendbuf.size()), 0);
+    // ssize_t ret = ::send(fd, &sendbuf[0], sendbuf.size(), SO_NOSIGPIPE);
+    ssize_t ret = ::send(socket.get_fd(), &sendbuf[0],
+                         std::min(10, (int)sendbuf.size()), 0);
     if (ret < 0) {
       perror("send");
       std::cerr << "errno: " << errno << "\n";
       // TODO: handle EINTR
       // ETIMEDOUT, EPIPE in any case means the connection is closed
-	  socket.beClosed();
+      socket.beClosed();
       return -1;
     }
     sendbuf.erase(sendbuf.begin(), sendbuf.begin() + ret);
@@ -106,8 +107,7 @@ class SocketBuf {
     static const int flags = 0;
     int prev_size = recvbuf.size();
     recvbuf.resize(prev_size + MAXLINE);
-    ssize_t ret = ::recv(socket.get_fd(), \
-        &recvbuf[prev_size], MAXLINE, flags);
+    ssize_t ret = ::recv(socket.get_fd(), &recvbuf[prev_size], MAXLINE, flags);
     if (ret < 0) {
       std::cerr << "recv() failed\n";
       recvbuf.resize(prev_size);
@@ -120,14 +120,9 @@ class SocketBuf {
     return ret;
   }
 
-  void clear_sendbuf() {
-    sendbuf.clear();
-  }
+  void clear_sendbuf() { sendbuf.clear(); }
 
-  int set_nonblock() {
-    return socket.set_nonblock();
-  }
+  int set_nonblock() { return socket.set_nonblock(); }
 };
 
 #endif
-

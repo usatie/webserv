@@ -21,13 +21,14 @@ class Connection {
   std::shared_ptr<SocketBuf> client_socket;
   Header header;
   Status status;
+
  public:
   // Constructor/Destructor
-  Connection(); // Do not implement this
-  explicit Connection(int listen_fd) : 
-    client_socket(new SocketBuf(listen_fd)),
-    header(),
-    status(REQ_START_LINE) {}
+  Connection();  // Do not implement this
+  explicit Connection(int listen_fd)
+      : client_socket(new SocketBuf(listen_fd)),
+        header(),
+        status(REQ_START_LINE) {}
   ~Connection() {}
   Connection(const Connection &other) { *this = other; }
   Connection &operator=(const Connection &other) {
@@ -96,7 +97,7 @@ class Connection {
 
   bool shouldSend() { return status == HANDLE || status == RESPONSE; }
 
-private:
+ private:
   // TODO: refactor? fix?
   static std::vector<std::string> split(std::string str, char delim) {
     std::vector<std::string> ret;

@@ -1,16 +1,17 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
+#include <algorithm>  // std::find
+
 #include "Connection.hpp"
 #include "GetHandler.hpp"
 #include "Header.hpp"
 #include "SocketBuf.hpp"
 #include "webserv.hpp"
-#include <algorithm> // std::find
 
 class Server {
  private:
-  typedef std::vector< std::shared_ptr<Connection> > ConnVector;
+  typedef std::vector<std::shared_ptr<Connection> > ConnVector;
   typedef ConnVector::iterator ConnIterator;
   fd_set readfds, writefds;
   fd_set ready_rfds, ready_wfds;
@@ -22,7 +23,7 @@ class Server {
   ConnVector connections;
 
   // Constructor/Destructor
-  Server(); // Do not implement this
+  Server();  // Do not implement this
   Server(int port, int backlog) : sock(), connections() {
     FD_ZERO(&readfds);
     FD_ZERO(&writefds);
@@ -51,7 +52,8 @@ class Server {
     FD_CLR(connection->get_fd(), &writefds);
     if (connection->get_fd() == maxfd) {
       maxfd = sock.get_fd();
-      for (ConnIterator it = connections.begin(); it != connections.end(); it++) {
+      for (ConnIterator it = connections.begin(); it != connections.end();
+           it++) {
         maxfd = std::max(maxfd, (*it)->get_fd());
       }
     }
@@ -88,7 +90,7 @@ class Server {
     }
     return false;
   }
-  
+
   void update_fdset(std::shared_ptr<Connection> conn) {
     if (conn->shouldRecv()) {
       FD_SET(conn->get_fd(), &readfds);
@@ -138,7 +140,7 @@ class Server {
     std::shared_ptr<Connection> conn;
     if (canServerAccept(ready_rfds)) {
       accept();
-    } else if (conn = get_ready_connection()) {
+    } else if ((conn = get_ready_connection())) {
       // conn->resume() may throw an exception from STL containers
       try {
         conn->resume();

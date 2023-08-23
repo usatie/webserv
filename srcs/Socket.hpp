@@ -26,13 +26,13 @@ class Socket {
  public:
   // Constructor/Destructor
   Socket() : server_addr(), closed(false) {
-    if ( (fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+    if ((fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
       std::cerr << "socket() failed\n";
       throw std::runtime_error("socket() failed");
     }
   }
-  explicit Socket(int listen_fd): server_addr(), closed(false) {
-    if ( (fd = accept(listen_fd, NULL, NULL)) < 0) {
+  explicit Socket(int listen_fd) : server_addr(), closed(false) {
+    if ((fd = accept(listen_fd, NULL, NULL)) < 0) {
       std::cerr << "accept() failed\n";
       throw std::runtime_error("accept() failed");
     }
@@ -62,7 +62,7 @@ class Socket {
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    if (::bind(fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+    if (::bind(fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
       std::cerr << "bind() failed\n";
       return -1;
     }
