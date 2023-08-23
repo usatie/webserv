@@ -16,10 +16,10 @@
 class GetHandler {
  private:
   // Constructor/Destructor/Assignment Operator
-  GetHandler();                              // Do not implement this
-  GetHandler(const GetHandler&);             // Do not implement this
-  GetHandler& operator=(const GetHandler&);  // Do not implement this
-  ~GetHandler();                             // Do not implement this
+  GetHandler() throw();                              // Do not implement this
+  GetHandler(const GetHandler&) throw();             // Do not implement this
+  GetHandler& operator=(const GetHandler&) throw();  // Do not implement this
+  ~GetHandler() throw();                             // Do not implement this
  public:
   // Member functions
   // TODO: Make this noexcept
