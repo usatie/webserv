@@ -122,7 +122,7 @@ class Server {
            (conn->shouldSend() && FD_ISSET(conn->get_fd(), &ready_wfds));
   }
 
-  // This can be const, but it returns pointer, so logically it is not const.
+  // Logically it is not const because it returns a non-const pointer.
   std::shared_ptr<Connection> get_ready_connection() throw() {
     // TODO: equally distribute the processing time to each connection
     for (ConnIterator it = connections.begin(); it != connections.end(); ++it) {

@@ -21,7 +21,8 @@ class Socket {
   struct sockaddr_in server_addr;
   bool closed;
 
-  Socket(const Socket& other);
+  Socket(const Socket& other) throw();             // Do not implement this
+  Socket& operator=(const Socket& other) throw();  // Do not implement this
 
  public:
   // Constructor/Destructor
@@ -37,19 +38,19 @@ class Socket {
       throw std::runtime_error("accept() failed");
     }
   }
-  ~Socket() {
+  ~Socket() throw() {
     if (::close(fd) < 0) {
       std::cerr << "close() failed\n";
     }
   }
 
   // Accessors
-  int get_fd() const { return fd; }
-  bool isClosed() const { return closed; }
-  void beClosed() { closed = true; }
+  int get_fd() const throw() { return fd; }
+  bool isClosed() const throw() { return closed; }
+  void beClosed() throw() { closed = true; }
 
   // Member functions
-  int reuseaddr() {
+  int reuseaddr() throw() {
     int optval = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
       std::cerr << "setsockopt() failed\n";
@@ -58,7 +59,7 @@ class Socket {
     return 0;
   }
 
-  int bind(int port) {
+  int bind(int port) throw() {
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
     server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -69,7 +70,7 @@ class Socket {
     return 0;
   }
 
-  int listen(int backlog) {
+  int listen(int backlog) throw() {
     if (::listen(fd, backlog) < 0) {
       std::cerr << "listen() failed\n";
       return -1;
@@ -77,7 +78,7 @@ class Socket {
     return 0;
   }
 
-  int set_nonblock() {
+  int set_nonblock() throw() {
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0) {
       std::cerr << "fcntl() failed\n";
