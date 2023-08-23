@@ -25,25 +25,31 @@ class SocketBuf {
 
  public:
   // Constructor/Destructor
-  SocketBuf();  // Do not implement this
   explicit SocketBuf(int listen_fd) : socket(listen_fd) {
     if (socket.set_nonblock() < 0) {
       throw std::runtime_error("socket.set_nonblock() failed");
     }
   }
-  ~SocketBuf() {}
+  ~SocketBuf() throw() {}
+  SocketBuf() throw();  // Do not implement this
+  SocketBuf& operator=(
+      const SocketBuf& other) throw();  // Do not implement this
+  SocketBuf(SocketBuf& other) throw();  // Do not implement this
 
   // Accessors
-  int get_fd() const { return socket.get_fd(); }
-  bool isClosed() const { return socket.isClosed(); }
-  bool isSendBufEmpty() const { return sendbuf.empty(); }
+  int get_fd() const throw() { return socket.get_fd(); }
+  bool isClosed() const throw() { return socket.isClosed(); }
+  bool isSendBufEmpty() const throw() { return sendbuf.empty(); }
 
   // Member functions
+  // TODO: Make this noexcept
   int send(const char msg[], size_t len) {
+    // try/catch
     sendbuf.insert(sendbuf.end(), msg, msg + len);
     return 0;
   }
 
+  // TODO: Make this noexcept
   int send_file(std::string filepath) {
     std::ifstream ifs(filepath.c_str(), std::ios::binary);
 
@@ -51,24 +57,31 @@ class SocketBuf {
       std::cerr << "file open failed\n";
       return -1;
     }
+    // try/catch
     sendbuf.insert(sendbuf.end(), std::istreambuf_iterator<char>(ifs),
                    std::istreambuf_iterator<char>());
     // TODO ifstreambuf_iterator cannot handle error
     // Append CRLF to sendbuf
+    // try/catch
     sendbuf.push_back('\r');
+    // try/catch
     sendbuf.push_back('\n');
     return 0;
   }
 
   // Read line from buffer, if found, remove it from buffer and return 0
   // Otherwise, return -1
+  // TODO: make this noexcept
   int readline(std::string& line) {
     char prev = '\0', c;
 
     for (size_t i = 0; i < recvbuf.size(); i++) {
       c = recvbuf[i];
       if (prev == '\r' && c == '\n') {
+        // try/catch
         line.assign(recvbuf.begin(), recvbuf.begin() + i - 1);  // Remove "\r\n"
+        // `std::vector::erase` does not throw unless an exception is thrown by
+        // the assignment operator of T.
         recvbuf.erase(recvbuf.begin(), recvbuf.begin() + i + 1);
         return 0;
       }
@@ -78,7 +91,7 @@ class SocketBuf {
   }
 
   // Actually send data on socket
-  int flush() {
+  int flush() throw() {
     if (sendbuf.empty()) {
       return 0;
     }
@@ -93,29 +106,35 @@ class SocketBuf {
       socket.beClosed();
       return -1;
     }
+    // `std::vector::erase` does not throw unless an exception is thrown by the
+    // assignment operator of T.
     sendbuf.erase(sendbuf.begin(), sendbuf.begin() + ret);
     return ret;
   }
 
-  void flushall() {
+  void flushall() throw() {
     while (flush() > 0)
       ;
   }
 
   // Actually receive data from socket
+  // TODO: make this noexcept
   int fill() {
     static const int flags = 0;
     int prev_size = recvbuf.size();
+    // try/catch
     recvbuf.resize(prev_size + MAXLINE);
     ssize_t ret = ::recv(socket.get_fd(), &recvbuf[prev_size], MAXLINE, flags);
     if (ret < 0) {
       std::cerr << "recv() failed\n";
+      // won't throw because it will shrink
       recvbuf.resize(prev_size);
       return -1;
     }
     if (ret == 0) {
       socket.beClosed();
     }
+    // won't throw because it will shrink
     recvbuf.resize(prev_size + ret);
     return ret;
   }
