@@ -14,12 +14,17 @@
 #include "webserv.hpp"
 
 class GetHandler {
+ private:
+  // Constructor/Destructor/Assignment Operator
+  GetHandler();                              // Do not implement this
+  GetHandler(const GetHandler&);             // Do not implement this
+  GetHandler& operator=(const GetHandler&);  // Do not implement this
+  ~GetHandler();                             // Do not implement this
  public:
-  // Member data
-  // Constructor/Destructor
   // Member functions
+  // TODO: Make this noexcept
   static void handle(std::shared_ptr<SocketBuf> client_socket,
-                     const Header& header) {
+                     const Header& header) throw() {
     // TODO: Write response headers
     std::stringstream ss;
     ssize_t content_length = get_content_length(header.path);
@@ -50,7 +55,7 @@ class GetHandler {
   }
 
  private:
-  static ssize_t get_content_length(const std::string& filepath) {
+  static ssize_t get_content_length(const std::string& filepath) throw() {
     struct stat st;
     if (stat(filepath.c_str(), &st) < 0) {
       std::cerr << "stat() failed\n";
