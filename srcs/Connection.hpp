@@ -24,27 +24,22 @@ class Connection {
 
  public:
   // Constructor/Destructor
-  Connection();  // Do not implement this
+  Connection() throw();  // Do not implement this
   explicit Connection(int listen_fd)
       : client_socket(new SocketBuf(listen_fd)),
         header(),
         status(REQ_START_LINE) {}
-  ~Connection() {}
-  Connection(const Connection &other) { *this = other; }
-  Connection &operator=(const Connection &other) {
-    if (this != &other) {
-      client_socket = other.client_socket;
-      header = other.header;
-      status = other.status;
-    }
-    return *this;
-  }
+  ~Connection() throw() {}
+  Connection(const Connection &other) throw();  // Do not implement this
+  Connection &operator=(
+      const Connection &other) throw();  // Do not implement this
 
   // Accessors
-  int get_fd() { return client_socket->get_fd(); }
-  bool is_done() { return status == DONE; }
+  int get_fd() const throw() { return client_socket->get_fd(); }
+  bool is_done() const throw() { return status == DONE; }
 
   // Member functions
+  // TODO: make this noexcept
   int resume() {
     if (shouldRecv()) {
       client_socket->fill();
@@ -90,15 +85,18 @@ class Connection {
     return 0;
   }
 
-  bool shouldRecv() {
+  bool shouldRecv() const throw() {
     return status == REQ_START_LINE || status == REQ_HEADER_FIELDS ||
            status == REQ_BODY;
   }
 
-  bool shouldSend() { return status == HANDLE || status == RESPONSE; }
+  bool shouldSend() const throw() {
+    return status == HANDLE || status == RESPONSE;
+  }
 
  private:
   // TODO: refactor? fix?
+  // TODO: make this noexcept
   static std::vector<std::string> split(std::string str, char delim) {
     std::vector<std::string> ret;
     int idx = 0;
