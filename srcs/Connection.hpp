@@ -5,6 +5,7 @@
 #include "Header.hpp"
 #include "SocketBuf.hpp"
 #include "webserv.hpp"
+#include "ErrorHandler.hpp"
 
 class Connection {
  private:
@@ -131,7 +132,7 @@ class Connection {
     std::vector<std::string> keywords = split(line, ' ');
     if (keywords.size() != 3) {
       Log::cinfo() << "Invalid start line: " << line << std::endl;
-      client_socket->send("HTTP/1.1 400 Bad Request\r\n", 26);
+      ErrorHandler::handle(client_socket, 400);
       status = RESPONSE;
       return 1;
     }
@@ -160,7 +161,7 @@ class Connection {
       GetHandler::handle(client_socket, header);
     } else {
       Log::cinfo() << "Unsupported method: " << header.method << std::endl;
-      client_socket->send("HTTP/1.1 405 Method Not Allowed\r\n", 34);
+      ErrorHandler::handle(client_socket, 405);
     }
     status = RESPONSE;
     return 1;
