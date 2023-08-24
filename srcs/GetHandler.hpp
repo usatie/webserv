@@ -39,19 +39,21 @@ class GetHandler {
     ss << "HTTP/1.1 200 OK\r\n";
     ss << "Server: " << SERVER_NAME << "\r\n";
     // ss << "Date: Tue, 11 Jul 2023 07:36:50 GMT\r\n";
-    if (header.path.find(".css") != std::string::npos)
+    if (util::string::ends_with(header.path, ".css"))
       ss << "Content-Type: text/css\r\n";
-    else if (header.path.find(".js") != std::string::npos)
+    else if (util::string::ends_with(header.path, ".js"))
       ss << "Content-Type: text/javascript\r\n";
-    else if (header.path.find(".jpg") != std::string::npos)
+    else if (util::string::ends_with(header.path, ".jpg"))
       ss << "Content-Type: image/jpeg\r\n";
-    else if (header.path.find(".png") != std::string::npos)
+    else if (util::string::ends_with(header.path, ".png"))
       ss << "Content-Type: image/png\r\n";
-    else if (header.path.find(".gif") != std::string::npos)
+    else if (util::string::ends_with(header.path, ".gif"))
       ss << "Content-Type: image/gif\r\n";
-    else if (header.path.find(".ico") != std::string::npos)
+    else if (util::string::ends_with(header.path, ".ico"))
       ss << "Content-Type: image/x-icon\r\n";
-    else if (header.path.find(".html") != std::string::npos) 
+    else if (util::string::ends_with(header.path, ".svg"))
+      ss << "Content-Type: image/svg+xml\r\n";
+    else if (util::string::ends_with(header.path, ".html"))
       ss << "Content-Type: text/html\r\n";
     else
       ss << "Content-Type: text/plain\r\n";
