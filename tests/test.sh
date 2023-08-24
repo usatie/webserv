@@ -6,7 +6,7 @@ WEBSERV_PORT=8181
 # disown for not make the shell script failure when the server is pkilled
 ./webserv & disown
 # wait for server warm up
-sleep 0.5
+sleep 1.0
 
 # 2. Tests
 echo -n "Test1    : "
@@ -16,11 +16,6 @@ diff tests/responses/1 out && echo "OK" || echo "NG"
 echo -n "Test2    : "
 nc localhost $WEBSERV_PORT <tests/requests/2 >out
 diff tests/responses/2 out && echo "OK" || echo "NG"
-
-# 3. Big file, small memory
-echo -n "Bad Alloc Test : "
-
-
 
 # 3. Clean up
 rm -f out
