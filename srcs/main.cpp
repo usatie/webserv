@@ -8,12 +8,17 @@
 
 // main function can throw exceptions.
 int main(int argc, char *argv[]) {
+#ifdef DEBUG
+  Log::setLevel(Log::Debug);
+#else
+  Log::setLevel(Log::Warn);
+#endif
+
   (void)argc, (void)argv;
   // We do not handle exceptions in constructor of Server.
   // Just end this program in that case.
   Server server(PORT, BACKLOG);
 
-  Log::setLevel(Log::Debug);
   if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
     Log::fatal("signal() failed");
     return ERROR;
