@@ -11,7 +11,9 @@
 
 #include "Header.hpp"
 #include "SocketBuf.hpp"
+#include "http_special_response.hpp"
 #include "webserv.hpp"
+#include "ErrorHandler.hpp"
 
 class GetHandler {
  private:
@@ -30,44 +32,36 @@ class GetHandler {
 
     if ((content_length = get_content_length(header.path)) < 0) {
       Log::error("get_content_length() failed");
-      ss << "HTTP/1.1 404 Resource Not Found\r\n";
-      // TODO send some error message
-      ss << "\r\n";
-      client_socket->send(ss.str().c_str(), ss.str().size());
+      ErrorHandler::handle(client_socket, 404);
       return;
     }
-    ss << "HTTP/1.1 200 OK\r\n";
-    ss << "Server: " << SERVER_NAME << "\r\n";
-    // ss << "Date: Tue, 11 Jul 2023 07:36:50 GMT\r\n";
+    ss << "HTTP/1.1 200 OK" << CRLF;
+    ss << "Server: " << WEBSERV_VER << CRLF;
+    // ss << "Date: Tue, 11 Jul 2023 07:36:50 GMT" << CRLF;
     if (util::string::ends_with(header.path, ".css"))
-      ss << "Content-Type: text/css\r\n";
+      ss << "Content-Type: text/css" << CRLF;
     else if (util::string::ends_with(header.path, ".js"))
-      ss << "Content-Type: text/javascript\r\n";
+      ss << "Content-Type: text/javascript" << CRLF;
     else if (util::string::ends_with(header.path, ".jpg"))
-      ss << "Content-Type: image/jpeg\r\n";
+      ss << "Content-Type: image/jpeg" << CRLF;
     else if (util::string::ends_with(header.path, ".png"))
-      ss << "Content-Type: image/png\r\n";
+      ss << "Content-Type: image/png" << CRLF;
     else if (util::string::ends_with(header.path, ".gif"))
-      ss << "Content-Type: image/gif\r\n";
+      ss << "Content-Type: image/gif" << CRLF;
     else if (util::string::ends_with(header.path, ".ico"))
-      ss << "Content-Type: image/x-icon\r\n";
+      ss << "Content-Type: image/x-icon" << CRLF;
     else if (util::string::ends_with(header.path, ".svg"))
-      ss << "Content-Type: image/svg+xml\r\n";
+      ss << "Content-Type: image/svg+xml" << CRLF;
     else if (util::string::ends_with(header.path, ".html"))
-      ss << "Content-Type: text/html\r\n";
+      ss << "Content-Type: text/html" << CRLF;
     else
-      ss << "Content-Type: text/plain\r\n";
-    ss << "Content-Length: " << content_length << "\r\n";
-    ss << "\r\n";
+      ss << "Content-Type: text/plain" << CRLF;
+    ss << "Content-Length: " << content_length << CRLF;
+    ss << CRLF; // end of header
     client_socket->send(ss.str().c_str(), ss.str().size());
     if (client_socket->send_file(header.path) < 0) {
       Log::error("send_file() failed");
-      client_socket->clear_sendbuf();
-      ss.str("");
-      ss << "HTTP/1.1 500 Internal Server Error\r\n";
-      // TODO send some error message
-      ss << "\r\n";
-      client_socket->send(ss.str().c_str(), ss.str().size());
+      ErrorHandler::handle(client_socket, 500);
       return;
     }
   }
