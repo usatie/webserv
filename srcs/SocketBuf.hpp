@@ -121,9 +121,7 @@ class SocketBuf {
     if (sendbuf.empty()) {
       return 0;
     }
-    // ssize_t ret = ::send(fd, &sendbuf[0], sendbuf.size(), SO_NOSIGPIPE);
-    ssize_t ret = ::send(socket.get_fd(), &sendbuf[0],
-                         std::min(10, (int)sendbuf.size()), 0);
+    ssize_t ret = ::send(socket.get_fd(), &sendbuf[0], sendbuf.size(), SO_NOSIGPIPE);
     if (ret < 0) {
       Log::cerror() << "send() failed, errno: " << errno << "\n";
       // TODO: handle EINTR
@@ -144,7 +142,6 @@ class SocketBuf {
     }
     static const int flags = 0;
     int prev_size = recvbuf.size();
-    // try/catch
     try {
       recvbuf.resize(prev_size + MAXLINE);
     } catch (const std::exception& e) {
