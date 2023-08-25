@@ -121,11 +121,6 @@ class Connection {
     std::string line;
 
     if (client_socket->readline(line) < 0) {
-      if (client_socket->isClosed()) {
-        Log::info("client_socket->closed");
-        status = DONE;
-        return 1;
-      }
       return 0;
     }
     Log::cdebug() << "start line: " << line << std::endl;
@@ -159,6 +154,8 @@ class Connection {
   int handle() {
     if (header.method == "GET") {
       GetHandler::handle(client_socket, header);
+    } else if (header.method == "POST") {
+      PostHandler::handle(client_socket, header);
     } else {
       Log::cinfo() << "Unsupported method: " << header.method << std::endl;
       ErrorHandler::handle(client_socket, 405);
