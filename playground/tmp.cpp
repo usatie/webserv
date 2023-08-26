@@ -5,8 +5,10 @@
 #include <unistd.h>
 #include <sstream>
 #include <iostream>
+#include <string>
 
 int main() {
+  /*
   std::stringstream ss;
   ss << "hoge\nfuga";
   std::string line;
@@ -30,6 +32,7 @@ int main() {
     std::cout << line << std::endl;
     std::cout << ss.eof() << std::endl;
   }
+  */
   /*
   std::cout << "[" << ss.str() << "]" << std::endl;
   ss.clear();
@@ -39,8 +42,7 @@ int main() {
     std::cout << ss.eof() << std::endl;
   }
   */
-  /*
-  std::stringstream ss("GET / HTTP/1.1\r\nHost: example.com\r\n\r\n");
+  std::stringstream ss("a b c ");
   //std::cout << ss.bad() << std::endl;
   //std::cout << ss.fail() << std::endl;
   //std::cout << ss.str() << std::endl;
@@ -54,7 +56,11 @@ int main() {
   std::cout << "METHOD: " << method << std::endl;
   std::cout << "PATH: " << path << std::endl;
   std::cout << "VERSION: " << version << std::endl;
+  std::cout << "fail: " << tmp.fail() << std::endl;
+  std::cout << "bad: " << tmp.bad() << std::endl;
+  std::cout << "eof: " << tmp.eof() << std::endl;
 
+  /*
   std::cout << "<<<Header Fields>>>" << std::endl;
   while (std::getline(ss, line)) {
     if (line.back() == '\r')
