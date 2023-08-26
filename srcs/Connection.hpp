@@ -95,67 +95,56 @@ class Connection {
     return status == HANDLE || status == RESPONSE;
   }
 
- private:
-  // TODO: refactor? fix?
+#define SPACE ' '
   // TODO: make this noexcept
-  static std::vector<std::string> split(std::string str, char delim) {
-    std::vector<std::string> ret;
-    int idx = 0;
-    while (str[idx]) {
-      std::string line;
-      while (str[idx] && str[idx] != delim) {
-        line += str[idx];
-        idx++;
-      }
-      while (str[idx] && str[idx] == delim) {
-        idx++;
-      }
-      if (!line.empty()) {
-        ret.push_back(line);
-      }
-    }
-    return ret;
-  }
-
-  int parse_start_line() {
+  // https://datatracker.ietf.org/doc/html/rfc2616#section-5.1
+  // Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
+  int parse_start_line() throw() {
     std::string line;
 
     if (client_socket->readline(line) < 0) {
       return 0;
     }
     Log::cdebug() << "start line: " << line << std::endl;
-    std::vector<std::string> keywords = split(line, ' ');
-    if (keywords.size() != 3) {
+    std::stringstream ss;
+    ss << line;
+    ss >> header.method;
+    ss >> header.path;
+    ss >> header.version;
+    // ss.bad()  : possibly bad alloc
+    if (ss.bad()) {
+      Log::cfatal() << "ss bad bit is set" << line << std::endl;
+      ErrorHandler::handle(client_socket, 500);
+      status = RESPONSE;
+      return 1;
+    }
+    // ss.fail() : method or path or version is missing
+    // !ss.eof()  : there are more than 3 tokens or extra white spaces
+    if (ss.fail() || !ss.eof()) {
       Log::cinfo() << "Invalid start line: " << line << std::endl;
       ErrorHandler::handle(client_socket, 400);
       status = RESPONSE;
       return 1;
     }
-    // TODO: validate keywords
-    header.method = keywords[0];
-    header.path = "./" + keywords[1];
-    header.version = keywords[2];
     status = REQ_HEADER_FIELDS;
     return 1;
   }
 
-  int parse_header_fields() {
+  int parse_header_fields() throw() {
     // TODO: implement
     status = REQ_BODY;
     return 1;
   }
 
-  int parse_body() {
+  int parse_body() throw() {
     // TODO: implement
     status = HANDLE;
     return 1;
   }
 
-  int handle() {
+  int handle() throw() {
     if (header.method == "GET") {
       GetHandler::handle(client_socket, header);
-    } else if (header.method == "POST") {
-      PostHandler::handle(client_socket, header);
     } else {
       Log::cinfo() << "Unsupported method: " << header.method << std::endl;
       ErrorHandler::handle(client_socket, 405);
@@ -164,7 +153,7 @@ class Connection {
     return 1;
   }
 
-  int response() {
+  int response() throw() {
     if (client_socket->isSendBufEmpty()) {
       status = DONE;
       return 1;
