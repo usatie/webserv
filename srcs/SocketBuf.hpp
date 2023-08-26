@@ -121,7 +121,8 @@ class SocketBuf {
     if (sendbuf.empty()) {
       return 0;
     }
-    ssize_t ret = ::send(socket.get_fd(), &sendbuf[0], sendbuf.size(), SO_NOSIGPIPE);
+    ssize_t ret =
+        ::send(socket.get_fd(), &sendbuf[0], sendbuf.size(), SO_NOSIGPIPE);
     if (ret < 0) {
       Log::cerror() << "send() failed, errno: " << errno << "\n";
       // TODO: handle EINTR
@@ -165,6 +166,19 @@ class SocketBuf {
   void clear_sendbuf() throw() { sendbuf.clear(); }
 
   int set_nonblock() throw() { return socket.set_nonblock(); }
+
+  SocketBuf& operator<<(const std::string& str) throw() {
+    send(str.c_str(), str.size());
+    return *this;
+  }
+
+  // TODO remove
+  SocketBuf& operator<<(const unsigned long n) throw() {
+    std::ostringstream oss;
+    oss << n;
+    std::string result = oss.str();
+    return operator<<(result);
+  }
 };
 
 #endif
