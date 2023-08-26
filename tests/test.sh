@@ -12,11 +12,7 @@ sleep 1.0
 for i in {1..3}; do
   echo -n "Test${i}   : "
   nc localhost $WEBSERV_PORT <tests/requests/$i >out
-  if diff tests/responses/$i out; then
-    echo "OK"
-  else
-    echo "NG"
-  fi
+  diff tests/responses/$i out && echo "OK" || echo "NG"
 done
 
 # 3. Clean up
