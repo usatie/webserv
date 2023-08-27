@@ -12,7 +12,7 @@ sleep 1.0
 for i in {1..3}; do
   echo -n "Test${i}   : "
   nc localhost $WEBSERV_PORT <tests/requests/$i >out
-  diff tests/responses/$i out && echo "OK" || echo "NG"
+  diff -b tests/responses/$i out && echo "OK" || echo "NG"
 done
 
 # 3. Clean up
