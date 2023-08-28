@@ -19,7 +19,8 @@ class SocketBuf {
  public:
  private:
   Socket socket;
-  std::vector<char> recvbuf, sendbuf;
+  std::vector<char> recvbuf;
+  std::stringstream rss, wss;
   bool stl_error;
 
   SocketBuf() throw();  // Do not implement this
@@ -30,7 +31,7 @@ class SocketBuf {
  public:
   // Constructor/Destructor
   explicit SocketBuf(int listen_fd)
-      : socket(listen_fd), recvbuf(), sendbuf(), stl_error(false) {
+      : socket(listen_fd), recvbuf(), rss(), wss(), stl_error(false) {
     if (socket.set_nonblock() < 0) {
       throw std::runtime_error("socket.set_nonblock() failed");
     }
@@ -40,24 +41,11 @@ class SocketBuf {
   // Accessors
   int get_fd() const throw() { return socket.get_fd(); }
   bool isClosed() const throw() { return socket.isClosed(); }
-  bool isSendBufEmpty() const throw() { return sendbuf.empty(); }
+  // tellg() updates the internal state of the stream, so it is not const
+  bool isSendBufEmpty() throw() { return (wss.str().size() - wss.tellg()) == 0; }
   bool get_stl_error() const throw() { return stl_error; }
 
   // Member functions
-  int send(const char msg[], size_t len) throw() {
-    if (stl_error) {
-      return -1;
-    }
-    try {
-      sendbuf.insert(sendbuf.end(), msg, msg + len);
-      return 0;
-    } catch (const std::exception& e) {
-      Log::fatal("sendbuf.insert() failed");
-      stl_error = true;
-      return -1;
-    }
-  }
-
   int send_file(std::string filepath) throw() {
     if (stl_error) {
       return -1;
@@ -68,19 +56,13 @@ class SocketBuf {
       Log::fatal("file open failed");
       return -1;
     }
-    try {
-      // TODO: ifstreambuf_iterator cannot handle error
-      sendbuf.insert(sendbuf.end(), std::istreambuf_iterator<char>(ifs),
-                     std::istreambuf_iterator<char>());
-      // Append CRLF to sendbuf
-      sendbuf.push_back('\r');
-      sendbuf.push_back('\n');
-      return 0;
-    } catch (const std::exception& e) {
-      Log::fatal("insert() or push_back() failed");
+    wss << ifs.rdbuf() << CRLF;
+    if (wss.fail()) {
+      Log::fatal("wss << ifs.rdbuf() << CRLF failed");
       stl_error = true;
       return -1;
     }
+    return 0;
   }
 
   // Read line from buffer, if found, remove it from buffer and return 0
@@ -118,11 +100,12 @@ class SocketBuf {
     if (stl_error) {
       return -1;
     }
-    if (sendbuf.empty()) {
+    if (isSendBufEmpty()) {
       return 0;
     }
+    std::string buf = wss.str();
     ssize_t ret =
-        ::send(socket.get_fd(), &sendbuf[0], sendbuf.size(), SO_NOSIGPIPE);
+        ::send(socket.get_fd(), buf.c_str(), buf.size(), SO_NOSIGPIPE);
     if (ret < 0) {
       Log::cerror() << "send() failed, errno: " << errno << "\n";
       // TODO: handle EINTR
@@ -130,9 +113,7 @@ class SocketBuf {
       socket.beClosed();
       return -1;
     }
-    // `std::vector::erase` does not throw unless an exception is thrown by the
-    // assignment operator of T.
-    sendbuf.erase(sendbuf.begin(), sendbuf.begin() + ret);
+    wss.seekg(ret, std::ios::cur);
     return ret;
   }
 
@@ -163,12 +144,19 @@ class SocketBuf {
     return ret;
   }
 
-  void clear_sendbuf() throw() { sendbuf.clear(); }
+  void clear_sendbuf() throw() { wss.clear(); }
 
   int set_nonblock() throw() { return socket.set_nonblock(); }
 
   SocketBuf& operator<<(const std::string& str) throw() {
-    send(str.c_str(), str.size());
+    if (stl_error) {
+      return *this;
+    }
+    wss << str ;
+    if (wss.fail()) {
+      Log::fatal("wss << msg failed");
+      stl_error = true;
+    }
     return *this;
   }
 
