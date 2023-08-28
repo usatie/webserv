@@ -9,10 +9,10 @@ WEBSERV_PORT=8181
 sleep 1.0
 
 # 2. Tests
-for i in {1..3}; do
+for i in {1..4}; do
   echo -n "Test${i}   : "
   nc localhost $WEBSERV_PORT <tests/requests/$i >out
-  diff -b tests/responses/$i out && echo "OK" || echo "NG"
+  diff tests/responses/$i out && echo "OK" || echo "NG"
 done
 
 # 3. Clean up
