@@ -9,31 +9,6 @@
 
 int main() {
   /*
-  std::stringstream ss;
-  ss << "hoge\nfuga";
-  std::string line;
-  while (std::getline(ss, line)) {
-    if (ss.eof()) {
-      std::cout << "EOF" << std::endl;
-      ss.seekg(-line.size(), std::ios::cur);
-      break;
-    }
-    std::cout << line << std::endl;
-    std::cout << ss.eof() << std::endl;
-  }
-  std::cout << "----------------" << std::endl;
-  ss << "\n";
-  while (std::getline(ss, line)) {
-    if (ss.eof()) {
-      std::cout << "EOF" << std::endl;
-      ss.seekg(-line.size(), std::ios::cur);
-      break;
-    }
-    std::cout << line << std::endl;
-    std::cout << ss.eof() << std::endl;
-  }
-  */
-  /*
   std::cout << "[" << ss.str() << "]" << std::endl;
   ss.clear();
   ss.str("hoge\nfuga\n");
