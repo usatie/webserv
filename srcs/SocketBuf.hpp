@@ -19,9 +19,7 @@ class SocketBuf {
  public:
  private:
   Socket socket;
-  std::vector<char> recvbuf;
   std::stringstream rss, wss;
-  bool stl_error;
 
   SocketBuf() throw();  // Do not implement this
   SocketBuf& operator=(
@@ -31,7 +29,7 @@ class SocketBuf {
  public:
   // Constructor/Destructor
   explicit SocketBuf(int listen_fd)
-      : socket(listen_fd), recvbuf(), rss(), wss(), stl_error(false) {
+      : socket(listen_fd), rss(), wss() {
     if (socket.set_nonblock() < 0) {
       throw std::runtime_error("socket.set_nonblock() failed");
     }
@@ -43,11 +41,15 @@ class SocketBuf {
   bool isClosed() const throw() { return socket.isClosed(); }
   // tellg() updates the internal state of the stream, so it is not const
   bool isSendBufEmpty() throw() { return (wss.str().size() - wss.tellg()) == 0; }
-  bool get_stl_error() const throw() { return stl_error; }
+  bool bad() const throw() { return rss.bad() || wss.bad(); }
 
   // Member functions
+  void setbadstate() throw() {
+    rss.setstate(rss.rdstate() | std::ios::badbit);
+    wss.setstate(wss.rdstate() | std::ios::badbit);
+  }
   int send_file(std::string filepath) throw() {
-    if (stl_error) {
+    if (bad()) {
       return -1;
     }
     std::ifstream ifs(filepath.c_str(), std::ios::binary);
@@ -57,9 +59,9 @@ class SocketBuf {
       return -1;
     }
     wss << ifs.rdbuf() << CRLF;
-    if (wss.fail()) {
+    if (wss.bad()) {
       Log::fatal("wss << ifs.rdbuf() << CRLF failed");
-      stl_error = true;
+      setbadstate();
       return -1;
     }
     return 0;
@@ -68,104 +70,115 @@ class SocketBuf {
   // Read line from buffer, if found, remove it from buffer and return 0
   // Otherwise, return -1
   int readline(std::string& line) throw() {
-    if (stl_error) {
+    if (bad()) {
       return -1;
     }
-    char prev = '\0', c;
-
-    for (size_t i = 0; i < recvbuf.size(); i++) {
-      c = recvbuf[i];
-      if (prev == '\r' && c == '\n') {
-        // try/catch
-        try {
-          line.assign(recvbuf.begin(),
-                      recvbuf.begin() + i - 1);  // Remove "\r\n"
-        } catch (const std::exception& e) {
-          Log::fatal("line.assign() failed");
-          stl_error = true;
+    // TODO: handle eofbit and failbit, they can be set by getline
+    // This is temporary solution, we need unit tests!
+    rss.setstate(rss.rdstate() & ~std::ios::eofbit);
+    rss.setstate(rss.rdstate() & ~std::ios::failbit);
+    try {
+      // If there is no LF in buffer, return -1
+      if (!std::getline(rss, line, LF)) {
+        return -1;
+      }
+      // no LF found
+      if (rss.eof()) {
+        rss.seekg(-line.size(), std::ios::cur);
+        if (!std::getline(rss, line, CR)) {
           return -1;
         }
-        // `std::vector::erase` does not throw unless an exception is thrown by
-        // the assignment operator of T.
-        recvbuf.erase(recvbuf.begin(), recvbuf.begin() + i + 1);
+        // If no CR nor LF found, put the line back to buffer
+        if (rss.eof()) {
+          Log::debug("EOF found before CR nor LF");
+          rss.seekg(-line.size(), std::ios::cur);
+          return -1;
+        }
+        // If CR found, return 0;
         return 0;
       }
-      prev = c;
+      // If CRLF found, remove CR
+      if (line.back() == CR) {
+        line.pop_back();
+      }
+      // If LF found, return 0
+      return 0;
+    } catch (std::exception& e) {
+      Log::fatal("getline() failed");
+      setbadstate();
+      return -1;
     }
-    return -1;
   }
 
   // Actually send data on socket
   int flush() throw() {
-    if (stl_error) {
+    if (bad()) {
       return -1;
     }
     if (isSendBufEmpty()) {
       return 0;
     }
-    std::string buf = wss.str();
-    ssize_t ret =
-        ::send(socket.get_fd(), buf.c_str(), buf.size(), SO_NOSIGPIPE);
-    if (ret < 0) {
-      Log::cerror() << "send() failed, errno: " << errno << "\n";
-      // TODO: handle EINTR
-      // ETIMEDOUT, EPIPE in any case means the connection is closed
-      socket.beClosed();
+    try {
+      std::string buf(wss.str());
+      ssize_t ret =
+          ::send(socket.get_fd(), buf.c_str(), buf.size(), SO_NOSIGPIPE);
+      if (ret < 0) {
+        Log::cerror() << "send() failed, errno: " << errno << "\n";
+        // TODO: handle EINTR
+        // ETIMEDOUT, EPIPE in any case means the connection is closed
+        socket.beClosed();
+        return -1;
+      }
+      wss.seekg(ret, std::ios::cur);
+      return ret;
+    } catch (std::exception& e) {
+      Log::fatal("wss.str() failed");
+      setbadstate();
       return -1;
     }
-    wss.seekg(ret, std::ios::cur);
-    return ret;
   }
 
   // Actually receive data from socket
   int fill() throw() {
-    if (stl_error) {
+    if (bad()) {
       return -1;
     }
+    static char buf[MAXLINE] = {0};
     static const int flags = 0;
-    int prev_size = recvbuf.size();
-    try {
-      recvbuf.resize(prev_size + MAXLINE);
-    } catch (const std::exception& e) {
-      Log::fatal("recvbuf.resize() failed");
-      stl_error = true;
-      return -1;
-    }
-    ssize_t ret = ::recv(socket.get_fd(), &recvbuf[prev_size], MAXLINE, flags);
+    ssize_t ret = ::recv(socket.get_fd(), (void *)buf, MAXLINE, flags);
     if (ret < 0) {
       Log::error("recv() failed");
-      recvbuf.resize(prev_size);  // won't throw because it will shrink
       return -1;
     }
     if (ret == 0) {
       socket.beClosed();
     }
-    recvbuf.resize(prev_size + ret);  // won't throw because it will shrink
-    return ret;
+    // Fill ret bytes buf into rss
+    try {
+      rss << std::string(buf, ret);
+      return ret;
+    } catch (std::exception& e) {
+      Log::fatal("rss << std::string(buf, ret) failed");
+      setbadstate();
+      return -1;
+    }
   }
 
   void clear_sendbuf() throw() { wss.clear(); }
 
   int set_nonblock() throw() { return socket.set_nonblock(); }
 
-  SocketBuf& operator<<(const std::string& str) throw() {
-    if (stl_error) {
+  template <typename T>
+  SocketBuf& operator<<(const T& t) throw() {
+    if (bad()) {
       return *this;
     }
-    wss << str ;
+    wss << t ;
     if (wss.fail()) {
       Log::fatal("wss << msg failed");
-      stl_error = true;
+      setbadstate();
     }
     return *this;
-  }
-
-  // TODO remove
-  SocketBuf& operator<<(const unsigned long n) throw() {
-    std::ostringstream oss;
-    oss << n;
-    std::string result = oss.str();
-    return operator<<(result);
   }
 };
 

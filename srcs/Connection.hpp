@@ -78,8 +78,8 @@ class Connection {
       }
     }
     // Finally, check if there is any error while handling the request
-    if (client_socket->get_stl_error()) {
-      Log::info("client_socket->get_stl_error()");
+    if (client_socket->bad()) {
+      Log::info("client_socket->bad()");
       status = DONE;
       return -1;
     }
