@@ -29,7 +29,7 @@ class GetHandler {
     // TODO: Write response headers
     ssize_t content_length;
 
-    if ((content_length = get_content_length(header.path)) < 0) {
+    if ((content_length = get_content_length(header.fullpath)) < 0) {
       Log::error("get_content_length() failed");
       ErrorHandler::handle(client_socket, 404);
       return;
@@ -57,7 +57,7 @@ class GetHandler {
       client_socket << "Content-Type: text/plain" << CRLF;
     client_socket << "Content-Length: " << content_length << CRLF;
     client_socket << CRLF; // end of header
-    if (client_socket.send_file(header.path) < 0) {
+    if (client_socket.send_file(header.fullpath) < 0) {
       Log::error("send_file() failed");
       ErrorHandler::handle(client_socket, 500);
       return;
