@@ -5,3 +5,5 @@
 *.d
 out
 webserv
+unit
+!tests/unit

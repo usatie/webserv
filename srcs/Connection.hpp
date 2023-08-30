@@ -78,8 +78,8 @@ class Connection {
       }
     }
     // Finally, check if there is any error while handling the request
-    if (client_socket->get_stl_error()) {
-      Log::info("client_socket->get_stl_error()");
+    if (client_socket->bad()) {
+      Log::info("client_socket->bad()");
       status = DONE;
       return -1;
     }
@@ -114,7 +114,7 @@ class Connection {
     // ss.bad()  : possibly bad alloc
     if (ss.bad()) {
       Log::cfatal() << "ss bad bit is set" << line << std::endl;
-      ErrorHandler::handle(client_socket, 500);
+      ErrorHandler::handle(*client_socket, 500);
       status = RESPONSE;
       return 1;
     }
@@ -122,7 +122,7 @@ class Connection {
     // !ss.eof()  : there are more than 3 tokens or extra white spaces
     if (ss.fail() || !ss.eof()) {
       Log::cinfo() << "Invalid start line: " << line << std::endl;
-      ErrorHandler::handle(client_socket, 400);
+      ErrorHandler::handle(*client_socket, 400);
       status = RESPONSE;
       return 1;
     }
@@ -144,10 +144,10 @@ class Connection {
 
   int handle() throw() {
     if (header.method == "GET") {
-      GetHandler::handle(client_socket, header);
+      GetHandler::handle(*client_socket, header);
     } else {
       Log::cinfo() << "Unsupported method: " << header.method << std::endl;
-      ErrorHandler::handle(client_socket, 405);
+      ErrorHandler::handle(*client_socket, 405);
     }
     status = RESPONSE;
     return 1;

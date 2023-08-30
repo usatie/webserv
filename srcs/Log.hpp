@@ -1,3 +1,5 @@
+#ifndef LOG_HPP
+#define LOG_HPP
 #include <fstream>
 #include <iostream>
 
@@ -18,3 +20,4 @@ std::ostream& cwarn() throw();
 std::ostream& cerror() throw();
 std::ostream& cfatal() throw();
 }  // namespace Log
+#endif

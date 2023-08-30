@@ -24,10 +24,9 @@ class GetHandler {
   ~GetHandler() throw();                             // Do not implement this
  public:
   // Member functions
-  static void handle(std::shared_ptr<SocketBuf> client_socket,
+  static void handle(SocketBuf& client_socket,
                      const Header& header) throw() {
     // TODO: Write response headers
-    std::stringstream ss;
     ssize_t content_length;
 
     if ((content_length = get_content_length(header.path)) < 0) {
@@ -35,31 +34,30 @@ class GetHandler {
       ErrorHandler::handle(client_socket, 404);
       return;
     }
-    ss << "HTTP/1.1 200 OK" << CRLF;
-    ss << "Server: " << WEBSERV_VER << CRLF;
-    // ss << "Date: Tue, 11 Jul 2023 07:36:50 GMT" << CRLF;
+    client_socket << "HTTP/1.1 200 OK" << CRLF;
+    client_socket << "Server: " << WEBSERV_VER << CRLF;
+    // client_socket << "Date: Tue, 11 Jul 2023 07:36:50 GMT" << CRLF;
     if (util::string::ends_with(header.path, ".css"))
-      ss << "Content-Type: text/css" << CRLF;
+      client_socket << "Content-Type: text/css" << CRLF;
     else if (util::string::ends_with(header.path, ".js"))
-      ss << "Content-Type: text/javascript" << CRLF;
+      client_socket << "Content-Type: text/javascript" << CRLF;
     else if (util::string::ends_with(header.path, ".jpg"))
-      ss << "Content-Type: image/jpeg" << CRLF;
+      client_socket << "Content-Type: image/jpeg" << CRLF;
     else if (util::string::ends_with(header.path, ".png"))
-      ss << "Content-Type: image/png" << CRLF;
+      client_socket << "Content-Type: image/png" << CRLF;
     else if (util::string::ends_with(header.path, ".gif"))
-      ss << "Content-Type: image/gif" << CRLF;
+      client_socket << "Content-Type: image/gif" << CRLF;
     else if (util::string::ends_with(header.path, ".ico"))
-      ss << "Content-Type: image/x-icon" << CRLF;
+      client_socket << "Content-Type: image/x-icon" << CRLF;
     else if (util::string::ends_with(header.path, ".svg"))
-      ss << "Content-Type: image/svg+xml" << CRLF;
+      client_socket << "Content-Type: image/svg+xml" << CRLF;
     else if (util::string::ends_with(header.path, ".html"))
-      ss << "Content-Type: text/html" << CRLF;
+      client_socket << "Content-Type: text/html" << CRLF;
     else
-      ss << "Content-Type: text/plain" << CRLF;
-    ss << "Content-Length: " << content_length << CRLF;
-    ss << CRLF; // end of header
-    client_socket->send(ss.str().c_str(), ss.str().size());
-    if (client_socket->send_file(header.path) < 0) {
+      client_socket << "Content-Type: text/plain" << CRLF;
+    client_socket << "Content-Length: " << content_length << CRLF;
+    client_socket << CRLF; // end of header
+    if (client_socket.send_file(header.path) < 0) {
       Log::error("send_file() failed");
       ErrorHandler::handle(client_socket, 500);
       return;
