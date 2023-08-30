@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <sstream>
 #define MAXLINE 1024
 #include <fcntl.h>
 
@@ -75,36 +76,46 @@ class SocketBuf {
     }
     // TODO: handle eofbit and failbit, they can be set by getline
     // This is temporary solution, we need unit tests!
-    rss.setstate(rss.rdstate() & ~std::ios::eofbit);
-    rss.setstate(rss.rdstate() & ~std::ios::failbit);
+    rss.clear();
     try {
       // If there is no LF in buffer, return -1
       if (!std::getline(rss, line, LF)) {
+        Log::debug("std::getline(LF) failed");
+        line.clear();
         return -1;
       }
       // no LF found
       if (rss.eof()) {
+        Log::debug("no LF found");
         rss.seekg(-line.size(), std::ios::cur);
         if (!std::getline(rss, line, CR)) {
+          Log::debug("std::getline(CR) failed");
+          line.clear();
           return -1;
         }
         // If no CR nor LF found, put the line back to buffer
         if (rss.eof()) {
-          Log::debug("EOF found before CR nor LF");
+          Log::debug("Neither CR nor LF found");
           rss.seekg(-line.size(), std::ios::cur);
+          line.clear();
           return -1;
         }
+        Log::debug("only CR found");
         // If CR found, return 0;
         return 0;
       }
       // If CRLF found, remove CR
       if (line.back() == CR) {
+        Log::debug("CRLF found");
         line.pop_back();
+      } else {
+        Log::debug("only LF found");
       }
       // If LF found, return 0
       return 0;
     } catch (std::exception& e) {
       Log::fatal("getline() failed");
+      line.clear();
       setbadstate();
       return -1;
     }
@@ -155,10 +166,14 @@ class SocketBuf {
     }
     // Fill ret bytes buf into rss
     try {
-      rss << std::string(buf, ret);
+      std::string s(buf, ret);
+      // TODO: handle eofbit and failbit, they can be set by getline
+      // This is temporary solution, we need unit tests!
+      rss.clear();
+      rss << s;
       return ret;
     } catch (std::exception& e) {
-      Log::fatal("rss << std::string(buf, ret) failed");
+      Log::fatal("std::string(buf, ret) failed");
       setbadstate();
       return -1;
     }
