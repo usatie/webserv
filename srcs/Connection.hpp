@@ -131,9 +131,16 @@ class Connection {
   }
 
   int parse_header_fields() throw() {
-    // TODO: implement
-    status = REQ_BODY;
-    return 1;
+    std::string line;
+    while (client_socket->readline(line) == 0) {
+      if (line == "") {
+        status = REQ_BODY;
+        return 1;
+      }
+      // TODO: parse header fields
+      Log::cdebug() << "header line: " << line << std::endl;
+    }
+    return 0;
   }
 
   int parse_body() throw() {
