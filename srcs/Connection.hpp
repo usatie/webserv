@@ -169,7 +169,13 @@ class Connection {
         std::stringstream ss(line); // throwable! (bad alloc) (cf. playground/hoge.cpp)
         std::string key, value;
         if (std::getline(ss, key, ':') == 0) { // throwable
-          Log::cinfo() << "Invalid header line: " << line << std::endl;
+          Log::cerror() << "std::getline(ss, key, ':') failed. line: " << line << std::endl;
+          ErrorHandler::handle(*client_socket, 500);
+          status = RESPONSE;
+          return 1;
+        }
+        if (util::http::is_token(key) == false) {
+          Log::cinfo() << "Header filed-name is not token: : " << key << std::endl;
           ErrorHandler::handle(*client_socket, 400);
           status = RESPONSE;
           return 1;

@@ -27,13 +27,28 @@ class GetHandler {
   static void handle(SocketBuf& client_socket,
                      const Header& header) throw() {
     // TODO: Write response headers
-    ssize_t content_length;
-
-    if ((content_length = get_content_length(header.fullpath)) < 0) {
-      Log::error("get_content_length() failed");
+    struct stat st;
+    if (stat(header.fullpath.c_str(), &st) < 0) {
+      Log::cerror() << "stat() failed: " << header.fullpath << ", errno:" << strerror(errno) << std::endl;
       ErrorHandler::handle(client_socket, 404);
       return;
     }
+    // Check if directory
+    if (S_ISDIR(st.st_mode)) {
+      // TODO: Check if index.html exists
+      // TODO: directory listing
+      Log::cdebug() << "is a directory: " << header.fullpath << std::endl;
+      ErrorHandler::handle(client_socket, 404);
+      return;
+    }
+    // Check if regular file
+    if (!S_ISREG(st.st_mode)) {
+      Log::cdebug() << "not a regular file: " << header.fullpath << std::endl;
+      ErrorHandler::handle(client_socket, 404);
+      return;
+    }
+    size_t content_length = st.st_size;
+
     client_socket << "HTTP/1.1 200 OK" << CRLF;
     client_socket << "Server: " << WEBSERV_VER << CRLF;
     // client_socket << "Date: Tue, 11 Jul 2023 07:36:50 GMT" << CRLF;
@@ -65,13 +80,14 @@ class GetHandler {
   }
 
  private:
-  static ssize_t get_content_length(const std::string& filepath) throw() {
+  static int is_valid(const std::string& filepath, size_t &content_length) throw() {
     struct stat st;
     if (stat(filepath.c_str(), &st) < 0) {
       Log::cerror() << "stat() failed: " << filepath << ", errno:" << strerror(errno) << std::endl;
       std::cerr << "stat() failed\n";
       return -1;
     }
+    content_length = st.st_size;
     return st.st_size;
   }
 };
