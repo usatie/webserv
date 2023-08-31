@@ -1,1 +1,2 @@
-GET tests/static/a.text
+GET /tests/static/a.text
+

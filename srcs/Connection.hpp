@@ -111,7 +111,13 @@ class Connection {
     ss >> header.method; // ss does not throw (cf. playground/fuga.cpp)
     ss >> header.path; // ss does not throw
     ss >> header.version; // ss does not throw
-    // TODO: Handle invalid path (e.g. path not starting with /)
+    // Path must be starting with /
+    if (header.path[0] != '/') {
+      Log::cinfo() << "Invalid path: " << header.path << std::endl;
+      ErrorHandler::handle(*client_socket, 400);
+      status = RESPONSE;
+      return 1;
+    }
     // Get cwd
     char cwd[PATH_MAX];
     if (getcwd(cwd, PATH_MAX) == 0) {
