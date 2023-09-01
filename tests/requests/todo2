@@ -1,0 +1,2 @@
+GET http://localhost:8181/tests/static/a.text HTTP/1.1
+

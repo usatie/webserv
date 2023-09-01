@@ -1,0 +1,2 @@
+GET http://susami.42.fr/tests/static/a.text HTTP/1.1
+
