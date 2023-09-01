@@ -1,1 +1,2 @@
-GET tests/static/b.text HTTP/1.1
+GET /tests/static/b.text HTTP/1.1
+

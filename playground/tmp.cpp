@@ -17,6 +17,8 @@ int main() {
     std::cout << ss.eof() << std::endl;
   }
   */
+
+  /*
   std::stringstream ss("a b c ");
   //std::cout << ss.bad() << std::endl;
   //std::cout << ss.fail() << std::endl;
@@ -34,9 +36,11 @@ int main() {
   std::cout << "fail: " << tmp.fail() << std::endl;
   std::cout << "bad: " << tmp.bad() << std::endl;
   std::cout << "eof: " << tmp.eof() << std::endl;
+  */
 
-  /*
   std::cout << "<<<Header Fields>>>" << std::endl;
+  std::stringstream ss("Accept-Encoding:     gzip, zip\r\n");
+  std::string line;
   while (std::getline(ss, line)) {
     if (line.back() == '\r')
       line.pop_back();
@@ -46,7 +50,8 @@ int main() {
     std::stringstream tmp(line);
     std::string key, value;
     std::getline(tmp, key, ':');
-    tmp >> value;
+    tmp >> std::ws;
+    std::getline(tmp, value);
     if (tmp.rdbuf()->in_avail() != 0) {
       std::cout << "Extra characters?" << std::endl;
       break;
@@ -55,6 +60,5 @@ int main() {
     std::cout << "Value: " << value << std::endl;
     std::cout << "[" << key << "]: [" << value << "]" << std::endl;
   }
-  */
   return 0;
 }

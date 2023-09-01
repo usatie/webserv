@@ -16,6 +16,17 @@
 #include "webserv.hpp"
 
 class SocketBuf {
+ class StreamCleaner {
+  private:
+   std::stringstream &rss, &wss;
+  public:
+   StreamCleaner(std::stringstream &rss, std::stringstream &wss): rss(rss), wss(wss) {}
+   ~StreamCleaner() {
+     if (rss.bad() || wss.bad()) return;
+     rss.clear();
+     wss.clear();
+   }
+ };
   // Member data
  public:
  private:
@@ -46,10 +57,12 @@ class SocketBuf {
 
   // Member functions
   void setbadstate() throw() {
+    Log::debug("setbadstate()");
     rss.setstate(rss.rdstate() | std::ios::badbit);
     wss.setstate(wss.rdstate() | std::ios::badbit);
   }
   int send_file(std::string filepath) throw() {
+    StreamCleaner _(rss, wss);
     if (bad()) {
       return -1;
     }
@@ -71,12 +84,10 @@ class SocketBuf {
   // Read line from buffer, if found, remove it from buffer and return 0
   // Otherwise, return -1
   int readline(std::string& line) throw() {
+    StreamCleaner _(rss, wss);
     if (bad()) {
       return -1;
     }
-    // TODO: handle eofbit and failbit, they can be set by getline
-    // This is temporary solution, we need unit tests!
-    rss.clear();
     try {
       // If there is no LF in buffer, return -1
       if (!std::getline(rss, line, LF)) {
@@ -123,6 +134,7 @@ class SocketBuf {
 
   // Actually send data on socket
   int flush() throw() {
+    StreamCleaner _(rss, wss);
     if (bad()) {
       return -1;
     }
@@ -130,9 +142,18 @@ class SocketBuf {
       return 0;
     }
     try {
+      Log::cdebug() << "wss.tellg(): " << wss.tellg() << "\n";
+      // TODO: wss.fail() may be true, we need to handle it
+      // in that case, tellg() returns -1
+      if (wss.tellg() < 0) {
+        Log::cerror() << "wss.tellg() failed\n";
+        return -1;
+      }
       std::string buf(wss.str());
+      // TODO: buf may contain unnecessary leading data, we need to remove them
+
       ssize_t ret =
-          ::send(socket.get_fd(), buf.c_str(), buf.size(), SO_NOSIGPIPE);
+          ::send(socket.get_fd(), &buf.c_str()[wss.tellg()], buf.size() - wss.tellg(), SO_NOSIGPIPE);
       if (ret < 0) {
         Log::cerror() << "send() failed, errno: " << errno << "\n";
         // TODO: handle EINTR
@@ -143,7 +164,7 @@ class SocketBuf {
       wss.seekg(ret, std::ios::cur);
       return ret;
     } catch (std::exception& e) {
-      Log::fatal("wss.str() failed");
+      Log::cfatal() << "wss.str() failed: " << e.what() << "\n";
       setbadstate();
       return -1;
     }
@@ -151,6 +172,7 @@ class SocketBuf {
 
   // Actually receive data from socket
   int fill() throw() {
+    StreamCleaner _(rss, wss);
     if (bad()) {
       return -1;
     }
@@ -167,9 +189,6 @@ class SocketBuf {
     // Fill ret bytes buf into rss
     try {
       std::string s(buf, ret);
-      // TODO: handle eofbit and failbit, they can be set by getline
-      // This is temporary solution, we need unit tests!
-      rss.clear();
       rss << s;
       return ret;
     } catch (std::exception& e) {
@@ -179,12 +198,16 @@ class SocketBuf {
     }
   }
 
-  void clear_sendbuf() throw() { wss.clear(); }
+  void clear_sendbuf() throw() {
+    wss.str("");
+    wss.clear();
+  }
 
   int set_nonblock() throw() { return socket.set_nonblock(); }
 
   template <typename T>
   SocketBuf& operator<<(const T& t) throw() {
+    StreamCleaner _(rss, wss);
     if (bad()) {
       return *this;
     }

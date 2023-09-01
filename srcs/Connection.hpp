@@ -108,9 +108,35 @@ class Connection {
     Log::cdebug() << "start line: " << line << std::endl;
     std::stringstream ss;
     ss << line;
-    ss >> header.method;
-    ss >> header.path;
-    ss >> header.version;
+    ss >> header.method; // ss does not throw (cf. playground/fuga.cpp)
+    ss >> header.path; // ss does not throw
+    ss >> header.version; // ss does not throw
+    // Path must be starting with /
+    if (header.path[0] != '/') {
+      Log::cinfo() << "Invalid path: " << header.path << std::endl;
+      ErrorHandler::handle(*client_socket, 400);
+      status = RESPONSE;
+      return 1;
+    }
+    // Get cwd
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, PATH_MAX) == 0) {
+      Log::cfatal() << "getcwd failed" << std::endl;
+      ErrorHandler::handle(*client_socket, 500);
+      status = RESPONSE;
+      return 1;
+    }
+    // TODO: Defense Directory traversal attack
+    // TODO: Handle absoluteURI
+    // TODO: Handle *
+    try {
+      header.fullpath = std::string(cwd) + header.path; // throwable
+    } catch (std::exception &e) {
+      Log::cfatal() << "\"header.fullpath = std::string(cwd) + header.path\" failed" << std::endl;
+      ErrorHandler::handle(*client_socket, 500);
+      status = RESPONSE;
+      return 1;
+    }
     // ss.bad()  : possibly bad alloc
     if (ss.bad()) {
       Log::cfatal() << "ss bad bit is set" << line << std::endl;
@@ -131,9 +157,42 @@ class Connection {
   }
 
   int parse_header_fields() throw() {
-    // TODO: implement
-    status = REQ_BODY;
-    return 1;
+    std::string line;
+    try {
+      while (client_socket->readline(line) == 0) {
+        // Empty line indicates the end of header fields
+        if (line == "") {
+          status = REQ_BODY;
+          return 1;
+        }
+        Log::cdebug() << "header line: " << line << std::endl;
+        std::stringstream ss(line); // throwable! (bad alloc) (cf. playground/hoge.cpp)
+        std::string key, value;
+        if (std::getline(ss, key, ':') == 0) { // throwable
+          Log::cerror() << "std::getline(ss, key, ':') failed. line: " << line << std::endl;
+          ErrorHandler::handle(*client_socket, 500);
+          status = RESPONSE;
+          return 1;
+        }
+        if (util::http::is_token(key) == false) {
+          Log::cinfo() << "Header filed-name is not token: : " << key << std::endl;
+          ErrorHandler::handle(*client_socket, 400);
+          status = RESPONSE;
+          return 1;
+        }
+        // Remove leading space from value
+        ss >> std::ws;
+        // Extract remaining string to value
+        std::getline(ss, value); // throwable
+        header.fields[key] = value; // throwable
+      }
+    } catch (std::exception &e) {
+      Log::cfatal() << "Exception: " << e.what() << std::endl;
+      ErrorHandler::handle(*client_socket, 500);
+      status = RESPONSE;
+      return 1;
+    }
+    return 0;
   }
 
   int parse_body() throw() {

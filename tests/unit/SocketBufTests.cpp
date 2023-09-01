@@ -3,6 +3,11 @@
 #include <string>
 
 #define PORT 8282
+#define GREEN "\033[32m"
+#define RESET "\033[0m"
+#define RED "\033[31m"
+#define OK GREEN "OK" RESET
+#define NG RED "NG" RESET
 
 int server() {
   // Server socket
@@ -54,34 +59,36 @@ void T(SocketBuf &sock, const std::string &expected_line, int expected_ret, bool
   bool ok = true;
   std::string line;
   cnt++;
-  std::cout << "Test " << cnt << ": " ;
+  std::cout << "  " << cnt << ": " ;
   int ret = sock.readline(line);
   if (line != expected_line) {
-    if (ok) std::cout << "NG" << std::endl;
+    if (ok) std::cout << NG << std::endl;
     ok = false;
-    std::cerr << "  Expected line: " << expected_line << std::endl;
-    std::cerr << "  Actual line  : " << line << std::endl;
+    std::cerr << "    Expected line: " << expected_line << std::endl;
+    std::cerr << "    Actual line  : " << line << std::endl;
   }
   if (ret != expected_ret) {
-    if (ok) std::cout << "NG" << std::endl;
+    if (ok) std::cout << NG << std::endl;
     ok = false;
-    std::cerr << "  Expected ret: " << expected_ret << std::endl;
-    std::cerr << "  Actual ret  : " << ret << std::endl;
+    std::cerr << "    Expected ret: " << expected_ret << std::endl;
+    std::cerr << "    Actual ret  : " << ret << std::endl;
   }
   if (sock.bad() != expected_bad) {
-    if (ok) std::cout << "NG" << std::endl;
+    if (ok) std::cout << NG << std::endl;
     ok = false;
-    std::cerr << "  Expected bad: " << expected_bad << std::endl;
-    std::cerr << "  Actual bad  : " << sock.bad() << std::endl;
+    std::cerr << "    Expected bad: " << expected_bad << std::endl;
+    std::cerr << "    Actual bad  : " << sock.bad() << std::endl;
   }
   if (sock.isClosed() != expected_closed) {
-    if (ok) std::cout << "NG" << std::endl;
+    if (ok) std::cout << NG << std::endl;
     ok = false;
-    std::cerr << "  Expected closed: " << expected_closed << std::endl;
-    std::cerr << "  Actual closed  : " << sock.isClosed() << std::endl;
+    std::cerr << "    Expected closed: " << expected_closed << std::endl;
+    std::cerr << "    Actual closed  : " << sock.isClosed() << std::endl;
   }
   if (ok) {
-    std::cout << "OK" << std::endl;
+    std::cout << OK << " (\"" << expected_line << "\", "
+      << expected_ret << ", " << expected_bad << ", " << expected_closed
+      << ")" << std::endl;
   }
 }
 
@@ -94,37 +101,52 @@ void send_and_fill(int client_fd, SocketBuf &serv_sock, const std::string &msg) 
   serv_sock.fill();
 }
 
+void title(const std::string &title) {
+  static int cnt = 0;
+  cnt++;
+  // Print title of test case surrounded by '='
+  std::cout << "====================" << std::endl;
+  std::cout << cnt << ". " << title << std::endl;
+  std::cout << "====================" << std::endl;
+}
+
 void test_socketbuf() {
   int listen_fd = server(); // Server listen fd
   int client_fd = client(); // Client fd
   SocketBuf serv_sock(listen_fd); // Server conn fd wrapper
   std::string line;
 
-  // 1. Empty
+  // 1. Empty Buffer
+  title("Empty Buffer");
   T(serv_sock, "", -1, false, false);
 
   // 2. One line
+  title("One line");
   send_and_fill(client_fd, serv_sock, "hello\r\n");
   T(serv_sock, "hello", 0, false, false);
   T(serv_sock, "", -1, false, false);
 
   // 3. Two line
+  title("Two line");
   send_and_fill(client_fd, serv_sock, "hello\r\nworld\r\n");
   T(serv_sock, "hello", 0, false, false);
   T(serv_sock, "world", 0, false, false);
   T(serv_sock, "", -1, false, false);
 
   // 4. LF only
+  title("LF only");
   send_and_fill(client_fd, serv_sock, "hello\n");
   T(serv_sock, "hello", 0, false, false);
   T(serv_sock, "", -1, false, false);
   
   // 5. CR only
+  title("CR only");
   send_and_fill(client_fd, serv_sock, "hello\r");
   T(serv_sock, "hello", 0, false, false);
   T(serv_sock, "", -1, false, false);
   
   // 6. Without CR or LF
+  title("Without CR or LF");
   send_and_fill(client_fd, serv_sock, "hello");
   T(serv_sock, "", -1, false, false);
   send_and_fill(client_fd, serv_sock, " world");
@@ -133,7 +155,14 @@ void test_socketbuf() {
   T(serv_sock, "hello world", 0, false, false);
   T(serv_sock, "", -1, false, false);
 
+  // 7. Empty line
+  title("Empty line");
+  send_and_fill(client_fd, serv_sock, "\r\n");
+  T(serv_sock, "", 0, false, false);
+  T(serv_sock, "", -1, false, false);
+
   // x. One line + EOF
+  title("One line + EOF");
   send_and_fill(client_fd, serv_sock, "hello\r\n");
   shutdown(client_fd, SHUT_WR);
   T(serv_sock, "hello", 0, false, false);
