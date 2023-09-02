@@ -23,6 +23,9 @@ class Connection {
   std::shared_ptr<SocketBuf> client_socket;
   Header header;
   Status status;
+  char *body;
+  size_t body_size;
+  size_t content_length;
 
  public:
   // Constructor/Destructor
@@ -30,7 +33,10 @@ class Connection {
   explicit Connection(int listen_fd)
       : client_socket(new SocketBuf(listen_fd)),
         header(),
-        status(REQ_START_LINE) {}
+        status(REQ_START_LINE),
+        body(NULL),
+        body_size(0),
+        content_length(0) {}
   ~Connection() throw() {}
   Connection(const Connection &other) throw();  // Do not implement this
   Connection &operator=(
@@ -196,9 +202,27 @@ class Connection {
   }
 
   int parse_body() throw() {
-    // TODO: implement
-    status = HANDLE;
-    return 1;
+    if (header.fields.find("Content-Length") == header.fields.end()) {
+      status = HANDLE;
+      return 1;
+    }
+    size_t content_length = atoi(header.fields["Content-Length"].c_str());
+    if (body == NULL)
+      body = new char[content_length];
+
+    ssize_t ret = client_socket->read(body + body_size, content_length - body_size);
+    if (ret < 0) {
+      return 0;
+    } else if (ret == 0) {
+      return 0;
+    } else {
+      body_size += ret;
+      if (body_size == content_length) {
+        status = HANDLE;
+        return 1;
+      }
+      return 0;
+    }
   }
 
   int handle() throw() {

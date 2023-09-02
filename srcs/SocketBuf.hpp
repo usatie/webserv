@@ -132,6 +132,17 @@ class SocketBuf {
     }
   }
 
+  ssize_t read(char *buf, size_t size) {
+    StreamCleaner _(rss, wss);
+    if (bad()) {
+      return -1;
+    }
+    rss.read(buf, size);
+    if (rss.bad())
+      return -1;
+    return rss.gcount();
+  }
+
   // Actually send data on socket
   int flush() throw() {
     StreamCleaner _(rss, wss);
