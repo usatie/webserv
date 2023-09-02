@@ -16,5 +16,5 @@ for i in {1..12}; do
 done
 
 # 3. Clean up
-rm -f out
+rm -f out *.tmp
 pkill webserv

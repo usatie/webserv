@@ -9,11 +9,11 @@
 #include <string>
 #include <vector>
 
+#include "ErrorHandler.hpp"
 #include "Header.hpp"
 #include "SocketBuf.hpp"
 #include "http_special_response.hpp"
 #include "webserv.hpp"
-#include "ErrorHandler.hpp"
 
 class GetHandler {
  private:
@@ -24,12 +24,12 @@ class GetHandler {
   ~GetHandler() throw();                             // Do not implement this
  public:
   // Member functions
-  static void handle(SocketBuf& client_socket,
-                     const Header& header) throw() {
+  static void handle(SocketBuf& client_socket, const Header& header) throw() {
     // TODO: Write response headers
     struct stat st;
     if (stat(header.fullpath.c_str(), &st) < 0) {
-      Log::cerror() << "stat() failed: " << header.fullpath << ", errno:" << strerror(errno) << std::endl;
+      Log::cerror() << "stat() failed: " << header.fullpath
+                    << ", errno:" << strerror(errno) << std::endl;
       ErrorHandler::handle(client_socket, 404);
       return;
     }
@@ -71,24 +71,12 @@ class GetHandler {
     else
       client_socket << "Content-Type: text/plain" << CRLF;
     client_socket << "Content-Length: " << content_length << CRLF;
-    client_socket << CRLF; // end of header
+    client_socket << CRLF;  // end of header
     if (client_socket.send_file(header.fullpath) < 0) {
       Log::error("send_file() failed");
       ErrorHandler::handle(client_socket, 500);
       return;
     }
-  }
-
- private:
-  static int is_valid(const std::string& filepath, size_t &content_length) throw() {
-    struct stat st;
-    if (stat(filepath.c_str(), &st) < 0) {
-      Log::cerror() << "stat() failed: " << filepath << ", errno:" << strerror(errno) << std::endl;
-      std::cerr << "stat() failed\n";
-      return -1;
-    }
-    content_length = st.st_size;
-    return st.st_size;
   }
 };
 #endif

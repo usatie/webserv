@@ -7,8 +7,8 @@
 
 #include <fstream>
 #include <iostream>
-#include <string>
 #include <sstream>
+#include <string>
 #define MAXLINE 1024
 #include <fcntl.h>
 
@@ -16,17 +16,19 @@
 #include "webserv.hpp"
 
 class SocketBuf {
- class StreamCleaner {
-  private:
-   std::stringstream &rss, &wss;
-  public:
-   StreamCleaner(std::stringstream &rss, std::stringstream &wss): rss(rss), wss(wss) {}
-   ~StreamCleaner() {
-     if (rss.bad() || wss.bad()) return;
-     rss.clear();
-     wss.clear();
-   }
- };
+  class StreamCleaner {
+   private:
+    std::stringstream &rss, &wss;
+
+   public:
+    StreamCleaner(std::stringstream& rss, std::stringstream& wss)
+        : rss(rss), wss(wss) {}
+    ~StreamCleaner() {
+      if (rss.bad() || wss.bad()) return;
+      rss.clear();
+      wss.clear();
+    }
+  };
   // Member data
  public:
  private:
@@ -40,8 +42,7 @@ class SocketBuf {
 
  public:
   // Constructor/Destructor
-  explicit SocketBuf(int listen_fd)
-      : socket(listen_fd), rss(), wss() {
+  explicit SocketBuf(int listen_fd) : socket(listen_fd), rss(), wss() {
     if (socket.set_nonblock() < 0) {
       throw std::runtime_error("socket.set_nonblock() failed");
     }
@@ -52,7 +53,9 @@ class SocketBuf {
   int get_fd() const throw() { return socket.get_fd(); }
   bool isClosed() const throw() { return socket.isClosed(); }
   // tellg() updates the internal state of the stream, so it is not const
-  bool isSendBufEmpty() throw() { return (wss.str().size() - wss.tellg()) == 0; }
+  bool isSendBufEmpty() throw() {
+    return (wss.str().size() - wss.tellg()) == 0;
+  }
   bool bad() const throw() { return rss.bad() || wss.bad(); }
 
   // Member functions
@@ -61,7 +64,7 @@ class SocketBuf {
     rss.setstate(rss.rdstate() | std::ios::badbit);
     wss.setstate(wss.rdstate() | std::ios::badbit);
   }
-  int send_file(std::string filepath) throw() {
+  int send_file(const std::string& filepath) throw() {
     StreamCleaner _(rss, wss);
     if (bad()) {
       return -1;
@@ -132,14 +135,15 @@ class SocketBuf {
     }
   }
 
-  ssize_t read(char *buf, size_t size) throw() {
+  ssize_t read(char* buf, size_t size) throw() {
     StreamCleaner _(rss, wss);
     if (bad()) {
       return -1;
     }
-    rss.read(buf, size); // does not throw ref: https://en.cppreference.com/w/cpp/io/basic_istream/read
-    if (rss.bad())
-      return -1;
+    rss.read(buf,
+             size);  // does not throw ref:
+                     // https://en.cppreference.com/w/cpp/io/basic_istream/read
+    if (rss.bad()) return -1;
     return rss.gcount();
   }
 
@@ -163,8 +167,8 @@ class SocketBuf {
       std::string buf(wss.str());
       // TODO: buf may contain unnecessary leading data, we need to remove them
 
-      ssize_t ret =
-          ::send(socket.get_fd(), &buf.c_str()[wss.tellg()], buf.size() - wss.tellg(), SO_NOSIGPIPE);
+      ssize_t ret = ::send(socket.get_fd(), &buf.c_str()[wss.tellg()],
+                           buf.size() - wss.tellg(), SO_NOSIGPIPE);
       if (ret < 0) {
         Log::cerror() << "send() failed, errno: " << errno << "\n";
         // TODO: handle EINTR
@@ -189,7 +193,8 @@ class SocketBuf {
     }
     static char buf[MAXLINE] = {0};
     static const int flags = 0;
-    ssize_t ret = ::recv(socket.get_fd(), (void *)buf, MAXLINE, flags);
+    ssize_t ret =
+        ::recv(socket.get_fd(), static_cast<void*>(buf), MAXLINE, flags);
     if (ret < 0) {
       Log::error("recv() failed");
       return -1;
@@ -222,7 +227,7 @@ class SocketBuf {
     if (bad()) {
       return *this;
     }
-    wss << t ;
+    wss << t;
     if (wss.fail()) {
       Log::fatal("wss << msg failed");
       setbadstate();

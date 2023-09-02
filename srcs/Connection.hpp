@@ -1,12 +1,12 @@
 #ifndef CONNECTION_HPP
 #define CONNECTION_HPP
 
+#include "ErrorHandler.hpp"
 #include "GetHandler.hpp"
 #include "Header.hpp"
+#include "PostHandler.hpp"
 #include "SocketBuf.hpp"
 #include "webserv.hpp"
-#include "ErrorHandler.hpp"
-#include "PostHandler.hpp"
 
 class Connection {
  public:
@@ -115,9 +115,9 @@ class Connection {
     Log::cdebug() << "start line: " << line << std::endl;
     std::stringstream ss;
     ss << line;
-    ss >> header.method; // ss does not throw (cf. playground/fuga.cpp)
-    ss >> header.path; // ss does not throw
-    ss >> header.version; // ss does not throw
+    ss >> header.method;   // ss does not throw (cf. playground/fuga.cpp)
+    ss >> header.path;     // ss does not throw
+    ss >> header.version;  // ss does not throw
     // Path must be starting with /
     if (header.path[0] != '/') {
       Log::cinfo() << "Invalid path: " << header.path << std::endl;
@@ -137,9 +137,11 @@ class Connection {
     // TODO: Handle absoluteURI
     // TODO: Handle *
     try {
-      header.fullpath = std::string(cwd) + header.path; // throwable
+      header.fullpath = std::string(cwd) + header.path;  // throwable
     } catch (std::exception &e) {
-      Log::cfatal() << "\"header.fullpath = std::string(cwd) + header.path\" failed" << std::endl;
+      Log::cfatal()
+          << "\"header.fullpath = std::string(cwd) + header.path\" failed"
+          << std::endl;
       ErrorHandler::handle(*client_socket, 500);
       status = RESPONSE;
       return 1;
@@ -164,8 +166,8 @@ class Connection {
   }
 
   int parse_header_fields() throw() {
-    std::string line;
     try {
+      std::string line;
       while (client_socket->readline(line) == 0) {
         // Empty line indicates the end of header fields
         if (line == "") {
@@ -173,16 +175,19 @@ class Connection {
           return 1;
         }
         Log::cdebug() << "header line: " << line << std::endl;
-        std::stringstream ss(line); // throwable! (bad alloc) (cf. playground/hoge.cpp)
+        std::stringstream ss(
+            line);  // throwable! (bad alloc) (cf. playground/hoge.cpp)
         std::string key, value;
-        if (std::getline(ss, key, ':') == 0) { // throwable
-          Log::cerror() << "std::getline(ss, key, ':') failed. line: " << line << std::endl;
+        if (std::getline(ss, key, ':') == 0) {  // throwable
+          Log::cerror() << "std::getline(ss, key, ':') failed. line: " << line
+                        << std::endl;
           ErrorHandler::handle(*client_socket, 500);
           status = RESPONSE;
           return 1;
         }
         if (util::http::is_token(key) == false) {
-          Log::cinfo() << "Header filed-name is not token: : " << key << std::endl;
+          Log::cinfo() << "Header filed-name is not token: : " << key
+                       << std::endl;
           ErrorHandler::handle(*client_socket, 400);
           status = RESPONSE;
           return 1;
@@ -190,8 +195,8 @@ class Connection {
         // Remove leading space from value
         ss >> std::ws;
         // Extract remaining string to value
-        std::getline(ss, value); // throwable
-        header.fields[key] = value; // throwable
+        std::getline(ss, value);     // throwable
+        header.fields[key] = value;  // throwable
       }
     } catch (std::exception &e) {
       Log::cfatal() << "Exception: " << e.what() << std::endl;
@@ -203,12 +208,13 @@ class Connection {
   }
 
   int parse_body() throw() {
-    if (header.fields.find("Content-Length") == header.fields.end()) {
-      status = HANDLE;
-      return 1;
-    }
-    size_t content_length = atoi(header.fields["Content-Length"].c_str());
     if (body == NULL) {
+      if (header.fields.find("Content-Length") == header.fields.end()) {
+        status = HANDLE;
+        return 1;
+      }
+      // TODO: Handle invalid Content-Length
+      content_length = atoi(header.fields["Content-Length"].c_str());
       try {
         body = new char[content_length];
       } catch (std::exception &e) {
@@ -218,7 +224,9 @@ class Connection {
         return 1;
       }
     }
-    ssize_t ret = client_socket->read(body + body_size, content_length - body_size);
+    assert(body != NULL);  // body is guaranteed to be non null
+    ssize_t ret =
+        client_socket->read(body + body_size, content_length - body_size);
     if (ret < 0) {
       return 0;
     } else if (ret == 0) {

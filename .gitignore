@@ -3,6 +3,7 @@
 *.out
 *.swp
 *.d
+*.tmp
 out
 webserv
 unit

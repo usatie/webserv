@@ -1,4 +1,5 @@
 #include "PostHandler.hpp"
+
 #include "Connection.hpp"
 
 void PostHandler::handle(Connection& conn) throw() {
@@ -8,7 +9,10 @@ void PostHandler::handle(Connection& conn) throw() {
     ErrorHandler::handle(*conn.client_socket, 500);
     return;
   }
-  ofs.write(conn.body, conn.content_length); // does not throw ref: https://en.cppreference.com/w/cpp/io/basic_ostream/write
+  ofs.write(
+      conn.body,
+      conn.content_length);  // does not throw ref:
+                             // https://en.cppreference.com/w/cpp/io/basic_ostream/write
   if (ofs.bad()) {
     Log::fatal("ofs.write failed");
     ErrorHandler::handle(*conn.client_socket, 500);

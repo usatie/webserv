@@ -1,5 +1,5 @@
 HTTP/1.1 201 Created
-Location: /tests/static/12_out.text
+Location: /12.tmp
 Content-Type: application/json
 Content-Length: 18
 
