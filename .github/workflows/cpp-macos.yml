@@ -16,6 +16,6 @@ jobs:
     - name: make
       run: make
     - name: make unit
-      run: make unit
+      run: make unit >> $GITHUB_STEP_SUMMARY
     - name: make test
-      run: make test
+      run: make test >> $GITHUB_STEP_SUMMARY
