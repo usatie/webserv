@@ -6,9 +6,10 @@
 #include "SocketBuf.hpp"
 #include "webserv.hpp"
 #include "ErrorHandler.hpp"
+#include "PostHandler.hpp"
 
 class Connection {
- private:
+ public:
   // Class private enum
   typedef enum Status {
     REQ_START_LINE,
@@ -207,9 +208,16 @@ class Connection {
       return 1;
     }
     size_t content_length = atoi(header.fields["Content-Length"].c_str());
-    if (body == NULL)
-      body = new char[content_length];
-
+    if (body == NULL) {
+      try {
+        body = new char[content_length];
+      } catch (std::exception &e) {
+        Log::cfatal() << "Exception: " << e.what() << std::endl;
+        ErrorHandler::handle(*client_socket, 500);
+        status = RESPONSE;
+        return 1;
+      }
+    }
     ssize_t ret = client_socket->read(body + body_size, content_length - body_size);
     if (ret < 0) {
       return 0;
@@ -228,6 +236,8 @@ class Connection {
   int handle() throw() {
     if (header.method == "GET") {
       GetHandler::handle(*client_socket, header);
+    } else if (header.method == "POST") {
+      PostHandler::handle(*this);
     } else {
       Log::cinfo() << "Unsupported method: " << header.method << std::endl;
       ErrorHandler::handle(*client_socket, 405);

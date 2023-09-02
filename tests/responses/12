@@ -1,6 +1,6 @@
 HTTP/1.1 201 Created
 Location: /tests/static/12_out.text
 Content-Type: application/json
-Content-Length: 19
+Content-Length: 18
 
-{“success":"true"}
+{"success":"true"}

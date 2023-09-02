@@ -132,12 +132,12 @@ class SocketBuf {
     }
   }
 
-  ssize_t read(char *buf, size_t size) {
+  ssize_t read(char *buf, size_t size) throw() {
     StreamCleaner _(rss, wss);
     if (bad()) {
       return -1;
     }
-    rss.read(buf, size);
+    rss.read(buf, size); // does not throw ref: https://en.cppreference.com/w/cpp/io/basic_istream/read
     if (rss.bad())
       return -1;
     return rss.gcount();

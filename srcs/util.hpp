@@ -5,7 +5,7 @@
 
 namespace util {
   namespace string {
-    bool ends_with(const std::string& str, const std::string& suffix) {
+    inline bool ends_with(const std::string& str, const std::string& suffix) {
       return str.size() >= suffix.size() &&
              str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
     }
@@ -20,13 +20,13 @@ namespace util {
                     / DIGIT / ALPHA
                     ; any VCHAR, except delimiters
     */
-    bool is_tchar(const char c) {
+    inline bool is_tchar(const char c) {
       return isalpha(c) || isdigit(c) ||
              c == '!' || c == '#' || c == '$' || c == '%' || c == '&' ||
              c == '\'' || c == '*' || c == '+' || c == '-' || c == '.' ||
              c == '^' || c == '_' || c == '`' || c == '|' || c == '~';
     }
-    bool is_token(const std::string &str) {
+    inline bool is_token(const std::string &str) {
       if (str.empty()) {
         return false;
       }
