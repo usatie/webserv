@@ -8,6 +8,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <cstring>
 
 #include "ErrorHandler.hpp"
 #include "Header.hpp"

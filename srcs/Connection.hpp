@@ -7,6 +7,8 @@
 #include "PostHandler.hpp"
 #include "SocketBuf.hpp"
 #include "webserv.hpp"
+#include <cassert>
+#include <limits.h>
 
 class Connection {
  public:
