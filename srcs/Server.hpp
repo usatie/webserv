@@ -133,7 +133,7 @@ class Server {
         return *it;
       }
     }
-    return NULL;
+    return std::shared_ptr<Connection>(NULL);
   }
 
   void process(int timeout) throw() {

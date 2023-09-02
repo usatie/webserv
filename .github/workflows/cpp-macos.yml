@@ -1,0 +1,28 @@
+name: C++ CI (macOS)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: make
+      run: make
+    - name: make unit
+      run: |
+        # What is good emoji for unit tests?
+        # https://emojipedia.org/search/?q=unit+test
+        # :microscope: :test_tube: :alembic: :gear: :gear:
+        echo "# Unit Tests :test_tube:" >> $GITHUB_STEP_SUMMARY
+        make -s unit | tee -a $GITHUB_STEP_SUMMARY
+    - name: make test
+      run: |
+        echo "# Integration Tests :scientist:" >> $GITHUB_STEP_SUMMARY
+        make -s test | tee -a $GITHUB_STEP_SUMMARY
