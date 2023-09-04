@@ -13,6 +13,10 @@
  *    TT        command type, i.e. HTTP "location" or "server" command
  */
 
+#define KB 1024
+#define MB 1024 * 1024
+#define GB 1024 * 1024 * 1024
+
 // Syntax
 #define WSV_CONF_NOARGS           0x00000001
 #define WSV_CONF_TAKE1            0x00000002
@@ -52,6 +56,7 @@ struct Token {
   enum Type {
     TK_DUMMY,
     TK_NUM,
+    TK_SIZE,
     TK_IDENT,
     TK_PUNCT,
     TK_EOF
@@ -181,8 +186,8 @@ struct Command {
   std::vector<std::string> methods;
 
   // RedirectReturn
-  int code;
-  std::string url;
+  int return_code;
+  std::string return_url;
 
   // AutoIndex
   bool autoindex;
@@ -369,14 +374,14 @@ Command* command(Token **rest, Token *tok, int context) {
     cmd = autoindex(rest, tok, context);
   } else if (is_equal(tok, "limit_except")) {
     cmd = limit_except(rest, tok, context);
-  /*} else if (is_equal(tok, "upload_store")) {
+  } else if (is_equal(tok, "upload_store")) {
     cmd = upload_store(rest, tok, context);
   } else if (is_equal(tok, "client_max_body_size")) {
     cmd = client_max_body_size(rest, tok, context);
   } else if (is_equal(tok, "cgi_extension")) {
     cmd = cgi_extension(rest, tok, context);
   } else if (is_equal(tok, "return")) {
-    cmd = redirect_return(rest, tok, context);*/
+    cmd = redirect_return(rest, tok, context);
   } else if (is_equal(tok, "location")) {
     cmd = location(rest, tok, context);
   } else if (is_equal(tok, "alias")) {
@@ -561,6 +566,99 @@ Command* limit_except(Token **rest, Token *tok, int context) {
   return cmd;
 }
 
+// Syntax:	upload_store <directory> [<level 1> [<level 2> ] … ]
+// Default:	none
+// Context:	server,location
+// TODO: Currently, we do not support level
+Command* upload_store(Token **rest, Token *tok, int context) {
+  Log::debug("upload_store");
+  Command *cmd = new Command(Command::CMD_UPLOAD_STORE);
+  expect_context(context, WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
+  tok = skip(tok, "upload_store");
+  cmd->upload_store = tok->str;
+  tok = skip_kind(tok, Token::TK_IDENT);
+  *rest = skip(tok, ";");
+  Log::debug("upload_store end");
+  return cmd;
+}
+
+// Syntax:	client_max_body_size size;
+// Default:	client_max_body_size 1m;
+// Context:	http, server, location
+Command* client_max_body_size(Token **rest, Token *tok, int context) {
+  Log::debug("client_max_body_size");
+  Command *cmd = new Command(Command::CMD_CLIENT_MAX_BODY_SIZE);
+  expect_context(context, WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
+  tok = skip(tok, "client_max_body_size");
+  if (tok->type == Token::TK_NUM || tok->type == Token::TK_SIZE) {
+    cmd->client_max_body_size = tok->num;
+    tok = tok->next;
+  } else {
+    throw std::runtime_error("invalid argument in \"client_max_body_size\" directive");
+  }
+  *rest = skip(tok, ";");
+  Log::debug("client_max_body_size end");
+  return cmd;
+}
+
+// Syntax:	cgi_extension extension ...;
+// Default:	none
+// Context:	server, location
+Command* cgi_extension(Token **rest, Token *tok, int context) {
+  Log::debug("cgi_extension");
+  Command *cmd = new Command(Command::CMD_CGI_EXTENSION);
+  expect_context(context, WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
+  tok = skip(tok, "cgi_extension");
+  while (tok->type == Token::TK_IDENT) {
+    cmd->cgi_extensions.push_back(tok->str);
+    tok = tok->next;
+  }
+  if (cmd->cgi_extensions.size() == 0) {
+    throw std::runtime_error("invalid number of arguments in \"cgi_extension\" directive");
+  }
+  *rest = skip(tok, ";");
+  Log::debug("cgi_extension end");
+  return cmd;
+}
+
+// Syntax:	return code [text];
+// 			    return code URL;
+// 			    return URL;
+// Default:	—
+// Context:	server, location, if
+// Memo: 1. URL can be empty for 301, 302, 303, 307, 308
+//       2. Some codes return default page
+// TODO: Currently, we do not support text
+Command* redirect_return(Token **rest, Token *tok, int context) {
+  Log::debug("redirect_return");
+  Command *cmd = new Command(Command::CMD_RETURN);
+  expect_context(context, WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
+  tok = skip(tok, "return");
+  if (tok->type == Token::TK_NUM) {
+    cmd->return_code = tok->num;
+    tok = tok->next;
+  }
+  // URL is supported only for codes
+  // 301, 302, 303, 307, 308
+  if (tok->type == Token::TK_IDENT) {
+    switch (cmd->return_code) {
+      case 301:
+      case 302:
+      case 303:
+      case 307:
+      case 308:
+        break;
+      default:
+        throw std::runtime_error("invalid argument in \"return\" directive");
+    }
+    cmd->return_url = tok->str;
+    tok = tok->next;
+  }
+  *rest = skip(tok, ";");
+  Log::debug("redirect_return end");
+  return cmd;
+}
+
 // Syntax:	server { ... }
 // Default:	—
 // Context:	http
@@ -616,6 +714,15 @@ void print_cmd(Command *cmd, std::string ident) {
   if (cmd->alias != "") std::cout << ident << cmd->alias << std::endl;
   if (cmd->location != "") std::cout << ident << cmd->location << std::endl;
   if (cmd->root != "") std::cout << ident << cmd->root << std::endl;
+  if (cmd->upload_store != "") std::cout << ident << cmd->upload_store << std::endl;
+  if (cmd->client_max_body_size != 0) std::cout << ident << cmd->client_max_body_size << std::endl;
+  if (cmd->cgi_extensions.size() > 0) {
+    std::cout << ident;
+    for (unsigned long i = 0; i < cmd->cgi_extensions.size(); i++) {
+      std::cout << cmd->cgi_extensions[i] << " ";
+    }
+    std::cout << std::endl;
+  }
   if (cmd->server_names.size() > 0) {
     std::cout << ident;
     for (unsigned long i = 0; i < cmd->server_names.size(); i++) {
@@ -651,6 +758,10 @@ void print_cmd(Command *cmd, std::string ident) {
       std::cout << cmd->methods[i] << " ";
     }
     std::cout << std::endl;
+  }
+  if (cmd->type == Command::CMD_RETURN) {
+    if (cmd->return_code != 0) std::cout << ident << "code: " << cmd->return_code << std::endl;
+    std::cout << ident << "url: " << cmd->return_url << std::endl;
   }
 
   for (Command *c = cmd->block; c; c = c->next) {

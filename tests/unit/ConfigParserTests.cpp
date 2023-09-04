@@ -53,6 +53,53 @@ void test_configparser() {
         cur = cur->next = new Token(Token::TK_PUNCT, ";");
         cur = cur->next = new Token(Token::TK_PUNCT, "}");
       }
+      {
+        cur = cur->next = new Token(Token::TK_IDENT, "location");
+        cur = cur->next = new Token(Token::TK_IDENT, "/world");
+        cur = cur->next = new Token(Token::TK_PUNCT, "{");
+        cur = cur->next = new Token(Token::TK_IDENT, "upload_store");
+        cur = cur->next = new Token(Token::TK_IDENT, "/tmp");
+        cur = cur->next = new Token(Token::TK_PUNCT, ";");
+        cur = cur->next = new Token(Token::TK_PUNCT, "}");
+      }
+      {
+        cur = cur->next = new Token(Token::TK_IDENT, "location");
+        cur = cur->next = new Token(Token::TK_IDENT, "/max");
+        cur = cur->next = new Token(Token::TK_PUNCT, "{");
+        cur = cur->next = new Token(Token::TK_IDENT, "client_max_body_size");
+        cur = cur->next = new Token(Token::TK_NUM, "1000000");
+        cur->num = 1000000;
+        cur = cur->next = new Token(Token::TK_PUNCT, ";");
+        cur = cur->next = new Token(Token::TK_IDENT, "client_max_body_size");
+        cur = cur->next = new Token(Token::TK_SIZE, "1g");
+        cur->num = 1 * GB;
+        cur = cur->next = new Token(Token::TK_PUNCT, ";");
+        cur = cur->next = new Token(Token::TK_PUNCT, "}");
+      }
+      // cgi_extensions
+      {
+        cur = cur->next = new Token(Token::TK_IDENT, "location");
+        cur = cur->next = new Token(Token::TK_IDENT, "/cgi");
+        cur = cur->next = new Token(Token::TK_PUNCT, "{");
+        cur = cur->next = new Token(Token::TK_IDENT, "cgi_extension");
+        cur = cur->next = new Token(Token::TK_IDENT, ".py");
+        cur = cur->next = new Token(Token::TK_IDENT, ".php");
+        cur = cur->next = new Token(Token::TK_PUNCT, ";");
+        cur = cur->next = new Token(Token::TK_PUNCT, "}");
+      }
+      // return
+      {
+        cur = cur->next = new Token(Token::TK_IDENT, "location");
+        cur = cur->next = new Token(Token::TK_IDENT, "/return");
+        cur = cur->next = new Token(Token::TK_PUNCT, "{");
+        cur = cur->next = new Token(Token::TK_IDENT, "return");
+        cur = cur->next = new Token(Token::TK_NUM, "301");
+        cur->num = 301;
+        cur = cur->next = new Token(Token::TK_IDENT, "http://www.google.com");
+        cur = cur->next = new Token(Token::TK_PUNCT, ";");
+        cur = cur->next = new Token(Token::TK_PUNCT, "}");
+
+      }
       cur = cur->next = new Token(Token::TK_PUNCT, "}");
     }
     cur = cur->next = new Token(Token::TK_PUNCT, "}");
