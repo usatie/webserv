@@ -176,8 +176,3 @@ void test_socketbuf() {
   serv_sock.fill(); // Notify socket that the peer has closed the connection
   T(serv_sock, "", -1, false, true);
 }
-
-int main() {
-  Log::setLevel(Log::Warn);
-  test_socketbuf();
-}
