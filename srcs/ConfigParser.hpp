@@ -79,7 +79,7 @@ struct Command {
     CMD_ROOT,
     CMD_INDEX,
     CMD_ERROR_PAGE,
-    CMD_AUTO_INDEX,
+    CMD_AUTOINDEX,
     CMD_LIMIT_EXCEPT,
     CMD_UPLOAD_STORE,
     CMD_CLIENT_MAX_BODY_SIZE,
@@ -110,7 +110,7 @@ struct Command {
       case CMD_ERROR_PAGE:
         name = "error_page";
         break;
-      case CMD_AUTO_INDEX:
+      case CMD_AUTOINDEX:
         name = "autoindex";
         break;
       case CMD_LIMIT_EXCEPT:
@@ -170,12 +170,12 @@ struct Command {
   std::string alias;
 
   // Index
-  std::string index;
+  std::vector<std::string> index_files;
 
   // ErrorPage
-  std::vector<int> codes;
+  std::vector<int> error_codes;
   // int response_code; // Do not support
-  std::string uri;
+  std::string error_uri;
 
   // LimitExcept
   std::vector<std::string> methods;
@@ -242,7 +242,7 @@ Command* server_name(Token **rest, Token *tok, int context);
 Command* root(Token **rest, Token *tok, int context);
 Command* index(Token **rest, Token *tok, int context);
 Command* error_page(Token **rest, Token *tok, int context);
-Command* auto_index(Token **rest, Token *tok, int context);
+Command* autoindex(Token **rest, Token *tok, int context);
 Command* limit_except(Token **rest, Token *tok, int context);
 Command* upload_store(Token **rest, Token *tok, int context);
 Command* client_max_body_size(Token **rest, Token *tok, int context);
@@ -304,6 +304,8 @@ Module* parse(Token *tok) {
 // Syntax:	http { ... }
 // Default:	—
 // Context:	main
+// Memo: 1. duplicate is not allowed
+//       2. http block can be ommitted (but we require it)
 Module* http(Token **rest, Token *tok, int context) {
   Log::cdebug() << "http" << std::endl;
   Module *mod = new Module(Module::MOD_HTTP);
@@ -357,7 +359,7 @@ Command* command(Token **rest, Token *tok, int context) {
     cmd = listen(rest, tok, context);
   } else if (is_equal(tok, "server_name")) {
     cmd = server_name(rest, tok, context);
-  /*} else if (is_equal(tok, "root")) {
+  } else if (is_equal(tok, "root")) {
     cmd = root(rest, tok, context);
   } else if (is_equal(tok, "index")) {
     cmd = index(rest, tok, context);
@@ -367,7 +369,7 @@ Command* command(Token **rest, Token *tok, int context) {
     cmd = autoindex(rest, tok, context);
   } else if (is_equal(tok, "limit_except")) {
     cmd = limit_except(rest, tok, context);
-  } else if (is_equal(tok, "upload_store")) {
+  /*} else if (is_equal(tok, "upload_store")) {
     cmd = upload_store(rest, tok, context);
   } else if (is_equal(tok, "client_max_body_size")) {
     cmd = client_max_body_size(rest, tok, context);
@@ -393,6 +395,14 @@ Command* command(Token **rest, Token *tok, int context) {
 // listen unix:path [default_server] [ssl] [http2 | quic] [proxy_protocol] [backlog=number] [rcvbuf=size] [sndbuf=size] [accept_filter=filter] [deferred] [bind] [so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]];
 // Default:	listen *:80 | *:8000;
 // Context:	server
+// Memo: 1. multiple listen is allowed
+//       2. however, complete duplicate is not allowed
+//          ex. OK
+//          listen 80;
+//          listen [::]:80;
+//          ex. NG
+//          listen 80;
+//          listen 80;
 // TODO: Currently, we only support address and port
 Command* listen(Token **rest, Token *tok, int context) {
   Log::debug("listen");
@@ -426,6 +436,9 @@ Command* listen(Token **rest, Token *tok, int context) {
 // Syntax:	server_name name ...;
 // Default:	server_name "";
 // Context:	server
+// Memo: 1. duplicate is OK
+//       2. name can also be duplicated
+//       3. max number of server_name is ?
 Command* server_name(Token **rest, Token *tok, int context) {
   Log::debug("server_name");
   Command *cmd = new Command(Command::CMD_SERVER_NAME);
@@ -437,6 +450,114 @@ Command* server_name(Token **rest, Token *tok, int context) {
   }
   *rest = skip(tok, ";");
   Log::debug("server_name end");
+  return cmd;
+}
+
+// Syntax:	root path;
+// Default:	root "html";
+// Context:	html, server, location
+// Memo: 1. duplicate is not allowed
+//       2. path can be relative like "./dir" or "dir"
+//       3. path can be absolute like "/etc/nginx"
+//       4. double quotes are allowed
+//       5. Both directive name and args can be double quoted
+Command* root(Token **rest, Token *tok, int context) {
+  Log::debug("root");
+  Command *cmd = new Command(Command::CMD_ROOT);
+  expect_context(context, WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
+  tok = skip(tok, "root");
+  cmd->root = tok->str;
+  tok = skip_kind(tok, Token::TK_IDENT);
+  *rest = skip(tok, ";");
+  Log::debug("root end");
+  return cmd;
+}
+
+// Syntax:	index file ...;
+// Default:	index index.html;
+// Context:	http, server, location
+// Memo: 1. duplicate is not allowed
+//       2. If the index file is not found, 403 is returned
+//       3. Inner index directive overwrites outer index directive
+Command* index(Token **rest, Token *tok, int context) {
+  Log::debug("index");
+  Command *cmd = new Command(Command::CMD_INDEX);
+  expect_context(context, WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
+  tok = skip(tok, "index");
+  while (tok->type == Token::TK_IDENT) {
+    cmd->index_files.push_back(tok->str);
+    tok = tok->next;
+  }
+  if (cmd->index_files.size() == 0) {
+    throw std::runtime_error("invalid number of arguments in \"index\" directive");
+  }
+  *rest = skip(tok, ";");
+  Log::debug("index end");
+  return cmd;
+}
+
+// Syntax:	error_page code ... [=[response]] uri;
+// Default:	—
+// Context:	http, server, location, if in location
+// TODO: Currently, we only do not support response
+Command* error_page(Token **rest, Token *tok, int context) {
+  Log::debug("error_page");
+  Command *cmd = new Command(Command::CMD_ERROR_PAGE);
+  expect_context(context, WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
+  tok = skip(tok, "error_page");
+  while (tok->type == Token::TK_NUM) {
+    cmd->error_codes.push_back(tok->num);
+    tok = tok->next;
+  }
+  if (cmd->error_codes.size() == 0) {
+    throw std::runtime_error("invalid number of arguments in \"error_page\" directive");
+  }
+  cmd->error_uri = tok->str;
+  tok = skip_kind(tok, Token::TK_IDENT);
+  *rest = skip(tok, ";");
+  Log::debug("error_page end");
+  return cmd;
+}
+
+// Syntax:	autoindex on | off;
+// Default:	autoindex off;
+// Context:	http, server, location
+Command* autoindex(Token **rest, Token *tok, int context) {
+  Log::debug("autoindex");
+  Command *cmd = new Command(Command::CMD_AUTOINDEX);
+  expect_context(context, WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
+  tok = skip(tok, "autoindex");
+  if (consume(&tok, tok, "on")) {
+    cmd->autoindex = true;
+  } else if (consume(&tok, tok, "off")) {
+    cmd->autoindex = false;
+  } else {
+    throw std::runtime_error("invalid argument in \"autoindex\" directive");
+  }
+  *rest = skip(tok, ";");
+  Log::debug("autoindex end");
+  return cmd;
+}
+
+// Syntax:	limit_except method ... { ... }
+// Default:	—
+// Context:	location
+// TODO: Currently, we do not support block
+Command* limit_except(Token **rest, Token *tok, int context) {
+  Log::debug("limit_except");
+  Command *cmd = new Command(Command::CMD_LIMIT_EXCEPT);
+  expect_context(context, WSV_HTTP_LOC_CONF);
+  tok = skip(tok, "limit_except");
+  while (tok->type == Token::TK_IDENT) {
+    cmd->methods.push_back(tok->str);
+    tok = tok->next;
+  }
+  if (cmd->methods.size() == 0) {
+    throw std::runtime_error("invalid number of arguments in \"limit_except\" directive");
+  }
+  //cmd->block = block(rest, tok, WSV_HTTP_LOC_CONF);
+  *rest = skip(tok, ";"); // This is different from NGINX
+  Log::debug("limit_except end");
   return cmd;
 }
 
@@ -488,16 +609,46 @@ Command* alias(Token **rest, Token *tok, int context)
 
 // debug
 void print_cmd(Command *cmd, std::string ident) {
-  std::cout << ident << cmd->name << std::endl;
+  std::cout << ident << cmd->name << ":" << std::endl;
   ident += "  ";
   if (cmd->address != "") std::cout << ident << "address: " << cmd->address << std::endl;
   if (cmd->port != 0) std::cout << ident << "port: " << cmd->port << std::endl;
-  if (cmd->alias != "") std::cout << ident << "alias: " << cmd->alias << std::endl;
-  if (cmd->location != "") std::cout << ident << "location: " << cmd->location << std::endl;
+  if (cmd->alias != "") std::cout << ident << cmd->alias << std::endl;
+  if (cmd->location != "") std::cout << ident << cmd->location << std::endl;
+  if (cmd->root != "") std::cout << ident << cmd->root << std::endl;
   if (cmd->server_names.size() > 0) {
-    std::cout << ident << "server_names: ";
+    std::cout << ident;
     for (unsigned long i = 0; i < cmd->server_names.size(); i++) {
       std::cout << cmd->server_names[i] << " ";
+    }
+    std::cout << std::endl;
+  }
+  if (cmd->index_files.size() > 0) {
+    std::cout << ident;
+    for (unsigned long i = 0; i < cmd->index_files.size(); i++) {
+      std::cout << cmd->index_files[i] << " ";
+    }
+    std::cout << std::endl;
+  }
+  if (cmd->error_codes.size() > 0) {
+    std::cout << ident << "code: ";
+    for (unsigned long i = 0; i < cmd->error_codes.size(); i++) {
+      std::cout << cmd->error_codes[i] << " ";
+    }
+    std::cout << std::endl;
+  }
+  if (cmd->error_uri != "") std::cout << ident << "uri: " << cmd->error_uri << std::endl;
+  if (cmd->type == Command::CMD_AUTOINDEX) {
+    if (cmd->autoindex) {
+      std::cout << ident << "on" << std::endl;
+    } else {
+      std::cout << ident << "off" << std::endl;
+    }
+  }
+  if (cmd->type == Command::CMD_LIMIT_EXCEPT) {
+    std::cout << ident;
+    for (unsigned long i = 0; i < cmd->methods.size(); i++) {
+      std::cout << cmd->methods[i] << " ";
     }
     std::cout << std::endl;
   }
@@ -509,7 +660,7 @@ void print_cmd(Command *cmd, std::string ident) {
 void print_mod(Module *mod) {
   std::cout << "Module: " << mod->name << std::endl;
   for (Command *cmd = mod->block; cmd; cmd = cmd->next) {
-    print_cmd(cmd, "");
+    print_cmd(cmd, "  ");
   }
 }
 
