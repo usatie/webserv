@@ -1,4 +1,5 @@
 #include "ConfigParser.hpp"
+#include <cstdlib> // atoi
 
 // Do not handle exceptions in config parser
 Module* http(Token **rest, Token *tok, int context);

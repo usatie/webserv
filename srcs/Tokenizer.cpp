@@ -1,4 +1,6 @@
 #include "Tokenizer.hpp"
+#include <cstdlib>
+#include <stdexcept>
 
 bool ispunct(char c) {
   return c == '{' || c == '}' || c == ';';
