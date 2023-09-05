@@ -183,7 +183,7 @@ Command* listen(Token **rest, Token *tok, int context) {
     if (tmp.find(':') != std::string::npos) {
       // TODO: support IPv6
       cmd->address = tmp.substr(0, tmp.find(':'));
-      cmd->port = std::stoi(tmp.substr(tmp.find(':') + 1));
+      cmd->port = atoi(tmp.substr(tmp.find(':') + 1).c_str());
       tok = tok->next;
     } else {
       cmd->address = tok->str;
