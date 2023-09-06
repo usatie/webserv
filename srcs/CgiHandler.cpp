@@ -45,6 +45,12 @@ void CgiHandler::handle(Connection& conn) throw() {
     dup2(cgi_socket[1], STDOUT_FILENO);
     dup2(cgi_socket[1], STDIN_FILENO);
     execve(conn.header.fullpath.c_str(), (char **)argv, NULL);
+    // TODO: handle execve error
+    //
+    //
+    // For CGI script without shebang
+    //const char * const argv[] = {"/opt/homebrew/bin/python3", conn.header.fullpath.c_str(), NULL};
+    //execve("/opt/homebrew/bin/python3", (char **)argv, NULL);
   } else {
     // Parent process
     close(cgi_socket[1]);
