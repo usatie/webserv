@@ -101,13 +101,10 @@ class Server {
     }
   }
 
-  int wait(int timeout) throw() {
+  int wait() throw() {
     ready_rfds = this->readfds;
     ready_wfds = this->writefds;
-    struct timeval tv;
-    tv.tv_sec = timeout;
-    tv.tv_usec = 0;
-    int result = ::select(maxfd + 1, &ready_rfds, &ready_wfds, NULL, &tv);
+    int result = ::select(maxfd + 1, &ready_rfds, &ready_wfds, NULL, NULL);
     if (result < 0) {
       Log::error("select error");
       return -1;
@@ -136,8 +133,8 @@ class Server {
     return std::shared_ptr<Connection>(NULL);
   }
 
-  void process(int timeout) throw() {
-    if (wait(timeout) < 0) {
+  void process() throw() {
+    if (wait() < 0) {
       return;
     }
     std::shared_ptr<Connection> conn;
