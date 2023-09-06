@@ -9,5 +9,6 @@ def test_get_request():
     print(response.headers)
     assert response.headers['Content-Type'] == 'text/plain'
 
+
 if __name__ == '__main__':
     test_get_request()
