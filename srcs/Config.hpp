@@ -134,12 +134,13 @@ public:
     CgiExtensions cgi_extensions;
     std::vector<RedirectReturn> returns;
 
+    Server();
     Server(Command *cmd);
   };
   class HTTP {
   public:
-    HTTP(): configured(false) {}
-    HTTP(Module *pmod);
+    HTTP();
+    HTTP(Module *mod);
     ~HTTP() {}
   public:
     std::vector<Server> servers;
@@ -155,8 +156,11 @@ public:
   public:
     HTTP http;
 
+  Config();
   Config(Module *mod);
 };
+
+Config::Config(): http() {}
 
 Config::Config(Module *mod) {
   for ( ; mod; mod = mod->next) {
@@ -232,6 +236,15 @@ Config::Location::Location(Command *loc): path(loc->location) {
       default:
         throw std::runtime_error("Invalid command");
     }
+  }
+}
+
+Config::Server::Server() {
+  if (listens.empty()) {
+    listens.push_back(Listen());
+  }
+  if (server_names.empty()) {
+    server_names.push_back("");
   }
 }
 
@@ -321,6 +334,10 @@ Config::Server::Server(Command *srv) {
   }
 }
 
+Config::HTTP::HTTP(): configured(false) {
+  servers.push_back(Config::Server());
+}
+
 // About Inheritance of directives
 //
 // Inheritance
@@ -368,7 +385,7 @@ Config::HTTP::HTTP(Module *mod): configured(true) {
     }
   }
   if (servers.empty()) {
-    throw std::runtime_error("No server block");
+    servers.push_back(Config::Server());
   }
   for (unsigned int i = 0; i < servers.size(); i++) {
     Config::Server &srv = servers[i];
@@ -399,7 +416,7 @@ std::ostream& operator<<(std::ostream& os, const Config::Listen& listen) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Config::ErrorPage& error_page) {
-  os << error_page.codes << " " << error_page.uri;
+  os << "{" << error_page.codes << " " << error_page.uri << "}";
   return os;
 }
 
@@ -450,14 +467,21 @@ std::ostream& operator<<(std::ostream& os, const Config::Server &s) {
     if (s.returns.size() > 0)
       os << "      return: " << s.returns << std::endl;
     for (unsigned int j = 0; j < s.locations.size(); ++j) {
-      os << s.locations[j] << std::endl;
+      os << s.locations[j];
     }
     return os;
 }
 
 std::ostream& operator<<(std::ostream& os, const Config::HTTP &http) {
+  if (http.root.configured) {
+    os << "    root: " << http.root << std::endl;
+  } else {
+    os << "    root: " << http.root << " [default]" << std::endl;
+  }
   if (http.index.configured) {
     os << "    index: " << http.index << std::endl;
+  } else {
+    os << "    index: " << http.index << "[default]" << std::endl;
   }
   if (http.autoindex.configured) {
     os << "    autoindex: " << http.autoindex << std::endl;
@@ -465,15 +489,12 @@ std::ostream& operator<<(std::ostream& os, const Config::HTTP &http) {
   if (http.client_max_body_size.configured) {
     os << "    client_max_body_size: " << http.client_max_body_size << std::endl;
   }
-  if (http.root.configured) {
-    os << "    root: " << http.root << std::endl;
-  }
   if (http.error_pages.size() > 0) {
     os << "    error_page: " << http.error_pages << std::endl;
   }
 
   for (unsigned int i = 0; i < http.servers.size(); ++i) {
-    os << http.servers[i] << std::endl;
+    os << http.servers[i];
   }
   return os;
 }
@@ -481,12 +502,12 @@ std::ostream& operator<<(std::ostream& os, const Config::HTTP &http) {
 std::ostream& operator<<(std::ostream& os, const Config &cf) {
   os << "Config" << std::endl;
   os << "  HTTP" << std::endl;
-  os << cf.http << std::endl;
+  os << cf.http;
   return os;
 }
 
 void printConfig(const Config& cf) {
-  std::cout << cf << std::endl;
+  std::cout << cf;
 }
 
 #endif
