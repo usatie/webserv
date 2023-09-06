@@ -1,6 +1,7 @@
 #include <signal.h>
 
 #include "Server.hpp"
+#include "Config.hpp"
 #include "webserv.hpp"
 #define PORT 8181
 #define BACKLOG 5

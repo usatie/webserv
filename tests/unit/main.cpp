@@ -1,6 +1,7 @@
 #include "Log.hpp"
 #include "Tokenizer.hpp"
 #include "ConfigParser.hpp"
+#include "Config.hpp"
 
 void test_socketbuf();
 void test_configparser();
@@ -13,9 +14,12 @@ void test_tokenize_and_parse() {
   try {
     Token *tokens = tokenize(s);
     std::cout << "Tokenize Success!" << std::endl;
-    Module *config = parse(tokens);
+    Module *mod = parse(tokens);
     std::cout << "Parse Success!" << std::endl;
-    print_mod(config);
+    print_mod(mod);
+    Config cf(mod);
+    std::cout << "Config Success!" << std::endl;
+    printConfig(cf);
   } catch (std::exception &e) {
     std::cout << e.what() << std::endl;
   }

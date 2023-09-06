@@ -1,268 +1,492 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-/*
- *
- *
- *
- * This file will be deleted soon.
- * This file was the first draft.
- * I decided to use a different approach.
- *
- *
- *
- * /
-
-/*
 #include <string>
-// shared_ptr
-#include <memory>
-
-#define MB 1024 * 1024
-
-class HTTPModule {
-public:
-  std::shared_ptr<HTTPModule> next;
-  std::shared_ptr<Command> commands;
-  std::shared_ptr<Command> servers;
-  std::shared_ptr<Command> locations;
-};
-*/
-
-// These flags are used in nginx.
-/*
- *        AAAA  number of arguments
- *      FF      command flags
- *    TT        command type, i.e. HTTP "location" or "server" command
- */
-
-/*
-// Syntax
-#define WSV_CONF_NOARGS           0x00000001
-#define WSV_CONF_TAKE1            0x00000002
-#define WSV_CONF_TAKE2            0x00000004
-#define WSV_CONF_TAKE3            0x00000008
-#define WSV_CONF_TAKE4            0x00000010
-#define WSV_CONF_TAKE5            0x00000020
-#define WSV_CONF_TAKE6            0x00000040
-#define WSV_CONF_TAKE7            0x00000080
-
-#define WSV_CONF_MAX_ARGS         8
-
-#define WSV_CONF_TAKE12           (NGX_CONF_TAKE1|NGX_CONF_TAKE2)
-#define WSV_CONF_TAKE13           (NGX_CONF_TAKE1|NGX_CONF_TAKE3)
-
-#define WSV_CONF_TAKE23           (NGX_CONF_TAKE2|NGX_CONF_TAKE3)
-
-#define WSV_CONF_TAKE123          (NGX_CONF_TAKE1|NGX_CONF_TAKE2|NGX_CONF_TAKE3)
-#define WSV_CONF_TAKE1234         (NGX_CONF_TAKE1|NGX_CONF_TAKE2|NGX_CONF_TAKE3   \
-        WSV                        |NGX_CONF_TAKE4)
-
-#define WSV_CONF_ARGS_NUMBER      0x000000ff
-#define WSV_CONF_BLOCK            0x00000100
-#define WSV_CONF_FLAG             0x00000200
-#define WSV_CONF_ANY              0x00000400
-#define WSV_CONF_1MORE            0x00000800
-#define WSV_CONF_2MORE            0x00001000
-
-// Context
-#define WSV_MAIN_CONF             0x01000000
-#define WSV_HTTP_MAIN_CONF        0x02000000
-#define WSV_HTTP_SRV_CONF         0x04000000
-#define WSV_HTTP_LOC_CONF         0x08000000
-#define WSV_ANY_CONF              0xFF000000
-
-struct CommandRule {
-  std::string name;
-  int syntax;
-  Command defaultValue;
-  int context;
-};
-
-struct CommandRule[] rules = {
-  {
-    "listen",
-    WSV_CONF_TAKE1,
-    Listen(),
-    WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_CONF_1MORE,
-  }
-};
-
-class Listen: public Command {
-private:
-  Listen(const Listen &); // Do not implement this
-  Listen &operator=(const Listen &); // Do not implement this
-public:
-  std::string address;
-  int port;
-  Listen(): Command(CMD_LISTEN), address(""), port(8080) {}
-  Listen(std::string address, int port): Command(Listen), address(address), port(port) {}
-};
-
-
-class Command {
-private:
-  Command(); // Do not implement this
-public:
-  // Generic Members
-  enum Type {
-    // Server
-    Listen,
-    ServerName,
-    Root,
-    Index,
-    ErrorPage,
-    AutoIndex,
-    LimitExcept,
-    UploadStore,
-    ClientMaxBodySize,
-    CGIExtension,
-    RedirectReturn,
-    // Location
-    Location,
-    Alias,
-    // Generic
-    Unknown,
-  };
-
-  enum Type type;
-  std::shared_ptr<Command> next;
-  Command(enum Type type): type(type) {}
-
-  // Listen
-  std::string address;
-  int port;
-
-  // ServerName
-  std::vector<std::string> server_names;
-
-  // Root
-  std::string root;
-
-  // Alias
-  std::string alias;
-
-  // Index
-  std::string index;
-
-  // ErrorPage
-  std::vector<int> codes;
-  // int response_code; // Do not support
-  std::string uri;
-
-  // LimitExcept
-  std::vector<std::string> methods;
-
-  // RedirectReturn
-  int code;
-  std::string url;
-
-  // AutoIndex
-  bool autoindex;
-
-  // ClientMaxBodySize
-  size_t client_max_body_size;
-
-  // UploadStore
-  std::string upload_store;
-
-  // CGI Extension
-  std::vector<std::string> cgi_extensions;
-
-  // Location
-  std::string location;
-  
-  // Server, Location
-  std::shared_ptr<Command> commands;
-  std::shared_ptr<Command> locations;
-};
+#include <vector>
+#include "ConfigParser.hpp"
 
 class Config {
+public:
   // Primitive Configuration Items
   class Listen {
   public:
     std::string address; // host
     int port;
+    bool configured;
+    Listen(const std::string &address, const int &port): address(address), port(port), configured(true) {}
+    Listen(): address(""), port(80), configured(false) {}
   };
   class ErrorPage {
   public:
-    int code;
-    int response_code;
+    std::vector<int> codes;
     std::string uri;
+    bool configured;
+    ErrorPage(const std::vector<int> &codes, const std::string &uri): codes(codes), uri(uri), configured(true) {}
+    ErrorPage(): codes(), uri(""), configured(false) {}
   };
   class LimitExcept {
   public:
     std::vector<std::string> methods;
+    bool configured;
+    LimitExcept(const std::vector<std::string> &methods): methods(methods), configured(true) {}
+    LimitExcept(): methods(), configured(false) {}
   };
   class RedirectReturn {
   public:
     int code;
     std::string url;
+    bool configured;
+    RedirectReturn(const int code, const std::string &url): code(code), url(url), configured(true) {}
+    RedirectReturn(): code(), url(""), configured(false) {}
   };
   class Root: public std::string {
     public:
-      Root(const std::string &path): std::string(path) {}
-      Root(): std::string("html") {}
-  }
+      bool configured;
+      explicit Root(const std::string &path): std::string(path), configured(true) {}
+      Root(): std::string("html"), configured(false) {}
+  };
+  class Index: public std::vector<std::string> {
+    public:
+      bool configured;
+      explicit Index(const std::vector<std::string> &index_files): std::vector<std::string>(index_files), configured(true) {}
+      Index(): std::vector<std::string>(), configured(false) {
+        push_back("index.html");
+      }
+  };
+  class Alias: public std::string {
+    public:
+      bool configured;
+      explicit Alias(const std::string &path): std::string(path), configured(true) {}
+      Alias(): std::string(), configured(false) {}
+  };
+  class ClientMaxBodySize {
+    private:
+      size_t size;
+    public:
+      bool configured;
+      explicit ClientMaxBodySize(const size_t &size): size(size), configured(true) {}
+      ClientMaxBodySize(): size(1 * MB), configured(false) {}
+      void set(const size_t &size) {
+        this->size = size;
+      }
+      operator size_t() const {
+        return size;
+      }
+  };
+  class AutoIndex {
+    private:
+      bool value;
+    public:
+      bool configured;
+      explicit AutoIndex(const bool &value): value(value), configured(true) {}
+      AutoIndex(): value(false), configured(false) {}
+      void set(const bool &value) {
+        this->value = value;
+      }
+      operator bool() const {
+        return value;
+      }
+  };
+  class UploadStore: public std::string {
+    public:
+      bool configured;
+      explicit UploadStore(const std::string &path): std::string(path), configured(true) {}
+      UploadStore(): std::string("upload"), configured(false) {}
+      void set(const std::string &path) {
+        this->assign(path);
+      }
+  };
+  class CgiExtensions: public std::vector<std::string> {
+    public:
+      bool configured;
+      explicit CgiExtensions(const std::vector<std::string> &extensions): std::vector<std::string>(extensions), configured(true) {}
+      CgiExtensions(): std::vector<std::string>(), configured(false) {
+      }
+  };
   // Composite Configuration Items
   class Location {
   public:
+    std::string path;
     Root root;
-    std::string index;
-    std::string alias;
-    ErrorPage error_page;
-    LimitExcept limit_except;
-    bool autoindex;
-    std::string upload_store;
-    size_t client_max_body_size;
-    std::string cgi_extension;
-    RedirectReturn redirect_return;
+    Index index;
+    std::vector<ErrorPage> error_pages;
+    AutoIndex autoindex;
+    ClientMaxBodySize client_max_body_size;
+    UploadStore upload_store;
+    std::vector<RedirectReturn> returns;
+    Alias alias;                              // Location only
+    LimitExcept limit_except;                 // Locatoin only
+    CgiExtensions cgi_extensions;  // Location only
     // std::shared_ptr<Location> child; // Does not support nested location.
+    Location(Command *cmd);
   };
   class Server {
   public:
-  public:
-    std::vector<Location> location;
-    std::vector<Listen> listen;
+    std::vector<Location> locations;
+    std::vector<Listen> listens;
     std::vector<std::string> server_names;
-    std::string root;
-    std::string index;
-    ErrorPage error_page;
-    bool autoindex;
-    std::string upload_store;
-    size_t client_max_body_size;
-    std::string cgi_extension;
-    RedirectReturn redirect_return;
+    Root root;
+    Index index;
+    std::vector<ErrorPage> error_pages;
+    AutoIndex autoindex;
+    UploadStore upload_store;
+    ClientMaxBodySize client_max_body_size;
+    CgiExtensions cgi_extensions;
+    std::vector<RedirectReturn> returns;
+
+    Server(Command *cmd);
   };
   class HTTP {
   public:
-    HTTP(): servers(), root("html"), index("index.html"), error_pages(), autoindex(false), client_max_body_size(1 * MB) {}
+    HTTP(): configured(false) {}
+    HTTP(Module *pmod);
     ~HTTP() {}
-    HTTP(const HTTP &rhs): servers(rhs.servers), root(rhs.root), index(rhs.index), error_pages(rhs.error_pages), autoindex(rhs.autoindex), client_max_body_size(rhs.client_max_body_size) {}
-    HTTP &operator=(const HTTP &rhs) {
-      if (this != &rhs) {
-        servers = rhs.servers;
-        root = rhs.root;
-        index = rhs.index;
-        error_pages = rhs.error_pages;
-        autoindex = rhs.autoindex;
-        client_max_body_size = rhs.client_max_body_size;
-      }
-      return *this;
-    }
   public:
     std::vector<Server> servers;
-    std::string root;
-    std::string index;
+    Root root;
+    Index index;
     std::vector<ErrorPage> error_pages;
-    bool autoindex;
-    size_t client_max_body_size;
+    AutoIndex autoindex;
+    ClientMaxBodySize client_max_body_size;
+    bool configured;
   };
 
   // Configuration
   public:
     HTTP http;
+
+  Config(Module *mod);
 };
-*/
+
+Config::Config(Module *mod) {
+  for ( ; mod; mod = mod->next) {
+    if (mod->type != Module::MOD_HTTP) {
+      throw std::runtime_error("Invalid module type");
+    }
+    if (http.configured) {
+      throw std::runtime_error("Duplicate http block");
+    }
+    http = HTTP(mod);
+  }
+}
+
+Config::Location::Location(Command *loc): path(loc->location) {
+  for (Command* cmd = loc->block; cmd; cmd = cmd->next) {
+    switch (cmd->type) {
+      case Command::CMD_ROOT:
+        if (root.configured) {
+          throw std::runtime_error("Duplicate root");
+        }
+        root = Root(cmd->root);
+        break;
+      case Command::CMD_INDEX:
+        if (!index.configured) {
+          index = Index(cmd->index_files);
+        } else {
+          index.insert(index.end(), cmd->index_files.begin(), cmd->index_files.end());
+        }
+        break;
+      case Command::CMD_ERROR_PAGE:
+        error_pages.push_back(ErrorPage(cmd->error_codes, cmd->error_uri));
+        break;
+      case Command::CMD_AUTOINDEX:
+        if (autoindex.configured) {
+          throw std::runtime_error("Duplicate autoindex");
+        }
+        autoindex = AutoIndex(cmd->autoindex);
+        break;
+      case Command::CMD_CLIENT_MAX_BODY_SIZE:
+        if (client_max_body_size.configured) {
+          throw std::runtime_error("Duplicate client_max_body_size");
+        }
+        client_max_body_size = ClientMaxBodySize(cmd->client_max_body_size);
+        break;
+      case Command::CMD_UPLOAD_STORE:
+        if (upload_store.configured) {
+          throw std::runtime_error("Duplicate upload_store");
+        }
+        upload_store = UploadStore(cmd->upload_store);
+        break;
+      case Command::CMD_RETURN:
+        returns.push_back(RedirectReturn(cmd->return_code, cmd->return_url));
+        break;
+      case Command::CMD_ALIAS:
+        if (alias.configured) {
+          throw std::runtime_error("Duplicate alias");
+        }
+        alias = Alias(cmd->alias);
+        break;
+      case Command::CMD_LIMIT_EXCEPT:
+        if (limit_except.configured) {
+          throw std::runtime_error("Duplicate limit_except");
+        }
+        limit_except = LimitExcept(cmd->methods);
+        break;
+      case Command::CMD_CGI_EXTENSION:
+        if (!cgi_extensions.configured) {
+          cgi_extensions = CgiExtensions(cmd->cgi_extensions);
+        } else {
+          cgi_extensions.insert(cgi_extensions.end(), cmd->cgi_extensions.begin(), cmd->cgi_extensions.end());
+        }
+        break;
+      default:
+        throw std::runtime_error("Invalid command");
+    }
+  }
+}
+
+Config::Server::Server(Command *srv) {
+  for (Command* cmd = srv->block; cmd; cmd = cmd->next) {
+    switch (cmd->type) {
+      case Command::CMD_LOCATION:
+        locations.push_back(Config::Location(cmd));
+        break;
+      case Command::CMD_LISTEN:
+        listens.push_back(Listen(cmd->address, cmd->port));
+        break;
+      case Command::CMD_SERVER_NAME:
+        server_names.insert(server_names.end(), cmd->server_names.begin(), cmd->server_names.end());
+        break;
+      case Command::CMD_ROOT:
+        if (root.configured) {
+          throw std::runtime_error("Duplicate root");
+        }
+        root = Root(cmd->root);
+        break;
+      case Command::CMD_INDEX:
+        if (!index.configured) {
+          index = Index(cmd->index_files);
+        } else {
+          index.insert(index.end(), cmd->index_files.begin(), cmd->index_files.end());
+        }
+        break;
+      case Command::CMD_ERROR_PAGE:
+        {
+          ErrorPage new_error_page(cmd->error_codes, cmd->error_uri);
+          error_pages.push_back(new_error_page);
+        }
+        break;
+      case Command::CMD_AUTOINDEX:
+        if (autoindex.configured) {
+          throw std::runtime_error("Duplicate autoindex");
+        }
+        autoindex = AutoIndex(cmd->autoindex);
+        break;
+      case Command::CMD_UPLOAD_STORE:
+        if (upload_store.configured) {
+          throw std::runtime_error("Duplicate upload_store");
+        }
+        upload_store = UploadStore(cmd->upload_store);
+        break;
+      case Command::CMD_CLIENT_MAX_BODY_SIZE:
+        if (client_max_body_size.configured) {
+          throw std::runtime_error("Duplicate client_max_body_size");
+        }
+        client_max_body_size = ClientMaxBodySize(cmd->client_max_body_size);
+        break;
+      case Command::CMD_RETURN:
+        {
+          RedirectReturn new_return(cmd->return_code, cmd->return_url);
+          returns.push_back(new_return);
+        }
+        break;
+      case Command::CMD_CGI_EXTENSION:
+        if (!cgi_extensions.configured) {
+          cgi_extensions = CgiExtensions(cmd->cgi_extensions);
+        } else {
+          cgi_extensions.insert(cgi_extensions.end(), cmd->cgi_extensions.begin(), cmd->cgi_extensions.end());
+        }
+        break;
+      default:
+        throw std::runtime_error("Invalid command type");
+    }
+  }
+  if (listens.empty()) {
+    listens.push_back(Listen());
+  }
+  if (server_names.empty()) {
+    server_names.push_back("");
+  }
+  for (unsigned int i = 0; i < locations.size(); i++) {
+    Config::Location &loc = locations[i];
+    if (!loc.root.configured) loc.root = root;
+    if (!loc.index.configured) loc.index = index;
+    if (!loc.autoindex.configured) loc.autoindex = autoindex;
+    if (!loc.upload_store.configured) loc.upload_store = upload_store;
+    if (!loc.client_max_body_size.configured) loc.client_max_body_size = client_max_body_size;
+    if (!loc.cgi_extensions.configured) loc.cgi_extensions = cgi_extensions;
+    if (loc.error_pages.empty()) loc.error_pages = error_pages;
+    // Return is always inherited if configured
+    if (!returns.empty()) loc.returns = returns;
+  }
+}
+
+// About Inheritance of directives
+//
+// Inheritance
+// In general, a child context – one contained within another context (its parent) – inherits the settings of directives included at the parent level. Some directives can appear in multiple contexts, in which case you can override the setting inherited from the parent by including the directive in the child context. For an example, see the proxy_set_header directive.
+// cf. https://docs.nginx.com/nginx/admin-guide/basic-functionality/managing-configuration-files/
+//
+// If you define multiple directives in different contexts then the lower context will replace the higher context ones.
+// cf. https://blog.martinfjordvald.com/understanding-the-nginx-configuration-inheritance-model/
+Config::HTTP::HTTP(Module *mod): configured(true) {
+  for (Command* cmd = mod->block; cmd; cmd = cmd->next) {
+    switch (cmd->type) {
+      case Command::CMD_SERVER:
+        servers.push_back(Server(cmd));
+        break;
+      case Command::CMD_ROOT:
+        if (root.configured) {
+          throw std::runtime_error("Duplicate root");
+        }
+        root = Root(cmd->root);
+        break;
+      case Command::CMD_INDEX:
+        if (!index.configured) {
+          index = Index(cmd->index_files);
+        } else {
+          index.insert(index.end(), cmd->index_files.begin(), cmd->index_files.end());
+        }
+        break;
+      case Command::CMD_ERROR_PAGE:
+        error_pages.push_back(ErrorPage(cmd->error_codes, cmd->error_uri));
+        break;
+      case Command::CMD_AUTOINDEX:
+        if (autoindex.configured) {
+          throw std::runtime_error("Duplicate autoindex");
+        }
+        autoindex = AutoIndex(cmd->autoindex);
+        break;
+      case Command::CMD_CLIENT_MAX_BODY_SIZE:
+        if (client_max_body_size.configured) {
+          throw std::runtime_error("Duplicate client_max_body_size");
+        }
+        client_max_body_size = ClientMaxBodySize(cmd->client_max_body_size);
+        break;
+      default:
+        throw std::runtime_error("Invalid command type");
+    }
+  }
+  if (servers.empty()) {
+    throw std::runtime_error("No server block");
+  }
+  for (unsigned int i = 0; i < servers.size(); i++) {
+    Config::Server &srv = servers[i];
+    if (!srv.root.configured) srv.root = root;
+    if (!srv.index.configured) srv.index = index;
+    if (!srv.autoindex.configured) srv.autoindex = autoindex;
+    if (!srv.client_max_body_size.configured) srv.client_max_body_size = client_max_body_size;
+    if (srv.error_pages.empty()) srv.error_pages = error_pages;
+  }
+}
+
+// Stream
+#include <iostream>
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const std::vector<T>& v) {
+  //if (v.configured) {
+  //  std::cout << "[configured] ";
+  //}
+  for (unsigned int i = 0; i < v.size(); ++i) {
+    os << v[i] << " ";
+  }
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Config::Listen& listen) {
+  os << listen.address << ":" << listen.port;
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Config::ErrorPage& error_page) {
+  os << error_page.codes << " " << error_page.uri;
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Config::RedirectReturn& ret) {
+  os << ret.code << " " << ret.url << " ";
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Config::Location &l) {
+  os << "      location: " << l.path << std::endl;
+  if (l.root.configured)
+    os << "        root: " << l.root << std::endl;
+  if (l.index.configured)
+    os << "        index: " << l.index << std::endl;
+  if (l.autoindex.configured)
+    os << "        autoindex: " << l.autoindex << std::endl;
+  if (l.client_max_body_size.configured)
+    os << "        client_max_body_size: " << l.client_max_body_size << std::endl;
+  if (!l.error_pages.empty())
+    os << "        error_page: " << l.error_pages << std::endl;
+  if (!l.cgi_extensions.empty())
+    os << "        cgi_extension: " << l.cgi_extensions << std::endl;
+  if (!l.returns.empty())
+    os << "        return: " << l.returns << std::endl;
+  if (l.upload_store.configured)
+    os << "        upload_store: " << l.upload_store << std::endl;
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Config::Server &s) {
+    os << "    server: " << std::endl;
+    os << "      listen: " << s.listens << std::endl;
+    os << "      server_name: " << s.server_names << std::endl;
+    if (s.index.configured) 
+      os << "      index: " << s.index << std::endl;
+    if (s.autoindex.configured)
+      os << "      autoindex: " << s.autoindex << std::endl;
+    if (s.client_max_body_size.configured)
+      os << "      client_max_body_size: " << s.client_max_body_size << std::endl;
+    if (s.root.configured)
+      os << "      root: " << s.root << std::endl;
+    if (s.error_pages.size() > 0)
+      os << "      error_page: " << s.error_pages << std::endl;
+    if (s.upload_store.configured)
+      os << "      upload_store: " << s.upload_store << std::endl;
+    if (s.cgi_extensions.size() > 0)
+      os << "        cgi_extension: " << s.cgi_extensions << std::endl;
+    if (s.returns.size() > 0)
+      os << "      return: " << s.returns << std::endl;
+    for (unsigned int j = 0; j < s.locations.size(); ++j) {
+      os << s.locations[j] << std::endl;
+    }
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Config::HTTP &http) {
+  if (http.index.configured) {
+    os << "    index: " << http.index << std::endl;
+  }
+  if (http.autoindex.configured) {
+    os << "    autoindex: " << http.autoindex << std::endl;
+  }
+  if (http.client_max_body_size.configured) {
+    os << "    client_max_body_size: " << http.client_max_body_size << std::endl;
+  }
+  if (http.root.configured) {
+    os << "    root: " << http.root << std::endl;
+  }
+  if (http.error_pages.size() > 0) {
+    os << "    error_page: " << http.error_pages << std::endl;
+  }
+
+  for (unsigned int i = 0; i < http.servers.size(); ++i) {
+    os << http.servers[i] << std::endl;
+  }
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Config &cf) {
+  os << "Config" << std::endl;
+  os << "  HTTP" << std::endl;
+  os << cf.http << std::endl;
+  return os;
+}
+
+void printConfig(const Config& cf) {
+  std::cout << cf << std::endl;
+}
 
 #endif
