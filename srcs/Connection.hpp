@@ -5,6 +5,7 @@
 #include "GetHandler.hpp"
 #include "Header.hpp"
 #include "PostHandler.hpp"
+#include "CgiHandler.hpp"
 #include "SocketBuf.hpp"
 #include "webserv.hpp"
 #include <cassert>
@@ -244,6 +245,13 @@ class Connection {
   }
 
   int handle() throw() {
+    // if CGI 
+    if (header.path.find("/cgi/") != std::string::npos) {
+      CgiHandler::handle(*this);
+      status = RESPONSE;
+      return 1;
+    }
+    // If not CGI
     if (header.method == "GET") {
       GetHandler::handle(*client_socket, header);
     } else if (header.method == "POST") {

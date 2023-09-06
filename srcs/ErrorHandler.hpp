@@ -13,13 +13,21 @@ class ErrorHandler {
     client_socket.clear_sendbuf();
     switch (status_code) {
       case 400:
-        client_socket << "temp";
         client_socket << "HTTP/1.1 400 Bad Request" << CRLF;
         client_socket << "Content-Type: text/html" << CRLF;
         client_socket << "Content-Length: " << sizeof(http_error_400_page)
                       << CRLF;
         client_socket << CRLF;  // end of header
         client_socket << http_error_400_page;
+        client_socket << CRLF;  // end of body
+        break;
+      case 403:
+        client_socket << "HTTP/1.1 403 Forbidden" << CRLF;
+        client_socket << "Content-Type: text/html" << CRLF;
+        client_socket << "Content-Length: " << sizeof(http_error_400_page)
+                      << CRLF;
+        client_socket << CRLF;  // end of header
+        client_socket << http_error_403_page;
         client_socket << CRLF;  // end of body
         break;
       case 404:
