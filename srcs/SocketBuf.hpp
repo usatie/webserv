@@ -42,7 +42,7 @@ class SocketBuf {
 
  public:
   // Constructor/Destructor
-  explicit SocketBuf(int listen_fd) : socket(listen_fd), rss(), wss() {
+  explicit SocketBuf(int fd) : socket(fd), rss(), wss() {
     if (socket.set_nonblock() < 0) {
       throw std::runtime_error("socket.set_nonblock() failed");
     }
@@ -230,6 +230,19 @@ class SocketBuf {
     wss << t;
     if (wss.fail()) {
       Log::fatal("wss << msg failed");
+      setbadstate();
+    }
+    return *this;
+  }
+
+  SocketBuf& write(const char* buf, size_t size) throw() {
+    StreamCleaner _(rss, wss);
+    if (bad()) {
+      return *this;
+    }
+    wss.write(buf, size);
+    if (wss.fail()) {
+      Log::fatal("wss.write(buf, size) failed");
       setbadstate();
     }
     return *this;

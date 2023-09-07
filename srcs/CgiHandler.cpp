@@ -3,6 +3,7 @@
 #include "ErrorHandler.hpp"
 // fork
 #include <unistd.h>
+#include <cstdlib> // exit
 
 void CgiHandler::handle(Connection& conn) throw() {
   // Check if 404
@@ -45,40 +46,26 @@ void CgiHandler::handle(Connection& conn) throw() {
     dup2(cgi_socket[1], STDOUT_FILENO);
     dup2(cgi_socket[1], STDIN_FILENO);
     execve(conn.header.fullpath.c_str(), (char **)argv, NULL);
-    // TODO: handle execve error
-    //
-    //
+
+    // This log would be printed to std::err and visible to the server process.
+    Log::cfatal() << "execve error" << std::endl;
+    std::exit(1);
+
     // For CGI script without shebang
     //const char * const argv[] = {"/opt/homebrew/bin/python3", conn.header.fullpath.c_str(), NULL};
     //execve("/opt/homebrew/bin/python3", (char **)argv, NULL);
   } else {
     // Parent process
     close(cgi_socket[1]);
-    // TODO: Select on cgi_socket[0]
-    write(cgi_socket[0], conn.body, conn.body_size);
-    // Send EOF to CGI Script process
-    shutdown(cgi_socket[0], SHUT_WR);
-    int status;
-    Log::debug("Waiting for CGI to exit");
-    // TODO: Do not wait
-    waitpid(pid, &status, 0);
-    char buf[1024];
-    // TODO: Select on cgi_socket[0]
-    ssize_t ret = read(cgi_socket[0], buf, 1024);
-    buf[ret] = '\0';
-    // TODO: Parse CGI response and convert to HTTP response
-    *conn.client_socket << buf;
-    Log::debug("CGI exited");
-    if (WIFEXITED(status)) {
-      int exit_status = WEXITSTATUS(status);
-      if (exit_status == 0) {
-        Log::debug("CGI exited normally");
-      } else {
-        ErrorHandler::handle(*conn.client_socket, 500);
-      }
-    } else {
+    try {
+      conn.cgi_socket = std::shared_ptr<SocketBuf>(new SocketBuf(cgi_socket[0]));
+    } catch (std::exception& e) {
+      Log::fatal("new SocketBuf(cgi_socket[0]) failed");
+      close(cgi_socket[0]);
       ErrorHandler::handle(*conn.client_socket, 500);
+      return;
     }
-
+    conn.cgi_socket->write(conn.body, conn.body_size);
+    conn.cgi_pid = pid;
   }
 }

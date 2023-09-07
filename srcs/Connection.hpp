@@ -10,37 +10,53 @@
 #include "webserv.hpp"
 #include <cassert>
 #include <limits.h>
+#include <signal.h>
 
 class Connection {
  public:
   // Class private enum
   typedef enum Status {
-    REQ_START_LINE,
-    REQ_HEADER_FIELDS,
-    REQ_BODY,
-    HANDLE,
-    RESPONSE,
-    DONE
+    REQ_START_LINE,     // CLIENT_RECV
+    REQ_HEADER_FIELDS,  // CLIENT_RECV
+    REQ_BODY,           // CLIENT_RECV
+    HANDLE,             //
+    HANDLE_CGI_REQ,     // CGI_SEND
+    HANDLE_CGI_RES,     // CGI_RECV
+    HANDLE_CGI_PARSE,   //
+    RESPONSE,           // CLIENT_SEND
+    DONE                // CLIENT_SEND
   } Status;
+
+  typedef enum IOStatus {
+    CLIENT_RECV, 
+    CLIENT_SEND,
+    CGI_RECV,
+    CGI_SEND,
+    NO_IO
+  } IOStatus;
 
   // Member data
   std::shared_ptr<SocketBuf> client_socket;
+  std::shared_ptr<SocketBuf> cgi_socket;
   Header header;
   Status status;
   char *body;
   size_t body_size;
   size_t content_length;
+  pid_t cgi_pid;
 
  public:
   // Constructor/Destructor
   Connection() throw();  // Do not implement this
   explicit Connection(int listen_fd)
       : client_socket(new SocketBuf(listen_fd)),
+        cgi_socket(NULL),
         header(),
         status(REQ_START_LINE),
         body(NULL),
         body_size(0),
-        content_length(0) {}
+        content_length(0),
+        cgi_pid(-1){}
   ~Connection() throw() {}
   Connection(const Connection &other) throw();  // Do not implement this
   Connection &operator=(
@@ -48,23 +64,52 @@ class Connection {
 
   // Accessors
   int get_fd() const throw() { return client_socket->get_fd(); }
+  int get_cgifd() const throw() {
+    if (cgi_socket == NULL) return -1;
+    return cgi_socket->get_fd();
+  }
   bool is_done() const throw() { return status == DONE; }
 
   // Member functions
   // Returns negative value when an exception is thrown from STL containers
   int resume() throw() {
-    if (shouldRecv()) {
-      client_socket->fill();
-    } else if (shouldSend()) {
-      client_socket->flush();
+    // 1. Socket I/O
+    IOStatus io_status = getIOStatus();
+    switch (io_status) {
+      case CLIENT_RECV:
+        client_socket->fill();
+        break;
+      case CLIENT_SEND:
+        client_socket->flush();
+        break;
+      case CGI_RECV:
+        cgi_socket->fill();
+        break;
+      case CGI_SEND:
+        cgi_socket->flush();
+        break;
+      case NO_IO:
+        break;
+    }
+    // After socket i/o, check if the socket is still open
+    if (io_status == CLIENT_RECV || io_status == CLIENT_SEND) {
+      if (client_socket->isClosed()) {
+        Log::info("client_socket->closed");
+        status = DONE;
+        return -1;
+      }
+    } else if (io_status == CGI_RECV || io_status == CGI_SEND) {
+      if (cgi_socket->isClosed()) {
+        Log::info("cgi_socket->closed");
+        status = HANDLE_CGI_PARSE;
+      }
+    }
+    if (io_status == CGI_SEND && cgi_socket->isSendBufEmpty()) {
+      // Send EOF to CGI Script process
+      Log::debug("send EOF to CGI Script process");
+      shutdown(cgi_socket->get_fd(), SHUT_WR);
     }
     bool cont = true;
-    // After recv/send, check if the socket is still open
-    if (client_socket->isClosed()) {
-      Log::info("client_socket->closed");
-      status = DONE;
-      cont = false;
-    }
     // If the socket is closed, we don't need to do anything
     while (cont) {
       switch (status) {
@@ -79,6 +124,16 @@ class Connection {
           break;
         case HANDLE:
           cont = handle();
+          break;
+        case HANDLE_CGI_REQ:
+          cont = handle_cgi_req();
+          break;
+        case HANDLE_CGI_RES:
+          cont = handle_cgi_res();
+          break;
+        case HANDLE_CGI_PARSE:
+          cont = handle_cgi_parse();
+          status = RESPONSE;
           break;
         case RESPONSE:
           cont = response();
@@ -96,13 +151,24 @@ class Connection {
     return 0;
   }
 
-  bool shouldRecv() const throw() {
-    return status == REQ_START_LINE || status == REQ_HEADER_FIELDS ||
-           status == REQ_BODY;
-  }
-
-  bool shouldSend() const throw() {
-    return status == HANDLE || status == RESPONSE;
+  IOStatus getIOStatus() const throw() {
+    switch (status) {
+      case REQ_START_LINE:
+      case REQ_HEADER_FIELDS:
+      case REQ_BODY:
+        return CLIENT_RECV;
+      case HANDLE_CGI_REQ:
+        return CGI_SEND;
+      case HANDLE_CGI_RES:
+        return CGI_RECV;
+      case RESPONSE:
+        return CLIENT_SEND;
+      case HANDLE:
+      case HANDLE_CGI_PARSE:
+      case DONE:
+      default:
+        return NO_IO;
+    }
   }
 
 #define SPACE ' '
@@ -247,8 +313,9 @@ class Connection {
   int handle() throw() {
     // if CGI 
     if (header.path.find("/cgi/") != std::string::npos) {
+      // TODO: write(body, body_size) in handle()
       CgiHandler::handle(*this);
-      status = RESPONSE;
+      status = HANDLE_CGI_REQ;
       return 1;
     }
     // If not CGI
@@ -259,6 +326,60 @@ class Connection {
     } else {
       Log::cinfo() << "Unsupported method: " << header.method << std::endl;
       ErrorHandler::handle(*client_socket, 405);
+    }
+    status = RESPONSE;
+    return 1;
+  }
+
+  int handle_cgi_req() throw() {
+    if (cgi_socket->isSendBufEmpty()) {
+      status = HANDLE_CGI_RES;
+      return 1;
+    }
+    return 0;
+  }
+
+  int handle_cgi_res() throw() {
+    // 1. If CGI process is still running, return 0
+    // Question: If CGI process exit, isClosed will be set to true?
+    if (!cgi_socket->isClosed())
+      return 0;
+
+    // 2. If CGI process is not running, handle CGI response
+    // To remove zombie process, wait or kill CGI process
+    pid_t ret;
+    int status;
+    while ((ret = waitpid(cgi_pid, &status, WNOHANG)) < 0) {
+      // If interrupted by signal, continue to waitpid again
+      if (errno == EINTR) continue;
+      // If other errors(ECHILD/EFAULT/EINVAL), kill CGI process and return 500
+      // (I don't think this will happen though.)
+      Log::cfatal() << "waitpid error" << std::endl;
+      kill(cgi_pid, SIGKILL);
+      ErrorHandler::handle(*client_socket, 500);
+      status = RESPONSE;
+      return 1;
+    }
+
+    // 3. ret == 0 means CGI is still running
+    // (I don't think this will happen though.)
+    if (ret == 0) {
+      Log::cfatal() << "CGI still running" << std::endl;
+      kill(cgi_pid, SIGKILL);
+      ErrorHandler::handle(*client_socket, 500);
+      status = RESPONSE;
+      return 1;
+    }
+    status = HANDLE_CGI_PARSE;
+    return 1;
+  }
+
+  int handle_cgi_parse() throw() {
+    // TODO: parse
+    char buf[1024];
+    ssize_t ret;
+    while ( (ret = cgi_socket->read(buf, 1024)) > 0) {
+      client_socket->write(buf, ret);
     }
     status = RESPONSE;
     return 1;
