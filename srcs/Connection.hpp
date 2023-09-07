@@ -178,7 +178,7 @@ class Connection {
   int parse_start_line() throw() {
     std::string line;
 
-    if (client_socket->readline(line) < 0) {
+    if (client_socket->read_telnet_line(line) < 0) {
       return 0;
     }
     Log::cdebug() << "start line: " << line << std::endl;
@@ -237,7 +237,7 @@ class Connection {
   int parse_header_fields() throw() {
     try {
       std::string line;
-      while (client_socket->readline(line) == 0) {
+      while (client_socket->read_telnet_line(line) == 0) {
         // Empty line indicates the end of header fields
         if (line == "") {
           status = REQ_BODY;
