@@ -234,44 +234,54 @@ class Connection {
     return 1;
   }
 
-  int parse_header_fields() throw() {
+  int split_header_field(const std::string &line, std::string &key, std::string &value)
+  {
     try {
-      std::string line;
-      while (client_socket->read_telnet_line(line) == 0) {
-        // Empty line indicates the end of header fields
-        if (line == "") {
-          status = REQ_BODY;
-          return 1;
-        }
-        Log::cdebug() << "header line: " << line << std::endl;
-        std::stringstream ss(
-            line);  // throwable! (bad alloc) (cf. playground/hoge.cpp)
-        std::string key, value;
-        if (std::getline(ss, key, ':') == 0) {  // throwable
-          Log::cerror() << "std::getline(ss, key, ':') failed. line: " << line
-                        << std::endl;
-          ErrorHandler::handle(*client_socket, 500);
-          status = RESPONSE;
-          return 1;
-        }
-        if (util::http::is_token(key) == false) {
-          Log::cinfo() << "Header filed-name is not token: : " << key
-                       << std::endl;
-          ErrorHandler::handle(*client_socket, 400);
-          status = RESPONSE;
-          return 1;
-        }
-        // Remove leading space from value
-        ss >> std::ws;
-        // Extract remaining string to value
-        std::getline(ss, value);     // throwable
-        header.fields[key] = value;  // throwable
+      std::stringstream ss(line);  // throwable! (bad alloc)
+                                   // TODO: playground
+      // 1. Extract key
+      if (std::getline(ss, key, ':') == 0) {  // throwable
+        Log::cerror() << "std::getline(ss, key, ':') failed. line: " << line
+                      << std::endl;
+        ErrorHandler::handle(*client_socket, 500);
+        status = RESPONSE;
+        return 1;
       }
-    } catch (std::exception &e) {
-      Log::cfatal() << "Exception: " << e.what() << std::endl;
-      ErrorHandler::handle(*client_socket, 500);
-      status = RESPONSE;
-      return 1;
+      // 2. Remove leading space from value
+      ss >> std::ws;
+      // 3. Extract remaining string to value
+      std::getline(ss, value);     // throwable
+    } catch (std::exception &e) {   // bad alloc
+      Log::cfatal() << "Caught exception in split_line_to_kv: " << std::endl;
+      return -1;
+    }
+    return 0;
+  }
+
+  int parse_header_fields() throw() {
+    std::string line;
+    while (client_socket->read_telnet_line(line) == 0) {
+      // Empty line indicates the end of header fields
+      if (line == "") {
+        status = REQ_BODY;
+        return 1;
+      }
+      Log::cdebug() << "header line: " << line << std::endl;
+      // Split line to key and value
+      std::string key, value;
+      if (split_header_field(line, key, value) < 0) {
+        ErrorHandler::handle(*client_socket, 500);
+        status = RESPONSE;
+        return 1;
+      }
+      if (util::http::is_token(key) == false) {
+        Log::cinfo() << "Header filed-name is not token: : " << key
+                     << std::endl;
+        ErrorHandler::handle(*client_socket, 400);
+        status = RESPONSE;
+        return 1;
+      }
+      header.fields[key] = value;  // throwable
     }
     return 0;
   }
@@ -374,12 +384,90 @@ class Connection {
     return 1;
   }
 
+  // CGI Response syntax (https://datatracker.ietf.org/doc/html/rfc3875#section-6)
+  //
+  // generic-response   = 1*header-field NL [ response-body ]
+  // CGI-Response       = document-response | local-redir-response |
+  //                      client-redir-response | client-redirdoc-response
+  //
+  // document-response        = Content-Type [ Status ] *other-field NL
+  //                            response-body
+  // local-redir-response     = local-Location NL
+  // client-redir-response    = client-Location *extension-field NL
+  // client-redirdoc-response = client-Location Status Content-Type
+  //                            *other-field NL response-body
+  //
+  // header-field    = CGI-field | other-field
+  // CGI-field       = Content-Type | Location | Status
+  // other-field     = protocol-field | extension-field
+  // protocol-field  = generic-field
+  // extension-field = generic-field
+  // generic-field   = field-name ":" [ field-value ] NL
+  // field-name      = token
+  // field-value     = *( field-content | LWSP )
+  // field-content   = *( token | separator | quoted-string )
+  //
+  // Content-Type = "Content-Type:" media-type NL
+  //
+  // Location        = local-Location | client-Location
+  // client-Location = "Location:" fragment-URI NL
+  // local-Location  = "Location:" local-pathquery NL
+  // fragment-URI    = absoluteURI [ "#" fragment ]
+  // fragment        = *uric
+  // local-pathquery = abs-path [ "?" query-string ]
+  // abs-path        = "/" path-segments
+  // path-segments   = segment *( "/" segment )
+  // segment         = *pchar
+  // pchar           = unreserved | escaped | extra
+  // extra           = ":" | "@" | "&" | "=" | "+" | "$" | ","
+  //
+  // Status         = "Status:" status-code SP reason-phrase NL
+  // status-code    = "200" | "302" | "400" | "501" | extension-code
+  // extension-code = 3digit
+  // reason-phrase  = *TEXT
   int handle_cgi_parse() throw() {
     // TODO: parse
-    char buf[1024];
-    ssize_t ret;
-    while ( (ret = cgi_socket->read(buf, 1024)) > 0) {
-      client_socket->write(buf, ret);
+    std::string line;
+    // Read header fields
+    std::unordered_map<std::string, std::string> cgi_header_fields;
+    while (cgi_socket->readline(line) == 0) {
+      Log::cdebug() << "CGI line: " << line << std::endl;
+      // Empty line indicates the end of header fields
+      if (line == "") {
+        status = RESPONSE;
+        break;
+      }
+      std::string key, value;
+      if (split_header_field(line, key, value) < 0) {
+        Log::cwarn() << "Invalid CGI header field: " << line << std::endl;
+        ErrorHandler::handle(*client_socket, 500);
+        status = RESPONSE;
+        break;
+      }
+      cgi_header_fields[key] = value;
+    }
+    if (cgi_header_fields.find("Status") != cgi_header_fields.end()) {
+      // TODO: validate status code
+      *client_socket << "HTTP/1.1 " << cgi_header_fields["Status"] << CRLF;
+    } else {
+      *client_socket << "HTTP/1.1 200 OK" << CRLF;
+    }
+    // Send header fields
+    std::unordered_map<std::string, std::string>::const_iterator it;
+    for (it = cgi_header_fields.begin(); it != cgi_header_fields.end(); ++it) {
+      if (it->first == "Status") continue;
+      // TODO: validate header field
+      *client_socket << it->first << ": "
+                    << it->second << CRLF;
+    }
+    // Send response-body if any
+    size_t size = cgi_socket->getReadBufSize();
+    if (size > 0) {
+      *client_socket << "Content-Length: " << size << CRLF;
+      *client_socket << CRLF; // End of header fields
+      *cgi_socket >> *client_socket;
+    } else {
+      *client_socket << CRLF; // End of header fields
     }
     status = RESPONSE;
     return 1;

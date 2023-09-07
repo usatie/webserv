@@ -84,6 +84,39 @@ class SocketBuf {
     return 0;
   }
 
+  int readline(std::string& line) throw() {
+    StreamCleaner _(rss, wss);
+    if (bad()) {
+      return -1;
+    }
+    // 1. getline
+    try {
+      // If there is an error while getline, return -1
+      // i.e. str.max_size() characters have been stored.
+      if (!std::getline(rss, line)) { // throwable
+        Log::debug("std::getline(LF) failed");
+        line.clear();
+        return -1;
+      }
+    } catch (std::exception& e) {
+      Log::fatal("getline() failed");
+      line.clear();
+      setbadstate();
+      return -1;
+    }
+
+    // 2. EOF before LF (i.e. no LF found)
+    if (rss.eof()) {
+      Log::debug("no LF found");
+      rss.seekg(-line.size(), std::ios::cur); // rewind
+      line.clear();
+      return -1;
+    }
+    // 3. LF found
+    Log::debug("LF found");
+    return 0;
+  }
+
   // Read line from buffer, if found, remove it from buffer and return 0
   // Otherwise, return -1
   int read_telnet_line(std::string& line) throw() {
@@ -234,6 +267,27 @@ class SocketBuf {
     wss.write(buf, size);
     if (wss.fail()) {
       Log::fatal("wss.write(buf, size) failed");
+      setbadstate();
+    }
+    return *this;
+  }
+
+  size_t getReadBufSize() throw() {
+    StreamCleaner _(rss, wss);
+    if (bad()) {
+      return 0;
+    }
+    return rss.str().size() - rss.tellg();
+  }
+
+  SocketBuf& operator>>(SocketBuf& dst) throw() {
+    StreamCleaner _(rss, wss);
+    if (bad()) {
+      return *this;
+    }
+    dst << rss.rdbuf();
+    if (rss.fail()) {
+      Log::fatal("dst << rss.rdbuf() failed");
       setbadstate();
     }
     return *this;
