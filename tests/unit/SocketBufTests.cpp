@@ -10,6 +10,8 @@
 #define OK GREEN "OK" RESET
 #define NG RED "NG" RESET
 
+static int err = 0;
+
 int server() {
   // Server socket
   int listen_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -90,6 +92,8 @@ void T(SocketBuf &sock, const std::string &expected_line, int expected_ret, bool
     std::cout << OK << " (\"" << expected_line << "\", "
       << expected_ret << ", " << expected_bad << ", " << expected_closed
       << ")" << std::endl;
+  } else {
+    err = -1;
   }
 }
 
@@ -102,7 +106,7 @@ void send_and_fill(int client_fd, SocketBuf &serv_sock, const std::string &msg) 
   serv_sock.fill();
 }
 
-void test_socketbuf() {
+int test_socketbuf() {
   int listen_fd = server(); // Server listen fd
   int client_fd = client(); // Client fd
   int srv_conn_fd = accept(listen_fd, NULL, NULL); // Server conn fd
@@ -167,4 +171,5 @@ void test_socketbuf() {
   T(serv_sock, "", -1, false, false);
   serv_sock.fill(); // Notify socket that the peer has closed the connection
   T(serv_sock, "", -1, false, true);
+  return err;
 }

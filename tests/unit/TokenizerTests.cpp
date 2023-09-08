@@ -5,7 +5,7 @@
 #include <string>
 #include <fstream>
 
-void test_tokenizer() {
+int test_tokenizer() {
   //Log::setLevel(Log::Debug);
   std::ifstream ifs("conf/default.conf");
   std::string s((std::istreambuf_iterator<char>(ifs)),
@@ -14,7 +14,9 @@ void test_tokenizer() {
     Token *tokens = tokenize(s);
     (void)tokens;
     std::cout << "Tokenize Success!" << std::endl;
+    return 0;
   } catch (std::exception &e) {
     std::cout << e.what() << std::endl;
+    return -1;
   }
 }

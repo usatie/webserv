@@ -2,7 +2,7 @@
 #include <iostream>
 #include <string>
 
-void test_configparser() {
+int test_configparser() {
   //Log::setLevel(Log::Debug);
 
   // Generate Sample Token list
@@ -109,4 +109,5 @@ void test_configparser() {
   // Parse configuration file
   Module *config = parse(dummy.next);
   print_mod(config);
+  return 0;
 }

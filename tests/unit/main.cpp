@@ -4,11 +4,11 @@
 #include "Config.hpp"
 #include "test_util.hpp"
 
-void test_socketbuf();
-void test_configparser();
-void test_tokenizer();
+int test_socketbuf();
+int test_configparser();
+int test_tokenizer();
 
-void test_tokenize_and_parse() {
+int test_tokenize_and_parse() {
   //Log::setLevel(Log::Debug);
   std::ifstream ifs("conf/default.conf");
   std::string s((std::istreambuf_iterator<char>(ifs)),
@@ -25,15 +25,19 @@ void test_tokenize_and_parse() {
     Config cf(mod);
     std::cout << "Config Success!" << std::endl;
     printConfig(cf);
+    return 0;
   } catch (std::exception &e) {
     std::cout << e.what() << std::endl;
+    return -1;
   }
 }
 
 int main() {
   Log::setLevel(Log::Warn);
-  test_socketbuf();
-  test_configparser();
-  test_tokenizer();
-  test_tokenize_and_parse();
+  int ok = 0;
+  ok |= test_socketbuf();
+  ok |= test_configparser();
+  ok |= test_tokenizer();
+  ok |= test_tokenize_and_parse();
+  return ok;
 }

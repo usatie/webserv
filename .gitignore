@@ -8,3 +8,4 @@ out
 webserv
 unit_test
 !tests/unit
+error.log
