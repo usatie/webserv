@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
     return ERROR;
   }
   while (1) {
-    server.process(7);
+    server.process();
   }
   return 0;
 }

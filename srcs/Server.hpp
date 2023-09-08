@@ -50,7 +50,11 @@ class Server {
         std::find(connections.begin(), connections.end(), connection));
     FD_CLR(connection->get_fd(), &readfds);
     FD_CLR(connection->get_fd(), &writefds);
-    if (connection->get_fd() == maxfd) {
+    if (connection->get_cgifd() != -1) {
+      FD_CLR(connection->get_cgifd(), &readfds);
+      FD_CLR(connection->get_cgifd(), &writefds);
+    }
+    if (connection->get_fd() == maxfd || connection->get_cgifd() == maxfd) {
       maxfd = sock.get_fd();
       for (ConnIterator it = connections.begin(); it != connections.end();
            ++it) {
@@ -68,14 +72,20 @@ class Server {
   }
 
   void accept() throw() {
-    // The call to the allocation function (operator new) is indeterminately
-    // sequenced with respect to (until C++17) the evaluation of the constructor
-    // arguments in a new-expression.
-    //
-    // So, ::accept() must be called inside the constructor of Connection.
-    // Actually, it is called inside the constructor of Socket class.
+    int fd = ::accept(sock.get_fd(), NULL, NULL);
+    if (fd < 0) {
+      Log::cerror() << "accept() failed: " << strerror(errno) << std::endl;
+      return;
+    }
     try {
-      std::shared_ptr<Connection> conn(new Connection(sock.get_fd()));
+      std::shared_ptr<Connection> conn(NULL);
+      try {
+        conn = std::shared_ptr< Connection >(new Connection(fd));
+      } catch (std::exception &e) {
+        close(fd);
+        Log::cerror() << "new Connection(fd) failed: " << e.what() << std::endl;
+        return;
+      }
       connections.push_back(conn);
       FD_SET(conn->get_fd(), &readfds);
       maxfd = std::max(conn->get_fd(), maxfd);
@@ -89,25 +99,36 @@ class Server {
   }
 
   void update_fdset(std::shared_ptr<Connection> conn) throw() {
-    if (conn->shouldRecv()) {
-      FD_SET(conn->get_fd(), &readfds);
-    } else {
-      FD_CLR(conn->get_fd(), &readfds);
+    FD_CLR(conn->get_fd(), &readfds);
+    FD_CLR(conn->get_fd(), &writefds);
+    if (conn->get_cgifd() != -1) {
+      FD_CLR(conn->get_cgifd(), &readfds);
+      FD_CLR(conn->get_cgifd(), &writefds);
     }
-    if (conn->shouldSend()) {
-      FD_SET(conn->get_fd(), &writefds);
-    } else {
-      FD_CLR(conn->get_fd(), &writefds);
+    switch (conn->getIOStatus()) {
+      case Connection::CLIENT_RECV:
+        FD_SET(conn->get_fd(), &readfds);
+        break;
+      case Connection::CLIENT_SEND:
+        FD_SET(conn->get_fd(), &writefds);
+        break;
+      case Connection::CGI_SEND:
+        FD_SET(conn->get_cgifd(), &writefds);
+        maxfd = std::max(conn->get_cgifd(), maxfd);
+        break;
+      case Connection::CGI_RECV:
+        FD_SET(conn->get_cgifd(), &readfds);
+        maxfd = std::max(conn->get_cgifd(), maxfd);
+        break;
+      default:
+        break;
     }
   }
 
-  int wait(int timeout) throw() {
+  int wait() throw() {
     ready_rfds = this->readfds;
     ready_wfds = this->writefds;
-    struct timeval tv;
-    tv.tv_sec = timeout;
-    tv.tv_usec = 0;
-    int result = ::select(maxfd + 1, &ready_rfds, &ready_wfds, NULL, &tv);
+    int result = ::select(maxfd + 1, &ready_rfds, &ready_wfds, NULL, NULL);
     if (result < 0) {
       Log::error("select error");
       return -1;
@@ -121,8 +142,18 @@ class Server {
   }
 
   bool canResume(std::shared_ptr<Connection> conn) const throw() {
-    return (conn->shouldRecv() && FD_ISSET(conn->get_fd(), &ready_rfds)) ||
-           (conn->shouldSend() && FD_ISSET(conn->get_fd(), &ready_wfds));
+    switch (conn->getIOStatus()) {
+      case Connection::CLIENT_RECV:
+        return FD_ISSET(conn->get_fd(), &ready_rfds);
+      case Connection::CLIENT_SEND:
+        return FD_ISSET(conn->get_fd(), &ready_wfds);
+      case Connection::CGI_SEND:
+        return FD_ISSET(conn->get_cgifd(), &ready_wfds);
+      case Connection::CGI_RECV:
+        return FD_ISSET(conn->get_cgifd(), &ready_rfds);
+      default:
+        return false;
+    }
   }
 
   // Logically it is not const because it returns a non-const pointer.
@@ -136,8 +167,8 @@ class Server {
     return std::shared_ptr<Connection>(NULL);
   }
 
-  void process(int timeout) throw() {
-    if (wait(timeout) < 0) {
+  void process() throw() {
+    if (wait() < 0) {
       return;
     }
     std::shared_ptr<Connection> conn;

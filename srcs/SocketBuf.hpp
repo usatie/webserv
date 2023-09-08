@@ -42,7 +42,7 @@ class SocketBuf {
 
  public:
   // Constructor/Destructor
-  explicit SocketBuf(int listen_fd) : socket(listen_fd), rss(), wss() {
+  explicit SocketBuf(int fd) : socket(fd), rss(), wss() {
     if (socket.set_nonblock() < 0) {
       throw std::runtime_error("socket.set_nonblock() failed");
     }
@@ -84,55 +84,79 @@ class SocketBuf {
     return 0;
   }
 
-  // Read line from buffer, if found, remove it from buffer and return 0
-  // Otherwise, return -1
   int readline(std::string& line) throw() {
     StreamCleaner _(rss, wss);
     if (bad()) {
       return -1;
     }
+    // 1. getline
     try {
-      // If there is no LF in buffer, return -1
-      if (!std::getline(rss, line, LF)) {
+      // If there is an error while getline, return -1
+      // i.e. str.max_size() characters have been stored.
+      if (!std::getline(rss, line)) { // throwable
         Log::debug("std::getline(LF) failed");
         line.clear();
         return -1;
       }
-      // no LF found
-      if (rss.eof()) {
-        Log::debug("no LF found");
-        rss.seekg(-line.size(), std::ios::cur);
-        if (!std::getline(rss, line, CR)) {
-          Log::debug("std::getline(CR) failed");
-          line.clear();
-          return -1;
-        }
-        // If no CR nor LF found, put the line back to buffer
-        if (rss.eof()) {
-          Log::debug("Neither CR nor LF found");
-          rss.seekg(-line.size(), std::ios::cur);
-          line.clear();
-          return -1;
-        }
-        Log::debug("only CR found");
-        // If CR found, return 0;
-        return 0;
-      }
-      // If CRLF found, remove CR
-      if (line.back() == CR) {
-        Log::debug("CRLF found");
-        line.pop_back();
-      } else {
-        Log::debug("only LF found");
-      }
-      // If LF found, return 0
-      return 0;
     } catch (std::exception& e) {
       Log::fatal("getline() failed");
       line.clear();
       setbadstate();
       return -1;
     }
+
+    // 2. EOF before LF (i.e. no LF found)
+    if (rss.eof()) {
+      Log::debug("no LF found");
+      rss.seekg(-line.size(), std::ios::cur); // rewind
+      line.clear();
+      return -1;
+    }
+    // 3. LF found
+    Log::debug("LF found");
+    return 0;
+  }
+
+  // Read line from buffer, if found, remove it from buffer and return 0
+  // Otherwise, return -1
+  int read_telnet_line(std::string& line) throw() {
+    StreamCleaner _(rss, wss);
+    if (bad()) {
+      return -1;
+    }
+    // 1. getline
+    try {
+      // If there is an error while getline, return -1
+      // i.e. str.max_size() characters have been stored.
+      if (!std::getline(rss, line, LF)) { // throwable
+        Log::debug("std::getline(LF) failed");
+        line.clear();
+        return -1;
+      }
+    } catch (std::exception& e) {
+      Log::fatal("getline() failed");
+      line.clear();
+      setbadstate();
+      return -1;
+    }
+    // 2. EOF before LF (i.e. no LF found)
+    if (rss.eof()) {
+      Log::debug("no LF found");
+      rss.seekg(-line.size(), std::ios::cur); // rewind
+      line.clear();
+      return -1;
+    }
+    // 3. CR not found (i.e. only LF found)
+    // The line terminator for message-header fields is the sequence CRLF. However, we recommend that applications, when parsing such headers, recognize a single LF as a line terminator and ignore the leading CR.
+    // https://www.rfc-editor.org/rfc/rfc2616#section-19.3
+    if (line.back() != CR) {
+      Log::debug("only LF found");
+      return 0;
+    }
+    // 4. CRLF found
+    Log::debug("CRLF found");
+    line.pop_back();
+    return 0;
   }
 
   ssize_t read(char* buf, size_t size) throw() {
@@ -230,6 +254,40 @@ class SocketBuf {
     wss << t;
     if (wss.fail()) {
       Log::fatal("wss << msg failed");
+      setbadstate();
+    }
+    return *this;
+  }
+
+  SocketBuf& write(const char* buf, size_t size) throw() {
+    StreamCleaner _(rss, wss);
+    if (bad()) {
+      return *this;
+    }
+    wss.write(buf, size);
+    if (wss.fail()) {
+      Log::fatal("wss.write(buf, size) failed");
+      setbadstate();
+    }
+    return *this;
+  }
+
+  size_t getReadBufSize() throw() {
+    StreamCleaner _(rss, wss);
+    if (bad()) {
+      return 0;
+    }
+    return rss.str().size() - rss.tellg();
+  }
+
+  SocketBuf& operator>>(SocketBuf& dst) throw() {
+    StreamCleaner _(rss, wss);
+    if (bad()) {
+      return *this;
+    }
+    dst << rss.rdbuf();
+    if (rss.fail()) {
+      Log::fatal("dst << rss.rdbuf() failed");
       setbadstate();
     }
     return *this;
