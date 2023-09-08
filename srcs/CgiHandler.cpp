@@ -45,6 +45,8 @@ void CgiHandler::handle(Connection& conn) throw() {
     close(cgi_socket[0]);
     dup2(cgi_socket[1], STDOUT_FILENO);
     dup2(cgi_socket[1], STDIN_FILENO);
+    // TODO: Create environment variables
+    // TODO: Create appropriate argv
     execve(conn.header.fullpath.c_str(), (char **)argv, NULL);
 
     // This log would be printed to std::err and visible to the server process.
