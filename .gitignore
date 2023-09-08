@@ -6,5 +6,5 @@
 *.tmp
 out
 webserv
-unit
+unit_test
 !tests/unit

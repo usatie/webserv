@@ -60,7 +60,7 @@ void T(SocketBuf &sock, const std::string &expected_line, int expected_ret, bool
   std::string line;
   cnt++;
   std::cout << "  " << cnt << ": " ;
-  int ret = sock.readline(line);
+  int ret = sock.read_telnet_line(line);
   if (line != expected_line) {
     if (ok) std::cout << NG << std::endl;
     ok = false;
@@ -113,8 +113,11 @@ void title(const std::string &title) {
 void test_socketbuf() {
   int listen_fd = server(); // Server listen fd
   int client_fd = client(); // Client fd
-  SocketBuf serv_sock(listen_fd); // Server conn fd wrapper
+  int srv_conn_fd = accept(listen_fd, NULL, NULL); // Server conn fd
+  SocketBuf serv_sock(srv_conn_fd); // Server conn fd wrapper
   std::string line;
+  Log::cfatal() << listen_fd << std::endl;
+  Log::cfatal() << client_fd << std::endl;
 
   // 1. Empty Buffer
   title("Empty Buffer");
@@ -142,8 +145,11 @@ void test_socketbuf() {
   // 5. CR only
   title("CR only");
   send_and_fill(client_fd, serv_sock, "hello\r");
-  T(serv_sock, "hello", 0, false, false);
   T(serv_sock, "", -1, false, false);
+  // 5.1 LF
+  title("LF");
+  send_and_fill(client_fd, serv_sock, "\n");
+  T(serv_sock, "hello", 0, false, false);
   
   // 6. Without CR or LF
   title("Without CR or LF");
