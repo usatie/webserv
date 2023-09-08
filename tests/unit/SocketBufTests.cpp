@@ -1,4 +1,5 @@
 #include "SocketBuf.hpp"
+#include "test_util.hpp"
 #include <iostream>
 #include <string>
 
@@ -8,6 +9,8 @@
 #define RED "\033[31m"
 #define OK GREEN "OK" RESET
 #define NG RED "NG" RESET
+
+static int err = 0;
 
 int server() {
   // Server socket
@@ -89,6 +92,8 @@ void T(SocketBuf &sock, const std::string &expected_line, int expected_ret, bool
     std::cout << OK << " (\"" << expected_line << "\", "
       << expected_ret << ", " << expected_bad << ", " << expected_closed
       << ")" << std::endl;
+  } else {
+    err = -1;
   }
 }
 
@@ -101,16 +106,7 @@ void send_and_fill(int client_fd, SocketBuf &serv_sock, const std::string &msg) 
   serv_sock.fill();
 }
 
-void title(const std::string &title) {
-  static int cnt = 0;
-  cnt++;
-  // Print title of test case surrounded by '='
-  std::cout << "====================" << std::endl;
-  std::cout << cnt << ". " << title << std::endl;
-  std::cout << "====================" << std::endl;
-}
-
-void test_socketbuf() {
+int test_socketbuf() {
   int listen_fd = server(); // Server listen fd
   int client_fd = client(); // Client fd
   int srv_conn_fd = accept(listen_fd, NULL, NULL); // Server conn fd
@@ -175,9 +171,5 @@ void test_socketbuf() {
   T(serv_sock, "", -1, false, false);
   serv_sock.fill(); // Notify socket that the peer has closed the connection
   T(serv_sock, "", -1, false, true);
-}
-
-int main() {
-  Log::setLevel(Log::Warn);
-  test_socketbuf();
+  return err;
 }
