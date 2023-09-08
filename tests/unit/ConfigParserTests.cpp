@@ -3,7 +3,7 @@
 #include <string>
 
 void test_configparser() {
-  Log::setLevel(Log::Debug);
+  //Log::setLevel(Log::Debug);
 
   // Generate Sample Token list
   Token dummy(Token::TK_DUMMY, "");

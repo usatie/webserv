@@ -7,7 +7,7 @@ void test_socketbuf();
 void test_configparser();
 void test_tokenizer();
 void test_tokenize_and_parse() {
-  Log::setLevel(Log::Debug);
+  //Log::setLevel(Log::Debug);
   std::ifstream ifs("conf/default.conf");
   std::string s((std::istreambuf_iterator<char>(ifs)),
                 std::istreambuf_iterator<char>());

@@ -6,7 +6,7 @@
 #include <fstream>
 
 void test_tokenizer() {
-  Log::setLevel(Log::Debug);
+  //Log::setLevel(Log::Debug);
   std::ifstream ifs("conf/default.conf");
   std::string s((std::istreambuf_iterator<char>(ifs)),
                 std::istreambuf_iterator<char>());
