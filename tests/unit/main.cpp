@@ -2,21 +2,26 @@
 #include "Tokenizer.hpp"
 #include "ConfigParser.hpp"
 #include "Config.hpp"
+#include "test_util.hpp"
 
 void test_socketbuf();
 void test_configparser();
 void test_tokenizer();
+
 void test_tokenize_and_parse() {
   //Log::setLevel(Log::Debug);
   std::ifstream ifs("conf/default.conf");
   std::string s((std::istreambuf_iterator<char>(ifs)),
                 std::istreambuf_iterator<char>());
   try {
+    title("Tokenize");
     Token *tokens = tokenize(s);
     std::cout << "Tokenize Success!" << std::endl;
+    title("Parse");
     Module *mod = parse(tokens);
     std::cout << "Parse Success!" << std::endl;
     print_mod(mod);
+    title("Config");
     Config cf(mod);
     std::cout << "Config Success!" << std::endl;
     printConfig(cf);

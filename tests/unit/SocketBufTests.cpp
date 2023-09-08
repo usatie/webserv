@@ -1,4 +1,5 @@
 #include "SocketBuf.hpp"
+#include "test_util.hpp"
 #include <iostream>
 #include <string>
 
@@ -99,15 +100,6 @@ void send_and_fill(int client_fd, SocketBuf &serv_sock, const std::string &msg) 
   FD_SET(serv_sock.get_fd(), &readfds);
   select(serv_sock.get_fd() + 1, &readfds, NULL, NULL, NULL);
   serv_sock.fill();
-}
-
-void title(const std::string &title) {
-  static int cnt = 0;
-  cnt++;
-  // Print title of test case surrounded by '='
-  std::cout << "====================" << std::endl;
-  std::cout << cnt << ". " << title << std::endl;
-  std::cout << "====================" << std::endl;
 }
 
 void test_socketbuf() {
