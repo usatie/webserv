@@ -14,7 +14,7 @@ public:
     int port;
     bool configured;
     Listen(const std::string &address, const int &port): address(address), port(port), configured(true) {}
-    Listen(): address(""), port(80), configured(false) {}
+    Listen(): address("*"), port(8181), configured(false) {}
   };
   class ErrorPage {
   public:

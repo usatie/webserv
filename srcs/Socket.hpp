@@ -18,7 +18,6 @@ class Socket {
  public:
  private:
   int fd;
-  struct sockaddr_in server_addr;
   bool closed;
 
   Socket(const Socket& other) throw();             // Do not implement this
@@ -26,14 +25,7 @@ class Socket {
 
  public:
   // Constructor/Destructor
-  Socket() : server_addr(), closed(false) {
-    if ((fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-      Log::fatal("socket() failed");
-      throw std::runtime_error("socket() failed");
-    }
-  }
-  
-  explicit Socket(int fd) : fd(fd), server_addr(), closed(false) {
+  explicit Socket(int fd) : fd(fd), closed(false) {
     if (fd < 0) {
       Log::error("Invalid socket fd to construct Socket");
       throw std::runtime_error("Invalid socket fd");
@@ -61,11 +53,8 @@ class Socket {
     return 0;
   }
 
-  int bind(int port) throw() {
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(port);
-    server_addr.sin_addr.s_addr = INADDR_ANY;
-    if (::bind(fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+  int bind(struct sockaddr* addr, socklen_t addrlen) throw() {
+    if (::bind(fd, addr, addrlen) < 0) {
       Log::error("bind() failed");
       return -1;
     }
