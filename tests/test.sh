@@ -29,6 +29,12 @@ for i in {1..14}; do
   fi
 done
 
+python3 tests/python/mock_server.py
+if [ $? -ne 0 ]; then
+  echo "Python tests failed..."
+  exit 1
+fi
+
 # 3. Clean up
 rm -f out *.tmp
 pkill webserv
