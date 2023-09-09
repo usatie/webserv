@@ -7,41 +7,92 @@
 #include "GetHandler.hpp"
 #include "Header.hpp"
 #include "SocketBuf.hpp"
+#include "Config.hpp"
 #include "webserv.hpp"
+
+#define BACKLOG 5
+/*
+std::vector<int> get_ports(const Config& cf) throw() {
+  std::vector<int> ports;
+  for (unsigned int i = 0; i < cf.http.servers.size(); ++i) {
+    const Config::Server& server = cf.http.servers[i];
+    for (unsigned int j = 0; j < server.listens.size(); ++j) {
+      const Config::Listen& listen = server.listens[j];
+      if (ports.find(listen.port) == ports.end()) {
+        ports.push_back(listen.port);
+      }
+    }
+  }
+  return ports;
+}
+*/
 
 class Server {
  private:
   typedef std::vector<std::shared_ptr<Connection> > ConnVector;
   typedef ConnVector::iterator ConnIterator;
+  typedef std::vector<std::shared_ptr<Socket> > SockVector;
+  typedef SockVector::iterator SockIterator;
   fd_set readfds, writefds;
   fd_set ready_rfds, ready_wfds;
   int maxfd;
 
  public:
   // Member data
-  Socket sock;
+  SockVector listen_socks;
   ConnVector connections;
 
   // Constructor/Destructor
   Server() throw();  // Do not implement this
-  Server(int port, int backlog) : sock(), connections() {
+  Server(int port, int backlog) : maxfd(-1), listen_socks(), connections() {
     FD_ZERO(&readfds);
     FD_ZERO(&writefds);
-    if (sock.reuseaddr() < 0) {
-      throw std::runtime_error("sock.reuseaddr() failed");
+    {
+      std::shared_ptr<Socket> sock(new Socket());
+      if (sock->reuseaddr() < 0) {
+        throw std::runtime_error("sock.reuseaddr() failed");
+      }
+      if (sock->bind(port) < 0) {
+        throw std::runtime_error("sock.bind() failed");
+      }
+      if (sock->listen(backlog) < 0) {
+        throw std::runtime_error("sock.listen() failed");
+      }
+      if (sock->set_nonblock() < 0) {
+        throw std::runtime_error("sock.set_nonblock() failed");
+      }
+      FD_SET(sock->get_fd(), &readfds);
+      maxfd = sock->get_fd();
+      listen_socks.push_back(sock);
     }
-    if (sock.bind(port) < 0) {
-      throw std::runtime_error("sock.bind() failed");
-    }
-    if (sock.listen(backlog) < 0) {
-      throw std::runtime_error("sock.listen() failed");
-    }
-    if (sock.set_nonblock() < 0) {
-      throw std::runtime_error("sock.set_nonblock() failed");
-    }
-    FD_SET(sock.get_fd(), &readfds);
-    maxfd = sock.get_fd();
   }
+  /*
+  Server(const Config& cf): maxfd(-1), sock(), connections(), listen_socks() {
+    FD_ZERO(&readfds);
+    FD_ZERO(&writefds);
+    int backlog = BACKLOG;
+    std::vector<int> ports = get_ports(cf);
+    for (unsigned int i = 0; i < ports.size(); ++i) {
+      int port = ports[i];
+      std::shared_ptr<Socket> s(new Socket());
+      if (s->reuseaddr() < 0) {
+        throw std::runtime_error("s->reuseaddr() failed");
+      }
+      if (s->bind(port) < 0) {
+        throw std::runtime_error("s->bind() failed");
+      }
+      if (s->listen(backlog) < 0) {
+        throw std::runtime_error("s->listen() failed");
+      }
+      if (s->set_nonblock() < 0) {
+        throw std::runtime_error("s->set_nonblock() failed");
+      }
+      FD_SET(s->get_fd(), &readfds);
+      maxfd = std::max(maxfd, s->get_fd());
+      listen_socks.push_back(s);
+    }
+  }
+  */
   ~Server() throw() {}
 
   // Member functions
@@ -55,7 +106,11 @@ class Server {
       FD_CLR(connection->get_cgifd(), &writefds);
     }
     if (connection->get_fd() == maxfd || connection->get_cgifd() == maxfd) {
-      maxfd = sock.get_fd();
+      maxfd = -1;
+      for (SockIterator it = listen_socks.begin(); it != listen_socks.end();
+           ++it) {
+        maxfd = std::max(maxfd, (*it)->get_fd());
+      }
       for (ConnIterator it = connections.begin(); it != connections.end();
            ++it) {
         maxfd = std::max(maxfd, (*it)->get_fd());
@@ -67,12 +122,16 @@ class Server {
     connections.clear();
     FD_ZERO(&readfds);
     FD_ZERO(&writefds);
-    FD_SET(sock.get_fd(), &readfds);
-    maxfd = sock.get_fd();
+    maxfd = -1;
+    for (SockIterator it = listen_socks.begin(); it != listen_socks.end();
+         ++it) {
+      FD_SET((*it)->get_fd(), &readfds);
+      maxfd = std::max(maxfd, (*it)->get_fd());
+    }
   }
 
-  void accept() throw() {
-    int fd = ::accept(sock.get_fd(), NULL, NULL);
+  void accept(std::shared_ptr<Socket> sock) throw() {
+    int fd = ::accept(sock->get_fd(), NULL, NULL);
     if (fd < 0) {
       Log::cerror() << "accept() failed: " << strerror(errno) << std::endl;
       return;
@@ -92,10 +151,6 @@ class Server {
     } catch (std::exception &e) {
       Log::cerror() << "Server::accept() failed: " << e.what() << std::endl;
     }
-  }
-
-  bool canServerAccept(fd_set &readfds) const throw() {
-    return FD_ISSET(sock.get_fd(), &readfds);
   }
 
   void update_fdset(std::shared_ptr<Connection> conn) throw() {
@@ -156,6 +211,16 @@ class Server {
     }
   }
 
+  std::shared_ptr<Socket> get_ready_socket() throw() {
+    for (SockIterator it = listen_socks.begin(); it != listen_socks.end();
+         ++it) {
+      if (FD_ISSET((*it)->get_fd(), &ready_rfds)) {
+        return *it;
+      }
+    }
+    return std::shared_ptr<Socket>(NULL);
+  }
+
   // Logically it is not const because it returns a non-const pointer.
   std::shared_ptr<Connection> get_ready_connection() throw() {
     // TODO: equally distribute the processing time to each connection
@@ -172,8 +237,9 @@ class Server {
       return;
     }
     std::shared_ptr<Connection> conn;
-    if (canServerAccept(ready_rfds)) {
-      accept();
+    std::shared_ptr<Socket> sock;
+    if ((sock = get_ready_socket()) != NULL) {
+      accept(sock);
     } else if ((conn = get_ready_connection())) {
       if (conn->resume() < 0) {
         Log::cerror() << "connection aborted" << std::endl;
