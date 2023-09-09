@@ -13,7 +13,10 @@ public:
     std::string address; // host
     int port;
     bool configured;
-    Listen(const std::string &address, const int &port): address(address), port(port), configured(true) {}
+    Listen(const std::string &address, const int &port): address(address), port(port), configured(true) {
+      if (address.empty())
+        this->address = "*";
+    }
     Listen(): address("*"), port(8181), configured(false) {}
   };
   class ErrorPage {
