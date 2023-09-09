@@ -4,7 +4,7 @@ SRCS      = $(wildcard srcs/*.cpp)
 OBJS	  = $(SRCS:.cpp=.o)
 DEPS	  = $(SRCS:.cpp=.d)
 NAME      = webserv
-UNITTEST  = unit
+UNITTEST  = unit_test
 
 all: $(NAME)
 
@@ -37,9 +37,13 @@ test: $(NAME)
 UNIT_SRCS = $(wildcard tests/unit/*.cpp)
 UNIT_OBJS = $(UNIT_SRCS:.cpp=.o)
 UNIT_DEPS = $(UNIT_SRCS:.cpp=.d)
-unit: $(OBJS) $(UNIT_OBJS)
+$(UNITTEST): $(OBJS) $(UNIT_OBJS)
 	$(CXX) -I srcs -I include $(UNIT_OBJS) $(filter-out srcs/main.o, $(OBJS)) -o $(UNITTEST)
+
+.PHONE: unit
+unit: $(UNITTEST)
 	./$(UNITTEST)
+
 
 format:
 	clang-format -style=google $(SRCS) $(INCLUDES) -i

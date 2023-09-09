@@ -32,12 +32,14 @@ class Socket {
       throw std::runtime_error("socket() failed");
     }
   }
-  explicit Socket(int listen_fd) : server_addr(), closed(false) {
-    if ((fd = accept(listen_fd, NULL, NULL)) < 0) {
-      Log::error("accept() failed");
-      throw std::runtime_error("accept() failed");
+  
+  explicit Socket(int fd) : fd(fd), server_addr(), closed(false) {
+    if (fd < 0) {
+      Log::error("Invalid socket fd to construct Socket");
+      throw std::runtime_error("Invalid socket fd");
     }
   }
+
   ~Socket() throw() {
     if (::close(fd) < 0) {
       Log::error("close() failed");
