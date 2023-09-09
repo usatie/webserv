@@ -29,6 +29,8 @@ for i in {1..14}; do
   fi
 done
 
+pip3 install -r tests/requirements.txt
+
 python3 tests/python/test_server_response.py
 exit_code=$?
 if [ $exit_code -ne 0 ]; then
