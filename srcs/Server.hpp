@@ -44,10 +44,11 @@ class Server {
   // Member data
   SockVector listen_socks;
   ConnVector connections;
+  const Config& cf;
 
   // Constructor/Destructor
   Server() throw();  // Do not implement this
-  Server(const Config& cf): maxfd(-1), listen_socks(), connections() {
+  Server(const Config& cf): maxfd(-1), listen_socks(), connections(), cf(cf) {
     FD_ZERO(&readfds);
     FD_ZERO(&writefds);
     int backlog = BACKLOG;
