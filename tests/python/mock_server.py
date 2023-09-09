@@ -8,6 +8,7 @@ def test_get_request():
 
     assert response.status_code == 200
     assert response.headers['Content-Type'] == 'text/plain'
+    assert response.headers['Content-Length'] == '6'
 
 
 if __name__ == '__main__':

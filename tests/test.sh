@@ -30,7 +30,8 @@ for i in {1..14}; do
 done
 
 python3 tests/python/mock_server.py
-if [ $? -ne 0 ]; then
+exit_code=$?
+if [ $exit_code -ne 0 ]; then
   echo "Python tests failed..."
   exit 1
 fi
