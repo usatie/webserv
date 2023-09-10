@@ -29,14 +29,21 @@ for i in {1..14}; do
   fi
 done
 
-pip3 install -r tests/requirements.txt >/dev/null
+function python_test() {
+	echo -n "Python tests: " | tee -a error.log
+	err=0
+	python3 tests/python/test_server_response.py 2>error.log || let err++
+	if [ $err -eq 0 ]; then
+		echo "OK"
+		# Trim the last line of the error.log
+		sed -i '' '$ d' error.log
+	else
+		echo "NG"
+		let cnt++
+	fi
+}
 
-python3 tests/python/test_server_response.py
-exit_code=$?
-if [ $exit_code -ne 0 ]; then
-  echo "Python tests failed..."
-  let cnt++
-fi
+python_test
 
 # 3. Clean up
 rm -f out *.tmp
