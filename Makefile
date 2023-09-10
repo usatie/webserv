@@ -24,7 +24,7 @@ linux: re
 %.o: %.cpp %.d
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-debug: CXXFLAGS = -std=c++98 -Wall -Wextra -pedantic -MMD -MP -fsanitize=address -fsanitize=undefined -D DEBUG
+debug: CXXFLAGS = -std=c++98 -Wall -Wextra -pedantic -MMD -MP -fsanitize=address -fsanitize=undefined -D DEBUG -I include -I srcs
 debug: re
 d: debug
 
