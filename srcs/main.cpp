@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
 
   // We do not handle exceptions in constructor of Server.
   // Just end this program in that case.
-  Server server(PORT, BACKLOG);
+  Server server(cf);
 
   if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
     Log::fatal("signal() failed");

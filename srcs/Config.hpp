@@ -13,8 +13,11 @@ public:
     std::string address; // host
     int port;
     bool configured;
-    Listen(const std::string &address, const int &port): address(address), port(port), configured(true) {}
-    Listen(): address(""), port(80), configured(false) {}
+    Listen(const std::string &address, const int &port): address(address), port(port), configured(true) {
+      if (address.empty())
+        this->address = "*";
+    }
+    Listen(): address("*"), port(8181), configured(false) {}
   };
   class ErrorPage {
   public:
@@ -317,6 +320,12 @@ Config::Server::Server(Command *srv) {
   if (listens.empty()) {
     listens.push_back(Listen());
   }
+  // TODO: Check duplicate listens (hostname must be resolved before this)
+  // OK: *:8080 and localhost:8080
+  // NG: *:8080 and *:8080
+  // NG: *:8080 and 8080
+  // NG: localhost:8080 and 127.0.0.1:8080
+  // server_names duplicates are allowed
   if (server_names.empty()) {
     server_names.push_back("");
   }
