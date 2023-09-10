@@ -1,5 +1,6 @@
 #include "PostHandler.hpp"
 
+#include "ErrorHandler.hpp"
 #include "Connection.hpp"
 
 void PostHandler::handle(Connection& conn) throw() {

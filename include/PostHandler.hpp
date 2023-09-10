@@ -9,11 +9,9 @@
 #include <string>
 #include <vector>
 
-#include "ErrorHandler.hpp"
-#include "Header.hpp"
 #include "SocketBuf.hpp"
-#include "http_special_response.hpp"
 #include "webserv.hpp"
+
 class Connection;
 
 class PostHandler {
