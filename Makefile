@@ -18,13 +18,13 @@ re: fclean all
 
 # std::shared_ptr is not supported in c++98 so g++ cannot compile it but clang can compile,
 # so we need to use c++11 on Linux
-linux: CXXFLAGS = -std=c++11 -Wall -Wextra -pedantic -MMD -MP
+linux: CXXFLAGS = -std=c++11 -Wall -Wextra -pedantic -MMD -MP -I include -D LINUX
 linux: re
 
 %.o: %.cpp %.d
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-debug: CXXFLAGS = -std=c++98 -Wall -Wextra -pedantic -MMD -MP -fsanitize=address -fsanitize=undefined -D DEBUG
+debug: CXXFLAGS = -std=c++98 -Wall -Wextra -pedantic -MMD -MP -fsanitize=address -fsanitize=undefined -D DEBUG -I include -I srcs
 debug: re
 d: debug
 

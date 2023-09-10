@@ -15,14 +15,18 @@ cnt=0
 for i in {1..14}; do
   echo -n "Test${i}   : " | tee -a error.log
   echo "" >>error.log
-  nc localhost $WEBSERV_PORT <tests/requests/$i >out
+  if [[ "$(uname -s)" == "Linux" ]]; then
+  	nc -N localhost $WEBSERV_PORT <tests/requests/$i >out
+  else
+  	nc localhost $WEBSERV_PORT <tests/requests/$i >out
+  fi
   # Count if any error for later use
-  ok=0
-  diff tests/responses/$i out >>error.log || let ok++
-  if [ $ok -eq 0 ]; then
+  err=0
+  diff tests/responses/$i out >>error.log || let err++
+  if [ $err -eq 0 ]; then
 	echo "OK"
 	# Trim the last line of the error.log
-	sed -i '' '$ d' error.log
+	sed -i -e '$ d' error.log
   else
 	echo "NG"
 	let cnt++
@@ -36,7 +40,7 @@ function python_test() {
 	if [ $err -eq 0 ]; then
 		echo "OK"
 		# Trim the last line of the error.log
-		sed -i '' '$ d' error.log
+		sed -i -e '$ d' error.log
 	else
 		echo "NG"
 		let cnt++
