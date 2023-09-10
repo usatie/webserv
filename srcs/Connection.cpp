@@ -1,4 +1,5 @@
 #include "Connection.hpp"
+#include <sys/wait.h>
 
 int Connection::resume() throw() {
   // 1. Socket I/O
@@ -167,7 +168,7 @@ int Connection::split_header_field(const std::string &line, std::string &key, st
     std::stringstream ss(line);  // throwable! (bad alloc)
                                  // TODO: playground
     // 1. Extract key
-    if (std::getline(ss, key, ':') == 0) {  // throwable
+    if (!std::getline(ss, key, ':')) {  // throwable
       Log::cerror() << "std::getline(ss, key, ':') failed. line: " << line
                     << std::endl;
       ErrorHandler::handle(*client_socket, 500);

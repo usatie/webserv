@@ -131,8 +131,13 @@ int SocketBuf::flush() throw() {
     std::string buf(wss.str());
     // TODO: buf may contain unnecessary leading data, we need to remove them
 
+#ifdef LINUX
+    ssize_t ret = ::send(socket.get_fd(), &buf.c_str()[wss.tellg()],
+                         buf.size() - wss.tellg(), 0);
+#else
     ssize_t ret = ::send(socket.get_fd(), &buf.c_str()[wss.tellg()],
                          buf.size() - wss.tellg(), SO_NOSIGPIPE);
+#endif
     if (ret < 0) {
       Log::cerror() << "send() failed, errno: " << errno << "\n";
       // TODO: handle EINTR

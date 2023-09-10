@@ -3,6 +3,7 @@
 #include "Connection.hpp"
 #include "Config.hpp"
 
+#include <cstring> // memset, strerror
 #include <netdb.h>
 #include <arpa/inet.h>
 

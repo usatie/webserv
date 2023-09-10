@@ -1,6 +1,7 @@
 #include "GetHandler.hpp"
 
 #include <sys/stat.h>
+#include <cstring> // strerror
 #include "ErrorHandler.hpp"
 #include "webserv.hpp"
 
