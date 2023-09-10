@@ -29,13 +29,13 @@ for i in {1..14}; do
   fi
 done
 
-pip3 install -r tests/requirements.txt
+pip3 install -r tests/requirements.txt >/dev/null
 
 python3 tests/python/test_server_response.py
 exit_code=$?
 if [ $exit_code -ne 0 ]; then
   echo "Python tests failed..."
-  exit 1
+  let cnt++
 fi
 
 # 3. Clean up
