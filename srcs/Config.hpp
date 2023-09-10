@@ -320,6 +320,12 @@ Config::Server::Server(Command *srv) {
   if (listens.empty()) {
     listens.push_back(Listen());
   }
+  // TODO: Check duplicate listens (hostname must be resolved before this)
+  // OK: *:8080 and localhost:8080
+  // NG: *:8080 and *:8080
+  // NG: *:8080 and 8080
+  // NG: localhost:8080 and 127.0.0.1:8080
+  // server_names duplicates are allowed
   if (server_names.empty()) {
     server_names.push_back("");
   }
