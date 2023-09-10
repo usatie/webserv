@@ -7,7 +7,7 @@ void PostHandler::handle(Connection& conn) throw() {
   std::ofstream ofs(conn.header.fullpath.c_str(), std::ios::binary);
   if (!ofs.is_open()) {
     Log::fatal("file open failed");
-    ErrorHandler::handle(*conn.client_socket, 500);
+    ErrorHandler::handle(conn, 500);
     return;
   }
   ofs.write(
@@ -16,7 +16,7 @@ void PostHandler::handle(Connection& conn) throw() {
                              // https://en.cppreference.com/w/cpp/io/basic_ostream/write
   if (ofs.bad()) {
     Log::fatal("ofs.write failed");
-    ErrorHandler::handle(*conn.client_socket, 500);
+    ErrorHandler::handle(conn, 500);
     return;
   }
   *conn.client_socket << "HTTP/1.1 201 Created" << CRLF;

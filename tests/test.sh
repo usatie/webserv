@@ -50,7 +50,7 @@ function python_test() {
 python_test
 
 # 3. Clean up
-rm -f out *.tmp
+rm -f out *.tmp error.log-e
 pkill webserv
 if [ $cnt -eq 0 ]; then
   echo "All tests passed!"

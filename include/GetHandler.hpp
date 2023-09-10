@@ -4,6 +4,8 @@
 #include "Header.hpp"
 #include "SocketBuf.hpp"
 
+class Connection;
+
 class GetHandler {
  private:
   // Constructor/Destructor/Assignment Operator
@@ -13,6 +15,6 @@ class GetHandler {
   ~GetHandler() throw();                             // Do not implement this
  public:
   // Member functions
-  static void handle(SocketBuf& client_socket, const Header& header) throw();
+  static void handle(Connection& conn) throw();
 };
 #endif

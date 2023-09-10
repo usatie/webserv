@@ -4,8 +4,10 @@
 
 #include "SocketBuf.hpp"
 
+class Connection;
+
 class ErrorHandler {
 public:
-  static void handle(SocketBuf& client_socket, int status_code) throw();
+  static void handle(Connection& conn, int status_code) throw();
 };
 #endif

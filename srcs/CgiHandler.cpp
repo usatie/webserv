@@ -8,35 +8,35 @@
 void CgiHandler::handle(Connection& conn) throw() {
   // Check if 404
   if (access(conn.header.fullpath.c_str(), F_OK) == -1) {
-    ErrorHandler::handle(*conn.client_socket, 404);
+    ErrorHandler::handle(conn, 404);
     return;
   }
   // Check if fullpath is valid and executable
   if (access(conn.header.fullpath.c_str(), X_OK) == -1) {
-    ErrorHandler::handle(*conn.client_socket, 403);
+    ErrorHandler::handle(conn, 403);
     return;
   }
   // Check if fullpath is a directory
   // Because, a directory returns true for X_OK
   struct stat statbuf;
   if (stat(conn.header.fullpath.c_str(), &statbuf) == -1) {
-    ErrorHandler::handle(*conn.client_socket, 500);
+    ErrorHandler::handle(conn, 500);
     return;
   }
   if (S_ISDIR(statbuf.st_mode)) {
-    ErrorHandler::handle(*conn.client_socket, 403);
+    ErrorHandler::handle(conn, 403);
     return;
   }
 
   // Fork and excute CGI
   int cgi_socket[2];
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, cgi_socket) == -1) {
-    ErrorHandler::handle(*conn.client_socket, 500);
+    ErrorHandler::handle(conn, 500);
     return;
   }
   pid_t pid = fork();
   if (pid == -1) {
-    ErrorHandler::handle(*conn.client_socket, 500);
+    ErrorHandler::handle(conn, 500);
     return;
   }
   if (pid == 0) {
@@ -64,7 +64,7 @@ void CgiHandler::handle(Connection& conn) throw() {
     } catch (std::exception& e) {
       Log::fatal("new SocketBuf(cgi_socket[0]) failed");
       close(cgi_socket[0]);
-      ErrorHandler::handle(*conn.client_socket, 500);
+      ErrorHandler::handle(conn, 500);
       return;
     }
     conn.cgi_socket->write(conn.body, conn.body_size);

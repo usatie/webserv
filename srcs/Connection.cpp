@@ -118,7 +118,7 @@ int Connection::parse_start_line() throw() {
   // Path must be starting with /
   if (header.path[0] != '/') {
     Log::cinfo() << "Invalid path: " << header.path << std::endl;
-    ErrorHandler::handle(*client_socket, 400);
+    ErrorHandler::handle(*this, 400);
     status = RESPONSE;
     return 1;
   }
@@ -126,7 +126,7 @@ int Connection::parse_start_line() throw() {
   char cwd[PATH_MAX];
   if (getcwd(cwd, PATH_MAX) == 0) {
     Log::cfatal() << "getcwd failed" << std::endl;
-    ErrorHandler::handle(*client_socket, 500);
+    ErrorHandler::handle(*this, 500);
     status = RESPONSE;
     return 1;
   }
@@ -139,14 +139,14 @@ int Connection::parse_start_line() throw() {
     Log::cfatal()
         << "\"header.fullpath = std::string(cwd) + header.path\" failed"
         << std::endl;
-    ErrorHandler::handle(*client_socket, 500);
+    ErrorHandler::handle(*this, 500);
     status = RESPONSE;
     return 1;
   }
   // ss.bad()  : possibly bad alloc
   if (ss.bad()) {
     Log::cfatal() << "ss bad bit is set" << line << std::endl;
-    ErrorHandler::handle(*client_socket, 500);
+    ErrorHandler::handle(*this, 500);
     status = RESPONSE;
     return 1;
   }
@@ -154,7 +154,7 @@ int Connection::parse_start_line() throw() {
   // !ss.eof()  : there are more than 3 tokens or extra white spaces
   if (ss.fail() || !ss.eof()) {
     Log::cinfo() << "Invalid start line: " << line << std::endl;
-    ErrorHandler::handle(*client_socket, 400);
+    ErrorHandler::handle(*this, 400);
     status = RESPONSE;
     return 1;
   }
@@ -171,7 +171,7 @@ int Connection::split_header_field(const std::string &line, std::string &key, st
     if (!std::getline(ss, key, ':')) {  // throwable
       Log::cerror() << "std::getline(ss, key, ':') failed. line: " << line
                     << std::endl;
-      ErrorHandler::handle(*client_socket, 500);
+      ErrorHandler::handle(*this, 500);
       status = RESPONSE;
       return 1;
     }
@@ -198,14 +198,14 @@ int Connection::parse_header_fields() throw() {
     // Split line to key and value
     std::string key, value;
     if (split_header_field(line, key, value) < 0) {
-      ErrorHandler::handle(*client_socket, 500);
+      ErrorHandler::handle(*this, 500);
       status = RESPONSE;
       return 1;
     }
     if (util::http::is_token(key) == false) {
       Log::cinfo() << "Header filed-name is not token: : " << key
                    << std::endl;
-      ErrorHandler::handle(*client_socket, 400);
+      ErrorHandler::handle(*this, 400);
       status = RESPONSE;
       return 1;
     }
@@ -226,7 +226,7 @@ int Connection::parse_body() throw() {
       body = new char[content_length];
     } catch (std::exception &e) {
       Log::cfatal() << "Exception: " << e.what() << std::endl;
-      ErrorHandler::handle(*client_socket, 500);
+      ErrorHandler::handle(*this, 500);
       status = RESPONSE;
       return 1;
     }
@@ -258,12 +258,12 @@ int Connection::handle() throw() {
   }
   // If not CGI
   if (header.method == "GET") {
-    GetHandler::handle(*client_socket, header);
+    GetHandler::handle(*this);
   } else if (header.method == "POST") {
     PostHandler::handle(*this);
   } else {
     Log::cinfo() << "Unsupported method: " << header.method << std::endl;
-    ErrorHandler::handle(*client_socket, 405);
+    ErrorHandler::handle(*this, 405);
   }
   status = RESPONSE;
   return 1;
@@ -294,7 +294,7 @@ int Connection::handle_cgi_res() throw() {
     // (I don't think this will happen though.)
     Log::cfatal() << "waitpid error" << std::endl;
     kill(cgi_pid, SIGKILL);
-    ErrorHandler::handle(*client_socket, 500);
+    ErrorHandler::handle(*this, 500);
     status = RESPONSE;
     return 1;
   }
@@ -304,7 +304,7 @@ int Connection::handle_cgi_res() throw() {
   if (ret == 0) {
     Log::cfatal() << "CGI still running" << std::endl;
     kill(cgi_pid, SIGKILL);
-    ErrorHandler::handle(*client_socket, 500);
+    ErrorHandler::handle(*this, 500);
     status = RESPONSE;
     return 1;
   }
@@ -368,7 +368,7 @@ int Connection::handle_cgi_parse() throw() {
     std::string key, value;
     if (split_header_field(line, key, value) < 0) {
       Log::cwarn() << "Invalid CGI header field: " << line << std::endl;
-      ErrorHandler::handle(*client_socket, 500);
+      ErrorHandler::handle(*this, 500);
       status = RESPONSE;
       break;
     }
