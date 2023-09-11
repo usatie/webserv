@@ -19,13 +19,15 @@ class Socket {
  private:
   int fd;
   bool closed;
+  struct sockaddr_storage addr;
+  socklen_t addrlen;
 
   Socket(const Socket& other) throw();             // Do not implement this
   Socket& operator=(const Socket& other) throw();  // Do not implement this
 
  public:
   // Constructor/Destructor
-  explicit Socket(int fd) : fd(fd), closed(false) {
+  explicit Socket(int fd) : fd(fd), closed(false), addr(), addrlen(0) {
     if (fd < 0) {
       Log::error("Invalid socket fd to construct Socket");
       throw std::runtime_error("Invalid socket fd");
@@ -54,6 +56,8 @@ class Socket {
   }
 
   int bind(struct sockaddr* addr, socklen_t addrlen) throw() {
+    memcpy(&this->addr, addr, addrlen);
+    this->addrlen = addrlen;
     if (::bind(fd, addr, addrlen) < 0) {
       Log::error("bind() failed");
       return -1;
