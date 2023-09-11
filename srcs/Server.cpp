@@ -94,6 +94,12 @@ Server::Server(const Config& cf): maxfd(-1), listen_socks(), connections(), cf(c
           if (sock->set_nonblock() < 0) {
             throw std::runtime_error("sock.set_nonblock() failed");
           }
+          // Save the listening ip address to Config::Listen
+          // Here we use const_cast to modify the const object.
+          {
+            memcpy(const_cast<struct sockaddr_storage*>(&listen.addr), rp->ai_addr, rp->ai_addrlen);
+            const_cast<socklen_t&>(listen.addrlen) = rp->ai_addrlen;
+          }
           FD_SET(sock->get_fd(), &readfds);
           maxfd = std::max(maxfd, sock->get_fd());
           listen_socks.push_back(sock);
