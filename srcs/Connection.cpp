@@ -249,6 +249,35 @@ int Connection::parse_body() throw() {
   }
 }
 
+bool eq_addr(const sockaddr_in *a, const sockaddr_in *b) {
+  // If port is different, return false
+  if (a->sin_port != b->sin_port) {
+    return false;
+  }
+  // If a or b is wildcard, return true
+  if (a->sin_addr.s_addr == INADDR_ANY || b->sin_addr.s_addr == INADDR_ANY) {
+    return true;
+  }
+  // Otherwise, compare address
+  // sin_addr.sin_addr is just a uint32_t, so we can compare it directly
+  return a->sin_addr.s_addr == b->sin_addr.s_addr;
+}
+
+bool eq_addr6(const sockaddr_in6 *a, const sockaddr_in6 *b) {
+  // If port is different, return false
+  if (a->sin6_port != b->sin6_port) {
+    return false;
+  }
+  // If a or b is wildcard, return true
+  if (IN6_IS_ADDR_UNSPECIFIED(&a->sin6_addr) ||
+      IN6_IS_ADDR_UNSPECIFIED(&b->sin6_addr)) {
+    return true;
+  }
+  // Otherwise, compare address
+  // sin6_addr.sin6_addr is just a uint8_t[16], so we can compare it by memcmp
+  return memcmp(&a->sin6_addr, &b->sin6_addr, sizeof(in6_addr)) == 0;
+}
+
 int Connection::handle() throw() {
   // Find config for this request
   // 1. Find listen directive matching port
@@ -260,30 +289,38 @@ int Connection::handle() throw() {
     const Config::Server& srv = main_cf->servers[i];
     for (unsigned int j = 0; j < srv.listens.size(); j++) {
       const Config::Listen& listen = srv.listens[j];
-      // 1. Filter by port
-      if (listen.port != port) {
+      // 0. Filter by IPv4 or IPv6
+      if (listen.addr.ss_family != client_addr->sa_family) {
         continue;
       }
-
-      // 2. Filter by ip address
-      // TODO: ipv4, ipv6
-      // TODO: wildcard
-      // TODO: hostname
-      // TODO: struct sockaddr
+      // 1. Filter by port
+      // 2. Filter by address
+      // These can be done by eq_addr and eq_addr6
+      switch (client_addr->sa_family) {
+        case AF_INET:
+          if (!eq_addr((const sockaddr_in*)&listen.addr, (const sockaddr_in*)client_addr) == false) {
+            continue;
+          }
+          break;
+        case AF_INET6:
+          if (!eq_addr6((const sockaddr_in6*)&listen.addr, (const sockaddr_in6*)client_addr) == false) {
+            continue;
+          }
+          break;
+        default:
+          Log::cfatal() << "Unknown address family: " << listen.addr.ss_family << std::endl;
+          ErrorHandler::handle(*this, 500);
+          status = RESPONSE;
+          return 1;
+      }
       // This server is default server
-      if (!srv_cf && listen.address == "*") {
+      if (!srv_cf) {
         srv_cf = &srv;
         break;
       }
 
       // 3. Filter by host name
-      // TODO: case insensitive
-      // TODO: server_names and hostname
-      // TODO: ipv4, ipv6
-      // TODO: wildcard
-      // This server is non default server, but it has the same host name
-      // Host is required for HTTP/1.1
-      if (listen.address == "*" && util::vector::contains(srv.server_names, header.fields["Host"])) {
+      if (util::vector::contains(srv.server_names, header.fields["Host"])) {
         srv_cf = &srv;
         break;
       }

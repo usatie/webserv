@@ -144,8 +144,7 @@ void Server::remove_all_connections() throw() {
 }
 void Server::accept(std::shared_ptr<Socket> sock) throw() {
   try {
-    std::shared_ptr<SocketBuf> client_socketbuf(new SocketBuf(sock->accept())); // throwable
-    std::shared_ptr<Connection> conn(new Connection(client_socketbuf, cf)); // throwable
+    std::shared_ptr<Connection> conn(new Connection(sock->accept(), cf)); // throwable
     connections.push_back(conn); // throwable
     FD_SET(conn->get_fd(), &readfds);
     maxfd = std::max(conn->get_fd(), maxfd);

@@ -20,11 +20,13 @@ class Socket {
  private:
   int fd;
   bool closed;
+ public:
   // saddr is for listening socket
   // caddr is for connection socket
   struct sockaddr_storage saddr, caddr;
   socklen_t saddrlen, caddrlen;
 
+ private:
   Socket(const Socket& other) throw();             // Do not implement this
   Socket& operator=(const Socket& other) throw();  // Do not implement this
 
