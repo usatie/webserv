@@ -249,6 +249,46 @@ int Connection::parse_body() throw() {
 }
 
 int Connection::handle() throw() {
+  // Find config for this request
+  // 1. Find listen directive matching port
+  // 2. Find listen directive matching ip address
+  // 3. Find server_name directive matching host name (if not default server)
+  main_cf = &cf.http;
+  srv_cf = NULL;
+  for (unsigned int i = 0; i < main_cf->servers.size(); i++) {
+    const Config::Server& srv = main_cf->servers[i];
+    for (unsigned int j = 0; j < srv.listens.size(); j++) {
+      const Config::Listen& listen = srv.listens[j];
+      // 1. Filter by port
+      if (listen.port != port) {
+        continue;
+      }
+
+      // 2. Filter by ip address
+      // TODO: ipv4, ipv6
+      // TODO: wildcard
+      // TODO: hostname
+      // TODO: struct sockaddr
+      // This server is default server
+      if (!srv_cf && listen.address == "*") {
+        srv_cf = &srv;
+        break;
+      }
+
+      // 3. Filter by host name
+      // TODO: case insensitive
+      // TODO: server_names and hostname
+      // TODO: ipv4, ipv6
+      // TODO: wildcard
+      // This server is non default server, but it has the same host name
+      // Host is required for HTTP/1.1
+      if (listen.address == "*" && util::vector::contains(srv.server_names, header.fields["Host"])) {
+        srv_cf = &srv;
+        break;
+      }
+    }
+  }
+
   // if CGI 
   if (header.path.find("/cgi/") != std::string::npos) {
     // TODO: write(body, body_size) in handle()

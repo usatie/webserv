@@ -136,7 +136,7 @@ void Server::accept(std::shared_ptr<Socket> sock) throw() {
   try {
     std::shared_ptr<Connection> conn(NULL);
     try {
-      conn = std::shared_ptr< Connection >(new Connection(fd));
+      conn = std::shared_ptr< Connection >(new Connection(fd, cf));
     } catch (std::exception &e) {
       close(fd);
       Log::cerror() << "new Connection(fd) failed: " << e.what() << std::endl;
@@ -253,9 +253,12 @@ std::ostream& operator<<(std::ostream& os, const struct addrinfo* rp) {
   if (rp->ai_family == AF_INET) {
     struct sockaddr_in *ipv4 = (struct sockaddr_in *)rp->ai_addr;
     addr = &(ipv4->sin_addr);
-  } else {
+  } else if (rp->ai_family == AF_INET6) {
     struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)rp->ai_addr;
     addr = &(ipv6->sin6_addr);
+  } else {
+    os << "unknown address family: ";
+    return os;
   }
   inet_ntop(rp->ai_family, addr, buf, sizeof buf);
   os << buf;
