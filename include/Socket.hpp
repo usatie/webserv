@@ -10,6 +10,7 @@
 #include <string>
 #define MAXLINE 1024
 #include <fcntl.h>
+#include <cstring> // memcpy
 
 #include "webserv.hpp"
 
