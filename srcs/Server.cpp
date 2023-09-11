@@ -137,21 +137,10 @@ void Server::remove_all_connections() throw() {
   }
 }
 void Server::accept(std::shared_ptr<Socket> sock) throw() {
-  int fd = ::accept(sock->get_fd(), NULL, NULL);
-  if (fd < 0) {
-    Log::cerror() << "accept() failed: " << strerror(errno) << std::endl;
-    return;
-  }
   try {
-    std::shared_ptr<Connection> conn(NULL);
-    try {
-      conn = std::shared_ptr< Connection >(new Connection(fd, cf));
-    } catch (std::exception &e) {
-      close(fd);
-      Log::cerror() << "new Connection(fd) failed: " << e.what() << std::endl;
-      return;
-    }
-    connections.push_back(conn);
+    std::shared_ptr<SocketBuf> client_socketbuf(new SocketBuf(sock->accept())); // throwable
+    std::shared_ptr<Connection> conn(new Connection(client_socketbuf, cf)); // throwable
+    connections.push_back(conn); // throwable
     FD_SET(conn->get_fd(), &readfds);
     maxfd = std::max(conn->get_fd(), maxfd);
   } catch (std::exception &e) {

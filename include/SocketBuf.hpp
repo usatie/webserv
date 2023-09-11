@@ -23,7 +23,7 @@ class SocketBuf {
   // Member data
  public:
  private:
-  Socket socket;
+  std::shared_ptr<Socket> socket;
   std::stringstream rss, wss;
 
   SocketBuf() throw();  // Do not implement this
@@ -33,16 +33,23 @@ class SocketBuf {
 
  public:
   // Constructor/Destructor
-  explicit SocketBuf(int fd) : socket(fd), rss(), wss() {
-    if (socket.set_nonblock() < 0) {
-      throw std::runtime_error("socket.set_nonblock() failed");
+  // Constructor for TCP socket
+  explicit SocketBuf(std::shared_ptr<Socket> socket) : socket(socket), rss(), wss() {
+    if (socket->set_nonblock() < 0) {
+      throw std::runtime_error("socket->set_nonblock() failed");
+    }
+  }
+  // Constructor for unix domain socket
+  explicit SocketBuf(int fd) : socket(std::shared_ptr<Socket>(new Socket(fd))), rss(), wss() {
+    if (socket->set_nonblock() < 0) {
+      throw std::runtime_error("socket->set_nonblock() failed");
     }
   }
   ~SocketBuf() throw() {}
 
   // Accessors
-  int get_fd() const throw() { return socket.get_fd(); }
-  bool isClosed() const throw() { return socket.isClosed(); }
+  int get_fd() const throw() { return socket->get_fd(); }
+  bool isClosed() const throw() { return socket->isClosed(); }
   // tellg() updates the internal state of the stream, so it is not const
   bool isSendBufEmpty() throw() {
     return (wss.str().size() - wss.tellg()) == 0;
@@ -76,7 +83,7 @@ class SocketBuf {
     wss.clear();
   }
 
-  int set_nonblock() throw() { return socket.set_nonblock(); }
+  int set_nonblock() throw() { return socket->set_nonblock(); }
 
   template <typename T>
   SocketBuf& operator<<(const T& t) throw() {

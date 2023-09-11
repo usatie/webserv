@@ -132,17 +132,17 @@ int SocketBuf::flush() throw() {
     // TODO: buf may contain unnecessary leading data, we need to remove them
 
 #ifdef LINUX
-    ssize_t ret = ::send(socket.get_fd(), &buf.c_str()[wss.tellg()],
+    ssize_t ret = ::send(socket->get_fd(), &buf.c_str()[wss.tellg()],
                          buf.size() - wss.tellg(), 0);
 #else
-    ssize_t ret = ::send(socket.get_fd(), &buf.c_str()[wss.tellg()],
+    ssize_t ret = ::send(socket->get_fd(), &buf.c_str()[wss.tellg()],
                          buf.size() - wss.tellg(), SO_NOSIGPIPE);
 #endif
     if (ret < 0) {
       Log::cerror() << "send() failed, errno: " << errno << "\n";
       // TODO: handle EINTR
       // ETIMEDOUT, EPIPE in any case means the connection is closed
-      socket.beClosed();
+      socket->beClosed();
       return -1;
     }
     wss.seekg(ret, std::ios::cur);
@@ -161,13 +161,13 @@ int SocketBuf::fill() throw() {
   static char buf[MAXLINE] = {0};
   static const int flags = 0;
   ssize_t ret =
-      ::recv(socket.get_fd(), static_cast<void*>(buf), MAXLINE, flags);
+      ::recv(socket->get_fd(), static_cast<void*>(buf), MAXLINE, flags);
   if (ret < 0) {
     Log::error("recv() failed");
     return -1;
   }
   if (ret == 0) {
-    socket.beClosed();
+    socket->beClosed();
   }
   // Fill ret bytes buf into rss
   try {

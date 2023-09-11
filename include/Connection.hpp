@@ -55,8 +55,8 @@ class Connection {
  public:
   // Constructor/Destructor
   Connection() throw();  // Do not implement this
-  explicit Connection(int listen_fd, const Config& cf)
-      : client_socket(new SocketBuf(listen_fd)),
+  Connection(std::shared_ptr<SocketBuf> client_socket, const Config& cf)
+      : client_socket(client_socket),
         cgi_socket(NULL),
         header(),
         status(REQ_START_LINE),
