@@ -1,10 +1,45 @@
+#############
+# Variables #
+#############
+
 INCLUDES  = $(wildcard srcs/*.hpp)
-CXXFLAGS  = -std=c++98 -Wall -Wextra -Werror -pedantic -MMD -MP -I include -I srcs
+CXXFLAGS  = -Wall -Wextra -Werror -pedantic -MMD -MP -I include -I srcs
 SRCS      = $(wildcard srcs/*.cpp)
 OBJS	  = $(SRCS:.cpp=.o)
 DEPS	  = $(SRCS:.cpp=.d)
 NAME      = webserv
 UNITTEST  = unit_test
+
+##########################
+# Platform Compatibility #
+##########################
+
+# LINUX | OSX | ARM
+UNAME_S := $(shell uname -s)
+UNAME_P := $(shell uname -p)
+
+# Linux 
+# TODO: Replace C++11 with C++98
+# Currently, we're using some C++11 features like shared_ptr.
+# We need to replace them with C++98 features.
+# (clang on macos doesn't throw any error, but g++ on linux does.)
+ifeq ($(UNAME_S),Linux)
+	CXXFLAGS += -D LINUX -std=c++11
+endif
+
+# macos x86
+ifeq ($(UNAME_S),Darwin)
+	CXXFLAGS += -D OSX -std=c++98
+endif
+
+# macos ARM (m1/m2...)
+ifneq ($(filter arm%, $(UNAME_P)),)
+	CXXFLAGS += -D ARM -std=c++98
+endif
+
+#################
+# General rules #
+#################
 
 all: $(NAME)
 
@@ -15,11 +50,6 @@ fclean: clean
 	rm -f $(NAME) $(UNITTEST)
 
 re: fclean all
-
-# std::shared_ptr is not supported in c++98 so g++ cannot compile it but clang can compile,
-# so we need to use c++11 on Linux
-linux: CXXFLAGS = -std=c++11 -Wall -Wextra -pedantic -MMD -MP -I include -D LINUX
-linux: re
 
 %.o: %.cpp %.d
 	$(CXX) $(CXXFLAGS) -c $< -o $@
