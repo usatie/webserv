@@ -1,5 +1,6 @@
 #include "Connection.hpp"
 #include <sys/wait.h>
+#include <map>
 
 int Connection::resume() throw() {
   // 1. Socket I/O
@@ -397,7 +398,7 @@ int Connection::handle_cgi_parse() throw() {
   // TODO: parse
   std::string line;
   // Read header fields
-  std::unordered_map<std::string, std::string> cgi_header_fields;
+  std::map<std::string, std::string> cgi_header_fields;
   while (cgi_socket->readline(line) == 0) {
     Log::cdebug() << "CGI line: " << line << std::endl;
     // Empty line indicates the end of header fields
@@ -421,7 +422,7 @@ int Connection::handle_cgi_parse() throw() {
     *client_socket << "HTTP/1.1 200 OK" << CRLF;
   }
   // Send header fields
-  std::unordered_map<std::string, std::string>::const_iterator it;
+  std::map<std::string, std::string>::const_iterator it;
   for (it = cgi_header_fields.begin(); it != cgi_header_fields.end(); ++it) {
     if (it->first == "Status") continue;
     // TODO: validate header field
