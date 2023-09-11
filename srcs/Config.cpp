@@ -15,6 +15,9 @@ Config::Config(Module *mod) {
 }
 
 Config::Location::Location(Command *loc): path(loc->location) {
+  if (path.empty()) {
+    throw std::runtime_error("Empty location path");
+  }
   for (Command* cmd = loc->block; cmd; cmd = cmd->next) {
     switch (cmd->type) {
       case Command::CMD_ROOT:
@@ -168,7 +171,8 @@ Config::Server::Server(Command *srv) {
   }
   for (unsigned int i = 0; i < locations.size(); i++) {
     Config::Location &loc = locations[i];
-    if (!loc.root.configured) loc.root = root;
+    // If both root and alias are not configured, inherit root from server
+    if (!loc.root.configured && !loc.alias.configured) loc.root = root;
     if (!loc.index.configured) loc.index = index;
     if (!loc.autoindex.configured) loc.autoindex = autoindex;
     if (!loc.upload_store.configured) loc.upload_store = upload_store;

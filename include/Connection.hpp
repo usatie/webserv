@@ -148,6 +148,10 @@ class Connection {
   int handle_cgi_parse() throw();
 
   int response() throw();
+private:
+  void find_main_cf() throw();
+  void find_srv_cf() throw();
+  void find_loc_cf() throw();
 };
 
 #endif

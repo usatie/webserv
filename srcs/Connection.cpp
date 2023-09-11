@@ -134,16 +134,10 @@ int Connection::parse_start_line() throw() {
   // TODO: Defense Directory traversal attack
   // TODO: Handle absoluteURI
   // TODO: Handle *
-  try {
-    header.fullpath = std::string(cwd) + header.path;  // throwable
-  } catch (std::exception &e) {
-    Log::cfatal()
-        << "\"header.fullpath = std::string(cwd) + header.path\" failed"
-        << std::endl;
-    ErrorHandler::handle(*this, 500);
-    status = RESPONSE;
-    return 1;
-  }
+  // TODO: header.path must be a normalized URI
+  //       1. decoding the text encoded in the “%XX” form
+  //       2. resolving references to relative path components (“.” and “..”)
+  //       3. possible compression of two or more adjacent slashes into a single slash
   // ss.bad()  : possibly bad alloc
   if (ss.bad()) {
     Log::cfatal() << "ss bad bit is set" << line << std::endl;
@@ -278,12 +272,15 @@ bool eq_addr6(const sockaddr_in6 *a, const sockaddr_in6 *b) {
   return memcmp(&a->sin6_addr, &b->sin6_addr, sizeof(in6_addr)) == 0;
 }
 
-int Connection::handle() throw() {
-  // Find config for this request
-  // 1. Find listen directive matching port
-  // 2. Find listen directive matching ip address
-  // 3. Find server_name directive matching host name (if not default server)
+void Connection::find_main_cf() throw() {
   main_cf = &cf.http;
+}
+
+// Find config for this request
+// 1. Find listen directive matching port
+// 2. Find listen directive matching ip address
+// 3. Find server_name directive matching host name (if not default server)
+void Connection::find_srv_cf() throw() {
   srv_cf = NULL;
   for (unsigned int i = 0; i < main_cf->servers.size(); i++) {
     const Config::Server& srv = main_cf->servers[i];
@@ -308,10 +305,7 @@ int Connection::handle() throw() {
           }
           break;
         default:
-          Log::cfatal() << "Unknown address family: " << listen.addr.ss_family << std::endl;
-          ErrorHandler::handle(*this, 500);
-          status = RESPONSE;
-          return 1;
+          assert(false); // Should not reach here
       }
       // This server is default server
       if (!srv_cf) {
@@ -325,6 +319,61 @@ int Connection::handle() throw() {
         break;
       }
     }
+  }
+  // Some server context must be found because we only listen on
+  // specified ports and addresses
+  assert(srv_cf != NULL);
+}
+
+// Note: We don't support regex
+// https://nginx.org/en/docs/http/ngx_http_core_module.html#location
+// To find location matching a given request, nginx first checks locations defined using the prefix strings (prefix locations). Among them, the location with the longest matching prefix is selected and remembered. Then regular expressions are checked, in the order of their appearance in the configuration file. The search of regular expressions terminates on the first match, and the corresponding configuration is used. If no match with a regular expression is found then the configuration of the prefix location remembered earlier is used.
+void Connection::find_loc_cf() throw() {
+  // Find location for this request
+  // 1. Find location directive matching prefix string
+  // 2. location with the longest matching prefix is selected and remembered
+  const Config::Location *loc = NULL;
+  // TODO: header.path must be a normalized URI
+  //       1. decoding the text encoded in the “%XX” form
+  //       2. resolving references to relative path components (“.” and “..”)
+  //       3. possible compression of two or more adjacent slashes into a single slash
+  for (unsigned int i = 0; i < srv_cf->locations.size(); i++) {
+    const Config::Location& l = srv_cf->locations[i];
+    // 1. Filter by prefix
+    if (header.path.substr(0, l.path.size()) == l.path) {
+      // location with the longest matching prefix is selected and remembered
+      if (loc == NULL || loc->path.size() < l.path.size()) {
+        loc = &l;
+      }
+      break;
+    }
+  }
+}
+
+int Connection::handle() throw() {
+  find_main_cf();
+  find_srv_cf();
+  find_loc_cf();
+
+  // generate fullpath
+  try {
+    if (!loc_cf) {
+      // Server Root    : Append path to root
+      header.fullpath = srv_cf->root + header.path;
+    } else if (!loc_cf->alias.configured) {
+      // Location Root  : Append path to root
+      header.fullpath = loc_cf->root + header.path;
+    } else {
+      // Location Alias : Replace prefix with alias
+      header.fullpath = loc_cf->alias + header.path.substr(loc_cf->path.size());
+    }
+  } catch (std::exception &e) {
+    Log::cfatal()
+        << "\"header.fullpath = root or alias + header.path\" failed"
+        << std::endl;
+    ErrorHandler::handle(*this, 500);
+    status = RESPONSE;
+    return 1;
   }
 
   // if CGI 

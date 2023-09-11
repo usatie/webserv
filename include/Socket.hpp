@@ -72,7 +72,7 @@ class Socket {
 
   int bind(struct sockaddr* addr, socklen_t addrlen) throw() {
     if (::bind(fd, addr, addrlen) < 0) {
-      Log::error("bind() failed");
+      Log::info("bind() failed");
       return -1;
     }
     memcpy(&this->saddr, addr, addrlen);
