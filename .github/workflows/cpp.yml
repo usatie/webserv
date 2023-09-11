@@ -1,4 +1,4 @@
-name: C++ CI
+name: C++ CI (Ubuntu)
 
 on:
   push:
@@ -13,8 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: make
-      run: make
+    - name: make linux
+      run: make linux
     - name: make unit
       run: make unit
     - name: make test
