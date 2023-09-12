@@ -49,13 +49,12 @@ class Connection {
   const Config::HTTP* main_cf;
   const Config::Server* srv_cf;
   const Config::Location* loc_cf;
-  const struct sockaddr* client_addr;
 
  public:
   // Constructor/Destructor
   Connection() throw();  // Do not implement this
-  Connection(std::shared_ptr<Socket> client_socket, const Config& cf)
-      : client_socket(std::shared_ptr<SocketBuf>(new SocketBuf(client_socket))),
+  Connection(std::shared_ptr<Socket> sock, const Config& cf)
+      : client_socket(std::shared_ptr<SocketBuf>(new SocketBuf(sock))),
         cgi_socket(NULL),
         header(),
         status(REQ_START_LINE),
@@ -66,8 +65,7 @@ class Connection {
         cf(cf),
         main_cf(NULL),
         srv_cf(NULL),
-        loc_cf(NULL),
-        client_addr((struct sockaddr*)&client_socket->caddr) {}
+        loc_cf(NULL) {}
   ~Connection() throw() {}
   Connection(const Connection &other) throw();  // Do not implement this
   Connection &operator=(

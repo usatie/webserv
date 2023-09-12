@@ -70,6 +70,16 @@ class Socket {
     return 0;
   }
 
+  // Set IPv6 only
+  int ipv6only() throw() {
+    int optval = 1;
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &optval, sizeof(optval)) < 0) {
+      Log::error("setsockopt() failed");
+      return -1;
+    }
+    return 0;
+  }
+
   int bind(struct sockaddr* addr, socklen_t addrlen) throw() {
     if (::bind(fd, addr, addrlen) < 0) {
       Log::info("bind() failed");

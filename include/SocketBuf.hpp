@@ -83,8 +83,25 @@ class SocketBuf {
     wss.clear();
   }
 
-  int set_nonblock() throw() { return socket->set_nonblock(); }
+  SocketBuf& write(const char* buf, size_t size) throw();
 
+  size_t getReadBufSize() throw() {
+    StreamCleaner _(rss, wss);
+    if (bad()) {
+      return 0;
+    }
+    return rss.str().size() - rss.tellg();
+  }
+
+  // Operators
+  // member of pointer operators
+  std::shared_ptr<Socket> operator->() throw() { return socket; }
+  const std::shared_ptr<Socket> operator->() const throw() { return socket; }
+  // indirection operators
+  Socket& operator*() throw() { return *socket; }
+  const Socket& operator*() const throw() { return *socket; }
+
+  // stream insertion operator
   template <typename T>
   SocketBuf& operator<<(const T& t) throw() {
     StreamCleaner _(rss, wss);
@@ -99,16 +116,7 @@ class SocketBuf {
     return *this;
   }
 
-  SocketBuf& write(const char* buf, size_t size) throw();
-
-  size_t getReadBufSize() throw() {
-    StreamCleaner _(rss, wss);
-    if (bad()) {
-      return 0;
-    }
-    return rss.str().size() - rss.tellg();
-  }
-
+  // stream extraction operator
   SocketBuf& operator>>(SocketBuf& dst) throw() {
     StreamCleaner _(rss, wss);
     if (bad()) {

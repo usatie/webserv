@@ -272,6 +272,19 @@ bool eq_addr6(const sockaddr_in6 *a, const sockaddr_in6 *b) {
   return memcmp(&a->sin6_addr, &b->sin6_addr, sizeof(in6_addr)) == 0;
 }
 
+bool eq_addr46(const sockaddr_storage *a, const sockaddr_storage *b) {
+  if (a->ss_family != b->ss_family) {
+    return false;
+  }
+  if (a->ss_family == AF_INET) {
+    return eq_addr((const sockaddr_in *)a, (const sockaddr_in *)b);
+  } else if (a->ss_family == AF_INET6) {
+    return eq_addr6((const sockaddr_in6 *)a, (const sockaddr_in6 *)b);
+  } else {
+    return false;
+  }
+}
+
 void Connection::find_main_cf() throw() {
   main_cf = &cf.http;
 }
@@ -281,31 +294,18 @@ void Connection::find_main_cf() throw() {
 // 2. Find listen directive matching ip address
 // 3. Find server_name directive matching host name (if not default server)
 void Connection::find_srv_cf() throw() {
+  struct sockaddr_storage* saddr = &(*client_socket)->saddr;
   srv_cf = NULL;
   for (unsigned int i = 0; i < main_cf->servers.size(); i++) {
     const Config::Server& srv = main_cf->servers[i];
     for (unsigned int j = 0; j < srv.listens.size(); j++) {
       const Config::Listen& listen = srv.listens[j];
       // 0. Filter by IPv4 or IPv6
-      if (listen.addr.ss_family != client_addr->sa_family) {
-        continue;
-      }
       // 1. Filter by port
       // 2. Filter by address
-      // These can be done by eq_addr and eq_addr6
-      switch (client_addr->sa_family) {
-        case AF_INET:
-          if (!eq_addr((const sockaddr_in*)&listen.addr, (const sockaddr_in*)client_addr) == false) {
-            continue;
-          }
-          break;
-        case AF_INET6:
-          if (!eq_addr6((const sockaddr_in6*)&listen.addr, (const sockaddr_in6*)client_addr) == false) {
-            continue;
-          }
-          break;
-        default:
-          assert(false); // Should not reach here
+      // These can be done by eq_addr46 and eq_addr6
+      if (eq_addr46(&listen.addr, saddr) == false) {
+        continue;
       }
       // This server is default server
       if (!srv_cf) {

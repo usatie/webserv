@@ -72,6 +72,11 @@ Server::Server(const Config& cf): maxfd(-1), listen_socks(), connections(), cf(c
           Log::cdebug() << "listen : " << listen << std::endl;
               /* convert ai_addr from binary to string */
           Log::cdebug() << "ip: " << rp << std::endl;
+          // IPv6 socket listening on a wildcard address [::] will accept only IPv6 connections
+          // Without this option, it will accept both IPv4 and IPv6 connections
+          if (rp->ai_family == AF_INET6) {
+            sock->ipv6only();
+          }
           if (sock->bind(rp->ai_addr, rp->ai_addrlen) < 0) {
             // If wildcard address, it's possible IPv6 socket is already 
             // bound to IPv4 wildcard address. In that case, bind() fails.
@@ -103,6 +108,7 @@ Server::Server(const Config& cf): maxfd(-1), listen_socks(), connections(), cf(c
           FD_SET(sock->get_fd(), &readfds);
           maxfd = std::max(maxfd, sock->get_fd());
           listen_socks.push_back(sock);
+          break ; // Success, one socket per one listen directive
         }
         freeaddrinfo(result);
       }
