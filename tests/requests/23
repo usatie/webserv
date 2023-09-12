@@ -1,0 +1,5 @@
+POST /limit_except/post/23.tmp HTTP/1.1
+Host: example.com
+Content-Length: 5
+
+ccccc

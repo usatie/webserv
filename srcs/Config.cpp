@@ -280,6 +280,8 @@ std::ostream& operator<<(std::ostream& os, const Config::Location& l) {
   if (l.root.configured) os << "        root: " << l.root << std::endl;
   if (l.alias.configured) os << "        alias: " << l.alias << std::endl;
   if (l.index.configured) os << "        index: " << l.index << std::endl;
+  if (l.limit_except.configured)
+    os << "        limit_except: " << l.limit_except.methods << std::endl;
   if (l.autoindex.configured)
     os << "        autoindex: " << l.autoindex << std::endl;
   if (l.client_max_body_size.configured)
