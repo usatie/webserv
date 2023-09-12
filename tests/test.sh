@@ -8,11 +8,12 @@ WEBSERV_PORT=8181
 # wait for server warm up
 sleep 1.0
 rm -f error.log
+mkdir -p /tmp/www/pouic/toto && echo "pouet" > /tmp/www/pouic/toto/pouet
 
 # 2. Tests
 # arg for save error count
 cnt=0
-for i in {1..14}; do
+for i in {1..21}; do
   echo -n "Test${i}   : " | tee -a error.log
   echo "" >>error.log
   if [[ "$(uname -s)" == "Linux" ]]; then
