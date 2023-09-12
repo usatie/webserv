@@ -6,6 +6,22 @@
 
 void ErrorHandler::handle(Connection& conn, int status_code) throw() {
   conn.client_socket->clear_sendbuf();
+  std::vector<Config::ErrorPage>::const_iterator it, end;
+  if (conn.loc_cf) {
+    it = conn.loc_cf->error_pages.begin();
+    end = conn.loc_cf->error_pages.end();
+  } else {
+    it = conn.srv_cf->error_pages.begin();
+    end = conn.srv_cf->error_pages.end();
+  }
+  for (; it != end; ++it) {
+    Log::cdebug() << "Error page: " << it->uri << std::endl;
+    if (std::find(it->codes.begin(), it->codes.end(), status_code) != it->codes.end()) {
+      std::string error_page = it->uri;
+      // TODO: local redirect
+      Log::cdebug() << "Error page found: " << error_page << std::endl;
+    }
+  }
   switch (status_code) {
     case 400:
       *conn.client_socket << "HTTP/1.1 400 Bad Request" << CRLF;

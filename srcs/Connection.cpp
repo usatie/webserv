@@ -362,12 +362,15 @@ int Connection::handle() throw() {
   try {
     if (!loc_cf) {
       // Server Root    : Append path to root
+      Log::cdebug() << "Server Root" << std::endl;
       header.fullpath = srv_cf->root + header.path;
     } else if (!loc_cf->alias.configured) {
       // Location Root  : Append path to root
+      Log::cdebug() << "Location Root: " << loc_cf->path << std::endl;
       header.fullpath = loc_cf->root + header.path;
     } else {
       // Location Alias : Replace prefix with alias
+      Log::cdebug() << "Location Alias: " << loc_cf->path << std::endl;
       header.fullpath = loc_cf->alias + header.path.substr(loc_cf->path.size());
     }
   } catch (std::exception &e) {
