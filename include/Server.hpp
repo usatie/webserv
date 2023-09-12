@@ -2,8 +2,8 @@
 #define SERVER_HPP
 
 #include <algorithm>  // std::find
-#include <vector>     // std::vector
 #include <memory>     // std::shared_ptr
+#include <vector>     // std::vector
 
 #include "webserv.hpp"
 

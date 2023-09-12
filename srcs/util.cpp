@@ -1,6 +1,7 @@
 #include "util.hpp"
 
-bool util::string::ends_with(const std::string& str, const std::string& suffix) {
+bool util::string::ends_with(const std::string& str,
+                             const std::string& suffix) {
   return str.size() >= suffix.size() &&
          str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
 }

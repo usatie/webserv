@@ -1,7 +1,7 @@
 #include "PostHandler.hpp"
 
-#include "ErrorHandler.hpp"
 #include "Connection.hpp"
+#include "ErrorHandler.hpp"
 
 void PostHandler::handle(Connection& conn) throw() {
   std::ofstream ofs(conn.header.fullpath.c_str(), std::ios::binary);

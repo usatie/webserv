@@ -2,7 +2,7 @@
 # Variables #
 #############
 
-INCLUDES  = $(wildcard srcs/*.hpp)
+INCLUDES  = $(wildcard include/*.hpp)
 CXXFLAGS  = -Wall -Wextra -Werror -pedantic -MMD -MP -I include -I srcs
 SRCS      = $(wildcard srcs/*.cpp)
 OBJS	  = $(SRCS:.cpp=.o)

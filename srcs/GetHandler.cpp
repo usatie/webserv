@@ -1,7 +1,9 @@
 #include "GetHandler.hpp"
 
 #include <sys/stat.h>
-#include <cstring> // strerror
+
+#include <cstring>  // strerror
+
 #include "Connection.hpp"
 #include "ErrorHandler.hpp"
 #include "webserv.hpp"
@@ -9,8 +11,8 @@
 bool validate(const char* path, size_t& content_length) {
   struct stat st;
   if (stat(path, &st) < 0) {
-    Log::cdebug() << "stat() failed: " << path
-                  << ", errno:" << strerror(errno) << std::endl;
+    Log::cdebug() << "stat() failed: " << path << ", errno:" << strerror(errno)
+                  << std::endl;
     return false;
   }
   if (S_ISDIR(st.st_mode)) {
@@ -31,8 +33,9 @@ void GetHandler::handle(Connection& conn) throw() {
   size_t content_length = 0;
   bool is_valid = false;
   // Index
-  if (fullpath.back() == '/') { // Append index.html
-    const std::vector<std::string>& index = (!conn.loc_cf) ? conn.srv_cf->index : conn.loc_cf->index;
+  if (fullpath.back() == '/') {  // Append index.html
+    const std::vector<std::string>& index =
+        (!conn.loc_cf) ? conn.srv_cf->index : conn.loc_cf->index;
     for (size_t i = 0; i < index.size(); ++i) {
       std::string path = fullpath + index[i];
       Log::cdebug() << "Trying index: " << path << std::endl;

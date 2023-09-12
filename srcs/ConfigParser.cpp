@@ -1,30 +1,28 @@
 #include "ConfigParser.hpp"
-#include <cstdlib> // atoi
+
+#include <cstdlib>  // atoi
 
 // Do not handle exceptions in config parser
-Module* http(Token **rest, Token *tok, int context);
-Command* block(Token **rest, Token *tok, int context);
-Command* command(Token **rest, Token *tok, int context);
-Command* listen(Token **rest, Token *tok, int context);
-Command* server_name(Token **rest, Token *tok, int context);
-Command* root(Token **rest, Token *tok, int context);
-Command* index(Token **rest, Token *tok, int context);
-Command* error_page(Token **rest, Token *tok, int context);
-Command* autoindex(Token **rest, Token *tok, int context);
-Command* limit_except(Token **rest, Token *tok, int context);
-Command* upload_store(Token **rest, Token *tok, int context);
-Command* client_max_body_size(Token **rest, Token *tok, int context);
-Command* cgi_extension(Token **rest, Token *tok, int context);
-Command* redirect_return(Token **rest, Token *tok, int context);
-Command* location(Token **rest, Token *tok, int context);
-Command* alias(Token **rest, Token *tok, int context);
-Command* server(Token **rest, Token *tok, int context);
-
+Module *http(Token **rest, Token *tok, int context);
+Command *block(Token **rest, Token *tok, int context);
+Command *command(Token **rest, Token *tok, int context);
+Command *listen(Token **rest, Token *tok, int context);
+Command *server_name(Token **rest, Token *tok, int context);
+Command *root(Token **rest, Token *tok, int context);
+Command *index(Token **rest, Token *tok, int context);
+Command *error_page(Token **rest, Token *tok, int context);
+Command *autoindex(Token **rest, Token *tok, int context);
+Command *limit_except(Token **rest, Token *tok, int context);
+Command *upload_store(Token **rest, Token *tok, int context);
+Command *client_max_body_size(Token **rest, Token *tok, int context);
+Command *cgi_extension(Token **rest, Token *tok, int context);
+Command *redirect_return(Token **rest, Token *tok, int context);
+Command *location(Token **rest, Token *tok, int context);
+Command *alias(Token **rest, Token *tok, int context);
+Command *server(Token **rest, Token *tok, int context);
 
 // Utility
-bool is_equal(Token *tok, const std::string &str) {
-  return tok->str == str;
-}
+bool is_equal(Token *tok, const std::string &str) { return tok->str == str; }
 
 bool consume(Token **rest, Token *tok, const std::string &str) {
   if (is_equal(tok, str)) {
@@ -34,7 +32,7 @@ bool consume(Token **rest, Token *tok, const std::string &str) {
   return false;
 }
 
-Token* skip(Token *tok, const std::string &str) {
+Token *skip(Token *tok, const std::string &str) {
   if (!is_equal(tok, str)) {
     Log::cfatal() << "unexpected token: " << tok->str << std::endl;
     throw std::runtime_error("unexpected token");
@@ -42,7 +40,7 @@ Token* skip(Token *tok, const std::string &str) {
   return tok->next;
 }
 
-Token* skip_kind(Token *tok, Token::Type kind) {
+Token *skip_kind(Token *tok, Token::Type kind) {
   if (tok->type != kind) {
     Log::cfatal() << "unexpected kind: " << tok->str << std::endl;
     throw std::runtime_error("unexpected kind");
@@ -58,7 +56,7 @@ void expect_context(int context, int expected) {
 }
 
 // config = http
-Module* parse(Token *tok) {
+Module *parse(Token *tok) {
   Log::debug("parse");
   Module *mod = http(&tok, tok, WSV_MAIN_CONF);
   if (tok->type != Token::TK_EOF) {
@@ -74,7 +72,7 @@ Module* parse(Token *tok) {
 // Context:	main
 // Memo: 1. duplicate is not allowed
 //       2. http block can be ommitted (but we require it)
-Module* http(Token **rest, Token *tok, int context) {
+Module *http(Token **rest, Token *tok, int context) {
   Log::cdebug() << "http" << std::endl;
   Module *mod = new Module(Module::MOD_HTTP);
 
@@ -86,7 +84,7 @@ Module* http(Token **rest, Token *tok, int context) {
 }
 
 // block = "{" *command "}"
-Command* block(Token **rest, Token *tok, int context) {
+Command *block(Token **rest, Token *tok, int context) {
   Log::cdebug() << "block" << std::endl;
   Command *head = NULL, *cur = NULL;
   tok = skip(tok, "{");
@@ -115,7 +113,7 @@ Command* block(Token **rest, Token *tok, int context) {
 //         | location
 //         | alias
 //         | server
-Command* command(Token **rest, Token *tok, int context) {
+Command *command(Token **rest, Token *tok, int context) {
   Log::debug("command");
   Command *cmd = NULL;
 
@@ -158,12 +156,19 @@ Command* command(Token **rest, Token *tok, int context) {
   return cmd;
 }
 
-// Syntax:	listen address[:port] [default_server] [ssl] [http2 | quic] [proxy_protocol] [setfib=number] [fastopen=number] [backlog=number] [rcvbuf=size] [sndbuf=size] [accept_filter=filter] [deferred] [bind] [ipv6only=on|off] [reuseport] [so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]];
-// listen port [default_server] [ssl] [http2 | quic] [proxy_protocol] [setfib=number] [fastopen=number] [backlog=number] [rcvbuf=size] [sndbuf=size] [accept_filter=filter] [deferred] [bind] [ipv6only=on|off] [reuseport] [so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]];
-// listen unix:path [default_server] [ssl] [http2 | quic] [proxy_protocol] [backlog=number] [rcvbuf=size] [sndbuf=size] [accept_filter=filter] [deferred] [bind] [so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]];
-// Default:	listen *:80 | *:8000;
-// Context:	server
-// Memo: 1. multiple listen is allowed
+// Syntax:	listen address[:port] [default_server] [ssl] [http2 | quic]
+// [proxy_protocol] [setfib=number] [fastopen=number] [backlog=number]
+// [rcvbuf=size] [sndbuf=size] [accept_filter=filter] [deferred] [bind]
+// [ipv6only=on|off] [reuseport]
+// [so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]]; listen port
+// [default_server] [ssl] [http2 | quic] [proxy_protocol] [setfib=number]
+// [fastopen=number] [backlog=number] [rcvbuf=size] [sndbuf=size]
+// [accept_filter=filter] [deferred] [bind] [ipv6only=on|off] [reuseport]
+// [so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]]; listen unix:path
+// [default_server] [ssl] [http2 | quic] [proxy_protocol] [backlog=number]
+// [rcvbuf=size] [sndbuf=size] [accept_filter=filter] [deferred] [bind]
+// [so_keepalive=on|off|[keepidle]:[keepintvl]:[keepcnt]]; Default:	listen
+// *:80 | *:8000; Context:	server Memo: 1. multiple listen is allowed
 //       2. however, complete duplicate is not allowed
 //          ex. OK
 //          listen 80;
@@ -172,13 +177,13 @@ Command* command(Token **rest, Token *tok, int context) {
 //          listen 80;
 //          listen 80;
 // TODO: Currently, we only support address and port
-Command* listen(Token **rest, Token *tok, int context) {
+Command *listen(Token **rest, Token *tok, int context) {
   Log::debug("listen");
   Command *cmd = new Command(Command::CMD_LISTEN);
   expect_context(context, WSV_HTTP_SRV_CONF);
   tok = skip(tok, "listen");
   // TODO: support wild card
-  if (tok->type == Token::TK_STR) { // listen address[:port]
+  if (tok->type == Token::TK_STR) {  // listen address[:port]
     std::string tmp = tok->str;
     // if tok contains ':', it means port is specified
     if (tmp.find(':') != std::string::npos) {
@@ -190,7 +195,7 @@ Command* listen(Token **rest, Token *tok, int context) {
       cmd->address = tok->str;
       tok = tok->next;
     }
-  } else if (tok->type == Token::TK_NUM) { // listen port 
+  } else if (tok->type == Token::TK_NUM) {  // listen port
     cmd->port = tok->num;
     tok = tok->next;
   } else {
@@ -207,7 +212,7 @@ Command* listen(Token **rest, Token *tok, int context) {
 // Memo: 1. duplicate is OK
 //       2. name can also be duplicated
 //       3. max number of server_name is ?
-Command* server_name(Token **rest, Token *tok, int context) {
+Command *server_name(Token **rest, Token *tok, int context) {
   Log::debug("server_name");
   Command *cmd = new Command(Command::CMD_SERVER_NAME);
   expect_context(context, WSV_HTTP_SRV_CONF);
@@ -229,10 +234,11 @@ Command* server_name(Token **rest, Token *tok, int context) {
 //       3. path can be absolute like "/etc/nginx"
 //       4. double quotes are allowed
 //       5. Both directive name and args can be double quoted
-Command* root(Token **rest, Token *tok, int context) {
+Command *root(Token **rest, Token *tok, int context) {
   Log::debug("root");
   Command *cmd = new Command(Command::CMD_ROOT);
-  expect_context(context, WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
+  expect_context(context,
+                 WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
   tok = skip(tok, "root");
   cmd->root = tok->str;
   tok = skip_kind(tok, Token::TK_STR);
@@ -247,17 +253,19 @@ Command* root(Token **rest, Token *tok, int context) {
 // Memo: 1. duplicate is not allowed
 //       2. If the index file is not found, 403 is returned
 //       3. Inner index directive overwrites outer index directive
-Command* index(Token **rest, Token *tok, int context) {
+Command *index(Token **rest, Token *tok, int context) {
   Log::debug("index");
   Command *cmd = new Command(Command::CMD_INDEX);
-  expect_context(context, WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
+  expect_context(context,
+                 WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
   tok = skip(tok, "index");
   while (tok->type == Token::TK_STR) {
     cmd->index_files.push_back(tok->str);
     tok = tok->next;
   }
   if (cmd->index_files.size() == 0) {
-    throw std::runtime_error("invalid number of arguments in \"index\" directive");
+    throw std::runtime_error(
+        "invalid number of arguments in \"index\" directive");
   }
   *rest = skip(tok, ";");
   Log::debug("index end");
@@ -268,17 +276,19 @@ Command* index(Token **rest, Token *tok, int context) {
 // Default:	—
 // Context:	http, server, location, if in location
 // TODO: Currently, we only do not support response
-Command* error_page(Token **rest, Token *tok, int context) {
+Command *error_page(Token **rest, Token *tok, int context) {
   Log::debug("error_page");
   Command *cmd = new Command(Command::CMD_ERROR_PAGE);
-  expect_context(context, WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
+  expect_context(context,
+                 WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
   tok = skip(tok, "error_page");
   while (tok->type == Token::TK_NUM) {
     cmd->error_codes.push_back(tok->num);
     tok = tok->next;
   }
   if (cmd->error_codes.size() == 0) {
-    throw std::runtime_error("invalid number of arguments in \"error_page\" directive");
+    throw std::runtime_error(
+        "invalid number of arguments in \"error_page\" directive");
   }
   cmd->error_uri = tok->str;
   tok = skip_kind(tok, Token::TK_STR);
@@ -290,10 +300,11 @@ Command* error_page(Token **rest, Token *tok, int context) {
 // Syntax:	autoindex on | off;
 // Default:	autoindex off;
 // Context:	http, server, location
-Command* autoindex(Token **rest, Token *tok, int context) {
+Command *autoindex(Token **rest, Token *tok, int context) {
   Log::debug("autoindex");
   Command *cmd = new Command(Command::CMD_AUTOINDEX);
-  expect_context(context, WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
+  expect_context(context,
+                 WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
   tok = skip(tok, "autoindex");
   if (consume(&tok, tok, "on")) {
     cmd->autoindex = true;
@@ -311,7 +322,7 @@ Command* autoindex(Token **rest, Token *tok, int context) {
 // Default:	—
 // Context:	location
 // TODO: Currently, we do not support block
-Command* limit_except(Token **rest, Token *tok, int context) {
+Command *limit_except(Token **rest, Token *tok, int context) {
   Log::debug("limit_except");
   Command *cmd = new Command(Command::CMD_LIMIT_EXCEPT);
   expect_context(context, WSV_HTTP_LOC_CONF);
@@ -321,10 +332,11 @@ Command* limit_except(Token **rest, Token *tok, int context) {
     tok = tok->next;
   }
   if (cmd->methods.size() == 0) {
-    throw std::runtime_error("invalid number of arguments in \"limit_except\" directive");
+    throw std::runtime_error(
+        "invalid number of arguments in \"limit_except\" directive");
   }
-  //cmd->block = block(rest, tok, WSV_HTTP_LOC_CONF);
-  *rest = skip(tok, ";"); // This is different from NGINX
+  // cmd->block = block(rest, tok, WSV_HTTP_LOC_CONF);
+  *rest = skip(tok, ";");  // This is different from NGINX
   Log::debug("limit_except end");
   return cmd;
 }
@@ -333,7 +345,7 @@ Command* limit_except(Token **rest, Token *tok, int context) {
 // Default:	none
 // Context:	server,location
 // TODO: Currently, we do not support level
-Command* upload_store(Token **rest, Token *tok, int context) {
+Command *upload_store(Token **rest, Token *tok, int context) {
   Log::debug("upload_store");
   Command *cmd = new Command(Command::CMD_UPLOAD_STORE);
   expect_context(context, WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
@@ -348,16 +360,18 @@ Command* upload_store(Token **rest, Token *tok, int context) {
 // Syntax:	client_max_body_size size;
 // Default:	client_max_body_size 1m;
 // Context:	http, server, location
-Command* client_max_body_size(Token **rest, Token *tok, int context) {
+Command *client_max_body_size(Token **rest, Token *tok, int context) {
   Log::debug("client_max_body_size");
   Command *cmd = new Command(Command::CMD_CLIENT_MAX_BODY_SIZE);
-  expect_context(context, WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
+  expect_context(context,
+                 WSV_HTTP_MAIN_CONF | WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
   tok = skip(tok, "client_max_body_size");
   if (tok->type == Token::TK_NUM || tok->type == Token::TK_SIZE) {
     cmd->client_max_body_size = tok->num;
     tok = tok->next;
   } else {
-    throw std::runtime_error("invalid argument in \"client_max_body_size\" directive");
+    throw std::runtime_error(
+        "invalid argument in \"client_max_body_size\" directive");
   }
   *rest = skip(tok, ";");
   Log::debug("client_max_body_size end");
@@ -367,7 +381,7 @@ Command* client_max_body_size(Token **rest, Token *tok, int context) {
 // Syntax:	cgi_extension extension ...;
 // Default:	none
 // Context:	server, location
-Command* cgi_extension(Token **rest, Token *tok, int context) {
+Command *cgi_extension(Token **rest, Token *tok, int context) {
   Log::debug("cgi_extension");
   Command *cmd = new Command(Command::CMD_CGI_EXTENSION);
   expect_context(context, WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
@@ -377,7 +391,8 @@ Command* cgi_extension(Token **rest, Token *tok, int context) {
     tok = tok->next;
   }
   if (cmd->cgi_extensions.size() == 0) {
-    throw std::runtime_error("invalid number of arguments in \"cgi_extension\" directive");
+    throw std::runtime_error(
+        "invalid number of arguments in \"cgi_extension\" directive");
   }
   *rest = skip(tok, ";");
   Log::debug("cgi_extension end");
@@ -392,7 +407,7 @@ Command* cgi_extension(Token **rest, Token *tok, int context) {
 // Memo: 1. URL can be empty for 301, 302, 303, 307, 308
 //       2. Some codes return default page
 // TODO: Currently, we do not support text
-Command* redirect_return(Token **rest, Token *tok, int context) {
+Command *redirect_return(Token **rest, Token *tok, int context) {
   Log::debug("redirect_return");
   Command *cmd = new Command(Command::CMD_RETURN);
   expect_context(context, WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
@@ -425,7 +440,7 @@ Command* redirect_return(Token **rest, Token *tok, int context) {
 // Syntax:	server { ... }
 // Default:	—
 // Context:	http
-Command* server(Token **rest, Token *tok, int context) {
+Command *server(Token **rest, Token *tok, int context) {
   Log::debug("server");
   Command *cmd = new Command(Command::CMD_SERVER);
   expect_context(context, WSV_HTTP_MAIN_CONF);
@@ -440,8 +455,7 @@ Command* server(Token **rest, Token *tok, int context) {
 // Default:	—
 // Context:	server, location
 // TODO: Currently, we do not support regex location and named location
-Command* location(Token **rest, Token *tok, int context)
-{
+Command *location(Token **rest, Token *tok, int context) {
   Log::debug("location");
   Command *cmd = new Command(Command::CMD_LOCATION);
   expect_context(context, WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
@@ -456,8 +470,7 @@ Command* location(Token **rest, Token *tok, int context)
 // Syntax: alias path
 // Default:	—
 // Context:	location
-Command* alias(Token **rest, Token *tok, int context)
-{
+Command *alias(Token **rest, Token *tok, int context) {
   Log::debug("alias");
   Command *cmd = new Command(Command::CMD_ALIAS);
   expect_context(context, WSV_HTTP_LOC_CONF);
@@ -472,13 +485,16 @@ Command* alias(Token **rest, Token *tok, int context)
 void print_cmd(Command *cmd, std::string ident) {
   std::cout << ident << cmd->name << ":" << std::endl;
   ident += "  ";
-  if (cmd->address != "") std::cout << ident << "address: " << cmd->address << std::endl;
+  if (cmd->address != "")
+    std::cout << ident << "address: " << cmd->address << std::endl;
   if (cmd->port != 0) std::cout << ident << "port: " << cmd->port << std::endl;
   if (cmd->alias != "") std::cout << ident << cmd->alias << std::endl;
   if (cmd->location != "") std::cout << ident << cmd->location << std::endl;
   if (cmd->root != "") std::cout << ident << cmd->root << std::endl;
-  if (cmd->upload_store != "") std::cout << ident << cmd->upload_store << std::endl;
-  if (cmd->client_max_body_size != 0) std::cout << ident << cmd->client_max_body_size << std::endl;
+  if (cmd->upload_store != "")
+    std::cout << ident << cmd->upload_store << std::endl;
+  if (cmd->client_max_body_size != 0)
+    std::cout << ident << cmd->client_max_body_size << std::endl;
   if (cmd->cgi_extensions.size() > 0) {
     std::cout << ident;
     for (unsigned long i = 0; i < cmd->cgi_extensions.size(); i++) {
@@ -507,7 +523,8 @@ void print_cmd(Command *cmd, std::string ident) {
     }
     std::cout << std::endl;
   }
-  if (cmd->error_uri != "") std::cout << ident << "uri: " << cmd->error_uri << std::endl;
+  if (cmd->error_uri != "")
+    std::cout << ident << "uri: " << cmd->error_uri << std::endl;
   if (cmd->type == Command::CMD_AUTOINDEX) {
     if (cmd->autoindex) {
       std::cout << ident << "on" << std::endl;
@@ -523,7 +540,8 @@ void print_cmd(Command *cmd, std::string ident) {
     std::cout << std::endl;
   }
   if (cmd->type == Command::CMD_RETURN) {
-    if (cmd->return_code != 0) std::cout << ident << "code: " << cmd->return_code << std::endl;
+    if (cmd->return_code != 0)
+      std::cout << ident << "code: " << cmd->return_code << std::endl;
     std::cout << ident << "url: " << cmd->return_url << std::endl;
   }
 

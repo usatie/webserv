@@ -1,5 +1,7 @@
 #include "Connection.hpp"
+
 #include <sys/wait.h>
+
 #include <map>
 
 int Connection::resume() throw() {
@@ -137,7 +139,8 @@ int Connection::parse_start_line() throw() {
   // TODO: header.path must be a normalized URI
   //       1. decoding the text encoded in the “%XX” form
   //       2. resolving references to relative path components (“.” and “..”)
-  //       3. possible compression of two or more adjacent slashes into a single slash
+  //       3. possible compression of two or more adjacent slashes into a single
+  //       slash
   // ss.bad()  : possibly bad alloc
   if (ss.bad()) {
     Log::cfatal() << "ss bad bit is set" << line << std::endl;
@@ -157,8 +160,8 @@ int Connection::parse_start_line() throw() {
   return 1;
 }
 
-int Connection::split_header_field(const std::string &line, std::string &key, std::string &value)
-{
+int Connection::split_header_field(const std::string &line, std::string &key,
+                                   std::string &value) {
   try {
     std::stringstream ss(line);  // throwable! (bad alloc)
                                  // TODO: playground
@@ -174,7 +177,7 @@ int Connection::split_header_field(const std::string &line, std::string &key, st
     ss >> std::ws;
     // 3. Extract remaining string to value
     std::getline(ss, value);     // throwable
-  } catch (std::exception &e) {   // bad alloc
+  } catch (std::exception &e) {  // bad alloc
     Log::cfatal() << "Caught exception in split_line_to_kv: " << std::endl;
     return -1;
   }
@@ -198,8 +201,7 @@ int Connection::parse_header_fields() throw() {
       return 1;
     }
     if (util::http::is_token(key) == false) {
-      Log::cinfo() << "Header filed-name is not token: : " << key
-                   << std::endl;
+      Log::cinfo() << "Header filed-name is not token: : " << key << std::endl;
       ErrorHandler::handle(*this, 400);
       status = RESPONSE;
       return 1;
@@ -289,18 +291,19 @@ bool eq_addr46(const sockaddr_storage *a, const sockaddr_storage *b) {
 // 1. Find listen directive matching port
 // 2. Find listen directive matching ip address
 // 3. Find server_name directive matching host name (if not default server)
-const Config::Server* select_srv_cf(const Config& cf, const Connection& conn) throw() {
-  struct sockaddr_storage* saddr = &(*conn.client_socket)->saddr;
+const Config::Server *select_srv_cf(const Config &cf,
+                                    const Connection &conn) throw() {
+  struct sockaddr_storage *saddr = &(*conn.client_socket)->saddr;
   std::string host;
   if (conn.header.fields.find("Host") != conn.header.fields.end()) {
     host = conn.header.fields.find("Host")->second;
   }
-  //struct sockaddr_storage* saddr = &(*client_socket)->saddr;
-  const Config::Server* srv_cf = NULL;
+  // struct sockaddr_storage* saddr = &(*client_socket)->saddr;
+  const Config::Server *srv_cf = NULL;
   for (unsigned int i = 0; i < cf.http.servers.size(); i++) {
-    const Config::Server& srv = cf.http.servers[i];
+    const Config::Server &srv = cf.http.servers[i];
     for (unsigned int j = 0; j < srv.listens.size(); j++) {
-      const Config::Listen& listen = srv.listens[j];
+      const Config::Listen &listen = srv.listens[j];
       // 0. Filter by IPv4 or IPv6
       // 1. Filter by port
       // 2. Filter by address
@@ -329,8 +332,16 @@ const Config::Server* select_srv_cf(const Config& cf, const Connection& conn) th
 
 // Note: We don't support regex
 // https://nginx.org/en/docs/http/ngx_http_core_module.html#location
-// To find location matching a given request, nginx first checks locations defined using the prefix strings (prefix locations). Among them, the location with the longest matching prefix is selected and remembered. Then regular expressions are checked, in the order of their appearance in the configuration file. The search of regular expressions terminates on the first match, and the corresponding configuration is used. If no match with a regular expression is found then the configuration of the prefix location remembered earlier is used.
-const Config::Location* select_loc_cf(const Config::Server* srv_cf, const std::string& path) throw() {
+// To find location matching a given request, nginx first checks locations
+// defined using the prefix strings (prefix locations). Among them, the location
+// with the longest matching prefix is selected and remembered. Then regular
+// expressions are checked, in the order of their appearance in the
+// configuration file. The search of regular expressions terminates on the first
+// match, and the corresponding configuration is used. If no match with a
+// regular expression is found then the configuration of the prefix location
+// remembered earlier is used.
+const Config::Location *select_loc_cf(const Config::Server *srv_cf,
+                                      const std::string &path) throw() {
   // Find location for this request
   // 1. Find location directive matching prefix string
   // 2. location with the longest matching prefix is selected and remembered
@@ -338,9 +349,10 @@ const Config::Location* select_loc_cf(const Config::Server* srv_cf, const std::s
   // TODO: header.path must be a normalized URI
   //       1. decoding the text encoded in the “%XX” form
   //       2. resolving references to relative path components (“.” and “..”)
-  //       3. possible compression of two or more adjacent slashes into a single slash
+  //       3. possible compression of two or more adjacent slashes into a single
+  //       slash
   for (unsigned int i = 0; i < srv_cf->locations.size(); i++) {
-    const Config::Location& l = srv_cf->locations[i];
+    const Config::Location &l = srv_cf->locations[i];
     // 1. Filter by prefix
     if (path.substr(0, l.path.size()) == l.path) {
       // location with the longest matching prefix is selected and remembered
@@ -373,15 +385,14 @@ int Connection::handle() throw() {
       header.fullpath = loc_cf->alias + header.path.substr(loc_cf->path.size());
     }
   } catch (std::exception &e) {
-    Log::cfatal()
-        << "\"header.fullpath = root or alias + header.path\" failed"
-        << std::endl;
+    Log::cfatal() << "\"header.fullpath = root or alias + header.path\" failed"
+                  << std::endl;
     ErrorHandler::handle(*this, 500);
     status = RESPONSE;
     return 1;
   }
 
-  // if CGI 
+  // if CGI
   if (header.path.find("/cgi/") != std::string::npos) {
     // TODO: write(body, body_size) in handle()
     CgiHandler::handle(*this);
@@ -412,8 +423,7 @@ int Connection::handle_cgi_req() throw() {
 int Connection::handle_cgi_res() throw() {
   // 1. If CGI process is still running, return 0
   // Question: If CGI process exit, isClosed will be set to true?
-  if (!cgi_socket->isClosed())
-    return 0;
+  if (!cgi_socket->isClosed()) return 0;
 
   // 2. If CGI process is not running, handle CGI response
   // To remove zombie process, wait or kill CGI process
@@ -517,17 +527,16 @@ int Connection::handle_cgi_parse() throw() {
   for (it = cgi_header_fields.begin(); it != cgi_header_fields.end(); ++it) {
     if (it->first == "Status") continue;
     // TODO: validate header field
-    *client_socket << it->first << ": "
-                  << it->second << CRLF;
+    *client_socket << it->first << ": " << it->second << CRLF;
   }
   // Send response-body if any
   size_t size = cgi_socket->getReadBufSize();
   if (size > 0) {
     *client_socket << "Content-Length: " << size << CRLF;
-    *client_socket << CRLF; // End of header fields
+    *client_socket << CRLF;  // End of header fields
     *cgi_socket >> *client_socket;
   } else {
-    *client_socket << CRLF; // End of header fields
+    *client_socket << CRLF;  // End of header fields
   }
   status = RESPONSE;
   return 1;

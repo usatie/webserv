@@ -1,7 +1,7 @@
 #include <signal.h>
 
-#include "Server.hpp"
 #include "Config.hpp"
+#include "Server.hpp"
 #include "webserv.hpp"
 #define PORT 8181
 #define BACKLOG 5
@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
     Log::fatal("Usage: ./webserv [<config_file>]");
     return ERROR;
   }
-  
+
   // Construct Config from config file.
   // Even default constructor of Config can throw exceptions.
   // But we do not handle exceptions in main function, so that
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
       return ERROR;
     }
     std::string s((std::istreambuf_iterator<char>(ifs)),
-                std::istreambuf_iterator<char>());
+                  std::istreambuf_iterator<char>());
     Token *tokens = tokenize(s);
     Module *mod = parse(tokens);
     cf = Config(mod);

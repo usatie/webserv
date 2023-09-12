@@ -11,8 +11,8 @@ static const char http_error_400_page[] =
     "<body>" CRLF "<center><h1>400 Bad Request</h1></center>" CRLF ERROR_TAIL;
 
 static const char http_error_403_page[] =
-    "<html>" CRLF "<head><title>403 Forbidden</title></head>" CRLF
-    "<body>" CRLF "<center><h1>403 Forbidden</h1></center>" CRLF ERROR_TAIL;
+    "<html>" CRLF "<head><title>403 Forbidden</title></head>" CRLF "<body>" CRLF
+    "<center><h1>403 Forbidden</h1></center>" CRLF ERROR_TAIL;
 
 static const char http_error_404_page[] =
     "<html>" CRLF "<head><title>404 Not Found</title></head>" CRLF "<body>" CRLF

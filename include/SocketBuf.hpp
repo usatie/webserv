@@ -34,13 +34,15 @@ class SocketBuf {
  public:
   // Constructor/Destructor
   // Constructor for TCP socket
-  explicit SocketBuf(std::shared_ptr<Socket> socket) : socket(socket), rss(), wss() {
+  explicit SocketBuf(std::shared_ptr<Socket> socket)
+      : socket(socket), rss(), wss() {
     if (socket->set_nonblock() < 0) {
       throw std::runtime_error("socket->set_nonblock() failed");
     }
   }
   // Constructor for unix domain socket
-  explicit SocketBuf(int fd) : socket(std::shared_ptr<Socket>(new Socket(fd))), rss(), wss() {
+  explicit SocketBuf(int fd)
+      : socket(std::shared_ptr<Socket>(new Socket(fd))), rss(), wss() {
     if (socket->set_nonblock() < 0) {
       throw std::runtime_error("socket->set_nonblock() failed");
     }

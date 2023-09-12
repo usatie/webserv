@@ -39,7 +39,7 @@ int SocketBuf::readline(std::string& line) throw() {
   try {
     // If there is an error while getline, return -1
     // i.e. str.max_size() characters have been stored.
-    if (!std::getline(rss, line)) { // throwable
+    if (!std::getline(rss, line)) {  // throwable
       Log::debug("std::getline(LF) failed");
       line.clear();
       return -1;
@@ -54,7 +54,7 @@ int SocketBuf::readline(std::string& line) throw() {
   // 2. EOF before LF (i.e. no LF found)
   if (rss.eof()) {
     Log::debug("no LF found");
-    rss.seekg(-line.size(), std::ios::cur); // rewind
+    rss.seekg(-line.size(), std::ios::cur);  // rewind
     line.clear();
     return -1;
   }
@@ -71,7 +71,7 @@ int SocketBuf::read_telnet_line(std::string& line) throw() {
   try {
     // If there is an error while getline, return -1
     // i.e. str.max_size() characters have been stored.
-    if (!std::getline(rss, line, LF)) { // throwable
+    if (!std::getline(rss, line, LF)) {  // throwable
       Log::debug("std::getline(LF) failed");
       line.clear();
       return -1;
@@ -85,12 +85,14 @@ int SocketBuf::read_telnet_line(std::string& line) throw() {
   // 2. EOF before LF (i.e. no LF found)
   if (rss.eof()) {
     Log::debug("no LF found");
-    rss.seekg(-line.size(), std::ios::cur); // rewind
+    rss.seekg(-line.size(), std::ios::cur);  // rewind
     line.clear();
     return -1;
   }
   // 3. CR not found (i.e. only LF found)
-  // The line terminator for message-header fields is the sequence CRLF. However, we recommend that applications, when parsing such headers, recognize a single LF as a line terminator and ignore the leading CR.
+  // The line terminator for message-header fields is the sequence CRLF.
+  // However, we recommend that applications, when parsing such headers,
+  // recognize a single LF as a line terminator and ignore the leading CR.
   // https://www.rfc-editor.org/rfc/rfc2616#section-19.3
   if (line.back() != CR) {
     Log::debug("only LF found");

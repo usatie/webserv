@@ -1,15 +1,17 @@
 #include "Server.hpp"
 
-#include "Connection.hpp"
-#include "Config.hpp"
-
-#include <cstring> // memset, strerror
-#include <netdb.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+
+#include <cstring>  // memset, strerror
+
+#include "Config.hpp"
+#include "Connection.hpp"
 
 std::ostream& operator<<(std::ostream& os, const struct addrinfo* rp);
 
-Server::Server(const Config& cf): maxfd(-1), listen_socks(), connections(), cf(cf) {
+Server::Server(const Config& cf)
+    : maxfd(-1), listen_socks(), connections(), cf(cf) {
   FD_ZERO(&readfds);
   FD_ZERO(&writefds);
   int backlog = BACKLOG;
@@ -20,9 +22,10 @@ Server::Server(const Config& cf): maxfd(-1), listen_socks(), connections(), cf(c
       Log::cdebug() << "j: " << j << std::endl;
       const Config::Listen& listen = server.listens[j];
       int port = listen.port;
-      const char *host = (listen.address == "*") ? NULL : listen.address.c_str();
+      const char* host =
+          (listen.address == "*") ? NULL : listen.address.c_str();
       std::string port_str = std::to_string(port);
-      const char *service = port_str.c_str();
+      const char* service = port_str.c_str();
       int type = SOCK_STREAM;
       {
         struct addrinfo hints;
@@ -42,9 +45,9 @@ Server::Server(const Config& cf): maxfd(-1), listen_socks(), connections(), cf(c
         //      "[::]"                                    -> AF_INET6
         //      "[::1]"                                   -> AF_INET6
         //      "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -> AF_INET6
-        //hints.ai_family = AF_INET;	/* Allows IPv4 only */
-        hints.ai_family = AF_UNSPEC;	/* Allows IPv4 or IPv6 */
-        hints.ai_flags = AI_PASSIVE;	/* Wildcard IP address */
+        // hints.ai_family = AF_INET;	/* Allows IPv4 only */
+        hints.ai_family = AF_UNSPEC; /* Allows IPv4 or IPv6 */
+        hints.ai_flags = AI_PASSIVE; /* Wildcard IP address */
         hints.ai_socktype = type;
 
         Log::debug("getaddrinfo()");
@@ -60,25 +63,26 @@ Server::Server(const Config& cf): maxfd(-1), listen_socks(), connections(), cf(c
           sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
           if (sfd == -1) {
             Log::error("socket() failed");
-            continue;	/* On error, try next address */
+            continue; /* On error, try next address */
           }
-          // Don't handle exception to close the socket, because if the construct
-          // of sock fails, Server can't be constructed and thus the program
-          // terminates.
+          // Don't handle exception to close the socket, because if the
+          // construct of sock fails, Server can't be constructed and thus the
+          // program terminates.
           std::shared_ptr<Socket> sock(new Socket(sfd));
           if (sock->reuseaddr() < 0) {
             throw std::runtime_error("sock.set_reuseaddr() failed");
           }
           Log::cdebug() << "listen : " << listen << std::endl;
-              /* convert ai_addr from binary to string */
+          /* convert ai_addr from binary to string */
           Log::cdebug() << "ip: " << rp << std::endl;
-          // IPv6 socket listening on a wildcard address [::] will accept only IPv6 connections
-          // Without this option, it will accept both IPv4 and IPv6 connections
+          // IPv6 socket listening on a wildcard address [::] will accept only
+          // IPv6 connections Without this option, it will accept both IPv4 and
+          // IPv6 connections
           if (rp->ai_family == AF_INET6) {
             sock->ipv6only();
           }
           if (sock->bind(rp->ai_addr, rp->ai_addrlen) < 0) {
-            // If wildcard address, it's possible IPv6 socket is already 
+            // If wildcard address, it's possible IPv6 socket is already
             // bound to IPv4 wildcard address. In that case, bind() fails.
             // https://www.geekpage.jp/blog/?id=2017-3-8-1
             //
@@ -88,9 +92,9 @@ Server::Server(const Config& cf): maxfd(-1), listen_socks(), connections(), cf(c
               continue;
             }
             // Other case, such as invalid address, is an error
-            Log::cfatal()
-              << "bind to " << rp << ":" << port << " failed."
-              << "(" << errno << ": " << strerror(errno) << ")" << std::endl;
+            Log::cfatal() << "bind to " << rp << ":" << port << " failed."
+                          << "(" << errno << ": " << strerror(errno) << ")"
+                          << std::endl;
             throw std::runtime_error("sock.bind() failed");
           }
           if (sock->listen(backlog) < 0) {
@@ -102,13 +106,14 @@ Server::Server(const Config& cf): maxfd(-1), listen_socks(), connections(), cf(c
           // Save the listening ip address to Config::Listen
           // Here we use const_cast to modify the const object.
           {
-            memcpy(const_cast<struct sockaddr_storage*>(&listen.addr), rp->ai_addr, rp->ai_addrlen);
+            memcpy(const_cast<struct sockaddr_storage*>(&listen.addr),
+                   rp->ai_addr, rp->ai_addrlen);
             const_cast<socklen_t&>(listen.addrlen) = rp->ai_addrlen;
           }
           FD_SET(sock->get_fd(), &readfds);
           maxfd = std::max(maxfd, sock->get_fd());
           listen_socks.push_back(sock);
-          break ; // Success, one socket per one listen directive
+          break;  // Success, one socket per one listen directive
         }
         freeaddrinfo(result);
       }
@@ -131,8 +136,7 @@ void Server::remove_connection(std::shared_ptr<Connection> connection) throw() {
          ++it) {
       maxfd = std::max(maxfd, (*it)->get_fd());
     }
-    for (ConnIterator it = connections.begin(); it != connections.end();
-         ++it) {
+    for (ConnIterator it = connections.begin(); it != connections.end(); ++it) {
       maxfd = std::max(maxfd, (*it)->get_fd());
     }
   }
@@ -142,19 +146,19 @@ void Server::remove_all_connections() throw() {
   FD_ZERO(&readfds);
   FD_ZERO(&writefds);
   maxfd = -1;
-  for (SockIterator it = listen_socks.begin(); it != listen_socks.end();
-       ++it) {
+  for (SockIterator it = listen_socks.begin(); it != listen_socks.end(); ++it) {
     FD_SET((*it)->get_fd(), &readfds);
     maxfd = std::max(maxfd, (*it)->get_fd());
   }
 }
 void Server::accept(std::shared_ptr<Socket> sock) throw() {
   try {
-    std::shared_ptr<Connection> conn(new Connection(sock->accept(), cf)); // throwable
-    connections.push_back(conn); // throwable
+    std::shared_ptr<Connection> conn(
+        new Connection(sock->accept(), cf));  // throwable
+    connections.push_back(conn);              // throwable
     FD_SET(conn->get_fd(), &readfds);
     maxfd = std::max(conn->get_fd(), maxfd);
-  } catch (std::exception &e) {
+  } catch (std::exception& e) {
     Log::cerror() << "Server::accept() failed: " << e.what() << std::endl;
   }
 }
@@ -214,8 +218,7 @@ bool Server::canResume(std::shared_ptr<Connection> conn) const throw() {
   }
 }
 std::shared_ptr<Socket> Server::get_ready_socket() throw() {
-  for (SockIterator it = listen_socks.begin(); it != listen_socks.end();
-       ++it) {
+  for (SockIterator it = listen_socks.begin(); it != listen_socks.end(); ++it) {
     if (FD_ISSET((*it)->get_fd(), &ready_rfds)) {
       return *it;
     }
@@ -258,12 +261,12 @@ void Server::process() throw() {
 // Stream
 std::ostream& operator<<(std::ostream& os, const struct addrinfo* rp) {
   char buf[INET6_ADDRSTRLEN];
-  void *addr;
+  void* addr;
   if (rp->ai_family == AF_INET) {
-    struct sockaddr_in *ipv4 = (struct sockaddr_in *)rp->ai_addr;
+    struct sockaddr_in* ipv4 = (struct sockaddr_in*)rp->ai_addr;
     addr = &(ipv4->sin_addr);
   } else if (rp->ai_family == AF_INET6) {
-    struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)rp->ai_addr;
+    struct sockaddr_in6* ipv6 = (struct sockaddr_in6*)rp->ai_addr;
     addr = &(ipv6->sin6_addr);
   } else {
     os << "unknown address family: ";

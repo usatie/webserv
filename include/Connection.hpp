@@ -1,17 +1,19 @@
 #ifndef CONNECTION_HPP
 #define CONNECTION_HPP
 
+#include <limits.h>
+#include <signal.h>
+
+#include <cassert>
+
+#include "CgiHandler.hpp"
+#include "Config.hpp"
 #include "ErrorHandler.hpp"
 #include "GetHandler.hpp"
 #include "Header.hpp"
 #include "PostHandler.hpp"
-#include "CgiHandler.hpp"
 #include "SocketBuf.hpp"
 #include "webserv.hpp"
-#include "Config.hpp"
-#include <cassert>
-#include <limits.h>
-#include <signal.h>
 
 class Connection {
  public:
@@ -29,7 +31,7 @@ class Connection {
   } Status;
 
   typedef enum IOStatus {
-    CLIENT_RECV, 
+    CLIENT_RECV,
     CLIENT_SEND,
     CGI_RECV,
     CGI_SEND,
@@ -45,14 +47,14 @@ class Connection {
   size_t body_size;
   size_t content_length;
   pid_t cgi_pid;
-  const Config& cf;
-  const Config::Server* srv_cf;
-  const Config::Location* loc_cf;
+  const Config &cf;
+  const Config::Server *srv_cf;
+  const Config::Location *loc_cf;
 
  public:
   // Constructor/Destructor
   Connection() throw();  // Do not implement this
-  Connection(std::shared_ptr<Socket> sock, const Config& cf)
+  Connection(std::shared_ptr<Socket> sock, const Config &cf)
       : client_socket(std::shared_ptr<SocketBuf>(new SocketBuf(sock))),
         cgi_socket(NULL),
         header(),
@@ -88,7 +90,8 @@ class Connection {
   // Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
   int parse_start_line() throw();
 
-  int split_header_field(const std::string &line, std::string &key, std::string &value);
+  int split_header_field(const std::string &line, std::string &key,
+                         std::string &value);
 
   int parse_header_fields() throw();
 
@@ -100,7 +103,8 @@ class Connection {
 
   int handle_cgi_res() throw();
 
-  // CGI Response syntax (https://datatracker.ietf.org/doc/html/rfc3875#section-6)
+  // CGI Response syntax
+  // (https://datatracker.ietf.org/doc/html/rfc3875#section-6)
   //
   // generic-response   = 1*header-field NL [ response-body ]
   // CGI-Response       = document-response | local-redir-response |

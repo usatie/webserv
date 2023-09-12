@@ -1,4 +1,5 @@
 #include "Log.hpp"
+
 #include <stdarg.h>
 
 static Log::Level log_level_ = Log::Debug;

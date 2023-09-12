@@ -10,7 +10,8 @@
 #include <string>
 #define MAXLINE 1024
 #include <fcntl.h>
-#include <cstring> // memcpy
+
+#include <cstring>  // memcpy
 
 #include "webserv.hpp"
 
@@ -20,6 +21,7 @@ class Socket {
  private:
   int fd;
   bool closed;
+
  public:
   // saddr is for listening socket
   // caddr is for connection socket
@@ -33,14 +35,22 @@ class Socket {
  public:
   // Constructor/Destructor
   // Constructor for listening socket and unix domain socket
-  explicit Socket(int fd) : fd(fd), closed(false), saddr(), caddr(), saddrlen(0), caddrlen(0) {
+  explicit Socket(int fd)
+      : fd(fd), closed(false), saddr(), caddr(), saddrlen(0), caddrlen(0) {
     if (fd < 0) {
       Log::error("Invalid socket fd to construct Socket");
       throw std::runtime_error("Invalid socket fd");
     }
   }
   // Constructor for TCP connection socket
-  Socket(int fd, struct sockaddr* saddr, struct sockaddr* caddr, socklen_t saddrlen, socklen_t caddrlen): fd(fd), closed(false), saddr(), caddr(), saddrlen(saddrlen), caddrlen(caddrlen) {
+  Socket(int fd, struct sockaddr* saddr, struct sockaddr* caddr,
+         socklen_t saddrlen, socklen_t caddrlen)
+      : fd(fd),
+        closed(false),
+        saddr(),
+        caddr(),
+        saddrlen(saddrlen),
+        caddrlen(caddrlen) {
     if (fd < 0) {
       Log::error("Invalid socket fd to construct Socket");
       throw std::runtime_error("Invalid socket fd");
@@ -73,7 +83,8 @@ class Socket {
   // Set IPv6 only
   int ipv6only() throw() {
     int optval = 1;
-    if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &optval, sizeof(optval)) < 0) {
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &optval, sizeof(optval)) <
+        0) {
       Log::error("setsockopt() failed");
       return -1;
     }
@@ -125,7 +136,9 @@ class Socket {
     // If allocation failed, must close connfd
     std::shared_ptr<Socket> connsock;
     try {
-      connsock = std::shared_ptr<Socket>(new Socket(connfd, (struct sockaddr*)&saddr, (struct sockaddr*)&caddr, saddrlen, caddrlen));
+      connsock = std::shared_ptr<Socket>(
+          new Socket(connfd, (struct sockaddr*)&saddr, (struct sockaddr*)&caddr,
+                     saddrlen, caddrlen));
       return connsock;
     } catch (std::bad_alloc& e) {
       Log::error("new Socket() failed");

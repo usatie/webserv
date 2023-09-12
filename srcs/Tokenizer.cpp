@@ -1,10 +1,9 @@
 #include "Tokenizer.hpp"
+
 #include <cstdlib>
 #include <stdexcept>
 
-bool ispunct(char c) {
-  return c == '{' || c == '}' || c == ';';
-}
+bool ispunct(char c) { return c == '{' || c == '}' || c == ';'; }
 
 bool isnumber(const std::string &s) {
   std::string::const_iterator it = s.begin();
@@ -22,7 +21,7 @@ bool issize(const std::string &s) {
   std::string::const_iterator end = s.end();
   for (; it != end; ++it) {
     if (!isdigit(*it)) {
-      break ;
+      break;
     }
   }
   if (it == end) {
@@ -47,9 +46,9 @@ bool issize(const std::string &s) {
 // TODO: Currently, NGINX doesn't support comment blocks.
 // TODO: Currently, we don't support escape characters.
 // TODO: Currently, we don't support string literals(quoted strings).
-Token* tokenize(const std::string &s) {
-  // Dummy head technique can't be used here because dummy's destructor will be called and delete the whole list.
-  // Token dummy, *cur = &dummy;
+Token *tokenize(const std::string &s) {
+  // Dummy head technique can't be used here because dummy's destructor will be
+  // called and delete the whole list. Token dummy, *cur = &dummy;
   Token *head, *cur;
   head = cur = NULL;
   std::string::const_iterator it = s.begin();
@@ -61,8 +60,10 @@ Token* tokenize(const std::string &s) {
     }
     // Punctuation
     if (ispunct(*it)) {
-      if (cur) cur = cur->next = new Token(Token::TK_PUNCT, std::string(1, *it));
-      else head = cur = new Token(Token::TK_PUNCT, std::string(1, *it));
+      if (cur)
+        cur = cur->next = new Token(Token::TK_PUNCT, std::string(1, *it));
+      else
+        head = cur = new Token(Token::TK_PUNCT, std::string(1, *it));
       ++it;
       continue;
     }
@@ -82,9 +83,10 @@ Token* tokenize(const std::string &s) {
     //    1k 1m 1g
     //    192.168.1.1
     std::string str;
-    // Escape characters are roughly supported for escaping space and punctuations.
-    // Currently the next character of a backslash is always appended to the string
-    // i.e. \t \n \r \v \f \a \b \e \0 characters like these are not supported
+    // Escape characters are roughly supported for escaping space and
+    // punctuations. Currently the next character of a backslash is always
+    // appended to the string i.e. \t \n \r \v \f \a \b \e \0 characters like
+    // these are not supported
     while (it != end && !isspace(*it) && !ispunct(*it)) {
       if (*it == '\\') {
         ++it;
@@ -95,8 +97,10 @@ Token* tokenize(const std::string &s) {
       str += *it;
       ++it;
     }
-    if (cur) cur = cur->next = new Token(Token::TK_STR, str);
-    else head = cur = new Token(Token::TK_STR, str);
+    if (cur)
+      cur = cur->next = new Token(Token::TK_STR, str);
+    else
+      head = cur = new Token(Token::TK_STR, str);
     if (isnumber(str)) {
       cur->type = Token::TK_NUM;
       cur->num = atoi(str.c_str());
@@ -112,7 +116,9 @@ Token* tokenize(const std::string &s) {
       }
     }
   }
-  if (cur) cur = cur->next = new Token(Token::TK_EOF, "");
-  else head = cur = new Token(Token::TK_EOF, "");
+  if (cur)
+    cur = cur->next = new Token(Token::TK_EOF, "");
+  else
+    head = cur = new Token(Token::TK_EOF, "");
   return head;
 }
