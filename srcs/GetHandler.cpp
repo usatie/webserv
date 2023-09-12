@@ -6,30 +6,50 @@
 #include "ErrorHandler.hpp"
 #include "webserv.hpp"
 
+bool validate(const char* path, size_t& content_length) {
+  struct stat st;
+  if (stat(path, &st) < 0) {
+    Log::cdebug() << "stat() failed: " << path
+                  << ", errno:" << strerror(errno) << std::endl;
+    return false;
+  }
+  if (S_ISDIR(st.st_mode)) {
+    Log::cdebug() << "is a directory: " << path << std::endl;
+    return false;
+  }
+  if (!S_ISREG(st.st_mode)) {
+    Log::cdebug() << "is not a regular file: " << path << std::endl;
+    return false;
+  }
+  content_length = st.st_size;
+  return true;
+}
+
 void GetHandler::handle(Connection& conn) throw() {
   // TODO: Write response headers
-  struct stat st;
-  if (stat(conn.header.fullpath.c_str(), &st) < 0) {
-    Log::cerror() << "stat() failed: " << conn.header.fullpath
-                  << ", errno:" << strerror(errno) << std::endl;
+  std::string fullpath = conn.header.fullpath;
+  size_t content_length = 0;
+  bool is_valid = false;
+  // Index
+  if (fullpath.back() == '/') { // Append index.html
+    const std::vector<std::string>& index = (!conn.loc_cf) ? conn.srv_cf->index : conn.loc_cf->index;
+    for (size_t i = 0; i < index.size(); ++i) {
+      std::string path = fullpath + index[i];
+      Log::cdebug() << "Trying index: " << path << std::endl;
+      is_valid = validate(path.c_str(), content_length);
+      if (is_valid) {
+        fullpath = path;
+        break;
+      }
+    }
+  } else {
+    is_valid = validate(fullpath.c_str(), content_length);
+  }
+  Log::cdebug() << "fullpath: " << fullpath << std::endl;
+  if (!is_valid) {
     ErrorHandler::handle(conn, 404);
     return;
   }
-  // Check if directory
-  if (S_ISDIR(st.st_mode)) {
-    // TODO: Check if index.html exists
-    // TODO: directory listing
-    Log::cdebug() << "is a directory: " << conn.header.fullpath << std::endl;
-    ErrorHandler::handle(conn, 404);
-    return;
-  }
-  // Check if regular file
-  if (!S_ISREG(st.st_mode)) {
-    Log::cdebug() << "not a regular file: " << conn.header.fullpath << std::endl;
-    ErrorHandler::handle(conn, 404);
-    return;
-  }
-  size_t content_length = st.st_size;
 
   *conn.client_socket << "HTTP/1.1 200 OK" << CRLF;
   *conn.client_socket << "Server: " << WEBSERV_VER << CRLF;
@@ -54,7 +74,7 @@ void GetHandler::handle(Connection& conn) throw() {
     *conn.client_socket << "Content-Type: text/plain" << CRLF;
   *conn.client_socket << "Content-Length: " << content_length << CRLF;
   *conn.client_socket << CRLF;  // end of header
-  if (conn.client_socket->send_file(conn.header.fullpath) < 0) {
+  if (conn.client_socket->send_file(fullpath) < 0) {
     Log::error("send_file() failed");
     ErrorHandler::handle(conn, 500);
     return;

@@ -267,6 +267,8 @@ std::ostream& operator<<(std::ostream& os, const Config::Location &l) {
   os << "      location: " << l.path << std::endl;
   if (l.root.configured)
     os << "        root: " << l.root << std::endl;
+  if (l.alias.configured)
+    os << "        alias: " << l.alias << std::endl;
   if (l.index.configured)
     os << "        index: " << l.index << std::endl;
   if (l.autoindex.configured)

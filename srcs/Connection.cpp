@@ -330,8 +330,7 @@ const Config::Server* select_srv_cf(const Config& cf, const Connection& conn) th
 // Note: We don't support regex
 // https://nginx.org/en/docs/http/ngx_http_core_module.html#location
 // To find location matching a given request, nginx first checks locations defined using the prefix strings (prefix locations). Among them, the location with the longest matching prefix is selected and remembered. Then regular expressions are checked, in the order of their appearance in the configuration file. The search of regular expressions terminates on the first match, and the corresponding configuration is used. If no match with a regular expression is found then the configuration of the prefix location remembered earlier is used.
-const Config::Location* select_loc_cf(const Config::Server* srv_cf, const Connection& conn) throw() {
-  const std::string &path = conn.header.path;
+const Config::Location* select_loc_cf(const Config::Server* srv_cf, const std::string& path) throw() {
   // Find location for this request
   // 1. Find location directive matching prefix string
   // 2. location with the longest matching prefix is selected and remembered
@@ -356,18 +355,21 @@ const Config::Location* select_loc_cf(const Config::Server* srv_cf, const Connec
 
 int Connection::handle() throw() {
   srv_cf = select_srv_cf(cf, *this);
-  loc_cf = select_loc_cf(srv_cf, *this);
+  loc_cf = select_loc_cf(srv_cf, header.path);
 
   // generate fullpath
   try {
     if (!loc_cf) {
       // Server Root    : Append path to root
+      Log::cdebug() << "Server Root" << std::endl;
       header.fullpath = srv_cf->root + header.path;
     } else if (!loc_cf->alias.configured) {
       // Location Root  : Append path to root
+      Log::cdebug() << "Location Root: " << loc_cf->path << std::endl;
       header.fullpath = loc_cf->root + header.path;
     } else {
       // Location Alias : Replace prefix with alias
+      Log::cdebug() << "Location Alias: " << loc_cf->path << std::endl;
       header.fullpath = loc_cf->alias + header.path.substr(loc_cf->path.size());
     }
   } catch (std::exception &e) {
