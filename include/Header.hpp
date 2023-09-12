@@ -1,7 +1,7 @@
 #ifndef HEADER_HPP
 #define HEADER_HPP
 #include <string>
-#include <unordered_map>
+#include <map>
 
 #include "Socket.hpp"
 #include "webserv.hpp"
@@ -16,7 +16,8 @@ class Header {
   std::string path;
   std::string version;
   std::string fullpath;
-  std::unordered_map<std::string, std::string> fields;
+  std::map<std::string, std::string> fields; // unordered_map is preferred
+                                             // but C++98 doesn't support it
   // Constructor/Destructor
   Header() throw() {}
   ~Header() throw() {}

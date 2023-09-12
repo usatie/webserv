@@ -1,5 +1,6 @@
 #include "Connection.hpp"
 #include <sys/wait.h>
+#include <map>
 
 int Connection::resume() throw() {
   // 1. Socket I/O
@@ -133,16 +134,10 @@ int Connection::parse_start_line() throw() {
   // TODO: Defense Directory traversal attack
   // TODO: Handle absoluteURI
   // TODO: Handle *
-  try {
-    header.fullpath = std::string(cwd) + header.path;  // throwable
-  } catch (std::exception &e) {
-    Log::cfatal()
-        << "\"header.fullpath = std::string(cwd) + header.path\" failed"
-        << std::endl;
-    ErrorHandler::handle(*this, 500);
-    status = RESPONSE;
-    return 1;
-  }
+  // TODO: header.path must be a normalized URI
+  //       1. decoding the text encoded in the “%XX” form
+  //       2. resolving references to relative path components (“.” and “..”)
+  //       3. possible compression of two or more adjacent slashes into a single slash
   // ss.bad()  : possibly bad alloc
   if (ss.bad()) {
     Log::cfatal() << "ss bad bit is set" << line << std::endl;
@@ -248,7 +243,142 @@ int Connection::parse_body() throw() {
   }
 }
 
+bool eq_addr(const sockaddr_in *a, const sockaddr_in *b) {
+  // If port is different, return false
+  if (a->sin_port != b->sin_port) {
+    return false;
+  }
+  // If a or b is wildcard, return true
+  if (a->sin_addr.s_addr == INADDR_ANY || b->sin_addr.s_addr == INADDR_ANY) {
+    return true;
+  }
+  // Otherwise, compare address
+  // sin_addr.sin_addr is just a uint32_t, so we can compare it directly
+  return a->sin_addr.s_addr == b->sin_addr.s_addr;
+}
+
+bool eq_addr6(const sockaddr_in6 *a, const sockaddr_in6 *b) {
+  // If port is different, return false
+  if (a->sin6_port != b->sin6_port) {
+    return false;
+  }
+  // If a or b is wildcard, return true
+  if (IN6_IS_ADDR_UNSPECIFIED(&a->sin6_addr) ||
+      IN6_IS_ADDR_UNSPECIFIED(&b->sin6_addr)) {
+    return true;
+  }
+  // Otherwise, compare address
+  // sin6_addr.sin6_addr is just a uint8_t[16], so we can compare it by memcmp
+  return memcmp(&a->sin6_addr, &b->sin6_addr, sizeof(in6_addr)) == 0;
+}
+
+bool eq_addr46(const sockaddr_storage *a, const sockaddr_storage *b) {
+  if (a->ss_family != b->ss_family) {
+    return false;
+  }
+  if (a->ss_family == AF_INET) {
+    return eq_addr((const sockaddr_in *)a, (const sockaddr_in *)b);
+  } else if (a->ss_family == AF_INET6) {
+    return eq_addr6((const sockaddr_in6 *)a, (const sockaddr_in6 *)b);
+  } else {
+    return false;
+  }
+}
+
+// Find config for this request
+// 1. Find listen directive matching port
+// 2. Find listen directive matching ip address
+// 3. Find server_name directive matching host name (if not default server)
+const Config::Server* select_srv_cf(const Config& cf, const Connection& conn) throw() {
+  struct sockaddr_storage* saddr = &(*conn.client_socket)->saddr;
+  std::string host;
+  if (conn.header.fields.find("Host") != conn.header.fields.end()) {
+    host = conn.header.fields.find("Host")->second;
+  }
+  //struct sockaddr_storage* saddr = &(*client_socket)->saddr;
+  const Config::Server* srv_cf = NULL;
+  for (unsigned int i = 0; i < cf.http.servers.size(); i++) {
+    const Config::Server& srv = cf.http.servers[i];
+    for (unsigned int j = 0; j < srv.listens.size(); j++) {
+      const Config::Listen& listen = srv.listens[j];
+      // 0. Filter by IPv4 or IPv6
+      // 1. Filter by port
+      // 2. Filter by address
+      // These can be done by eq_addr46 and eq_addr6
+      if (eq_addr46(&listen.addr, saddr) == false) {
+        continue;
+      }
+      // This server is default server
+      if (!srv_cf) {
+        srv_cf = &srv;
+        break;
+      }
+
+      // 3. Filter by host name
+      if (util::vector::contains(srv.server_names, host)) {
+        srv_cf = &srv;
+        break;
+      }
+    }
+  }
+  // Some server context must be found because we only listen on
+  // specified ports and addresses
+  assert(srv_cf != NULL);
+  return srv_cf;
+}
+
+// Note: We don't support regex
+// https://nginx.org/en/docs/http/ngx_http_core_module.html#location
+// To find location matching a given request, nginx first checks locations defined using the prefix strings (prefix locations). Among them, the location with the longest matching prefix is selected and remembered. Then regular expressions are checked, in the order of their appearance in the configuration file. The search of regular expressions terminates on the first match, and the corresponding configuration is used. If no match with a regular expression is found then the configuration of the prefix location remembered earlier is used.
+const Config::Location* select_loc_cf(const Config::Server* srv_cf, const Connection& conn) throw() {
+  const std::string &path = conn.header.path;
+  // Find location for this request
+  // 1. Find location directive matching prefix string
+  // 2. location with the longest matching prefix is selected and remembered
+  const Config::Location *loc = NULL;
+  // TODO: header.path must be a normalized URI
+  //       1. decoding the text encoded in the “%XX” form
+  //       2. resolving references to relative path components (“.” and “..”)
+  //       3. possible compression of two or more adjacent slashes into a single slash
+  for (unsigned int i = 0; i < srv_cf->locations.size(); i++) {
+    const Config::Location& l = srv_cf->locations[i];
+    // 1. Filter by prefix
+    if (path.substr(0, l.path.size()) == l.path) {
+      // location with the longest matching prefix is selected and remembered
+      if (loc == NULL || loc->path.size() < l.path.size()) {
+        loc = &l;
+      }
+      break;
+    }
+  }
+  return loc;
+}
+
 int Connection::handle() throw() {
+  srv_cf = select_srv_cf(cf, *this);
+  loc_cf = select_loc_cf(srv_cf, *this);
+
+  // generate fullpath
+  try {
+    if (!loc_cf) {
+      // Server Root    : Append path to root
+      header.fullpath = srv_cf->root + header.path;
+    } else if (!loc_cf->alias.configured) {
+      // Location Root  : Append path to root
+      header.fullpath = loc_cf->root + header.path;
+    } else {
+      // Location Alias : Replace prefix with alias
+      header.fullpath = loc_cf->alias + header.path.substr(loc_cf->path.size());
+    }
+  } catch (std::exception &e) {
+    Log::cfatal()
+        << "\"header.fullpath = root or alias + header.path\" failed"
+        << std::endl;
+    ErrorHandler::handle(*this, 500);
+    status = RESPONSE;
+    return 1;
+  }
+
   // if CGI 
   if (header.path.find("/cgi/") != std::string::npos) {
     // TODO: write(body, body_size) in handle()
@@ -357,7 +487,7 @@ int Connection::handle_cgi_parse() throw() {
   // TODO: parse
   std::string line;
   // Read header fields
-  std::unordered_map<std::string, std::string> cgi_header_fields;
+  std::map<std::string, std::string> cgi_header_fields;
   while (cgi_socket->readline(line) == 0) {
     Log::cdebug() << "CGI line: " << line << std::endl;
     // Empty line indicates the end of header fields
@@ -381,7 +511,7 @@ int Connection::handle_cgi_parse() throw() {
     *client_socket << "HTTP/1.1 200 OK" << CRLF;
   }
   // Send header fields
-  std::unordered_map<std::string, std::string>::const_iterator it;
+  std::map<std::string, std::string>::const_iterator it;
   for (it = cgi_header_fields.begin(); it != cgi_header_fields.end(); ++it) {
     if (it->first == "Status") continue;
     // TODO: validate header field

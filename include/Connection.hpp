@@ -8,6 +8,7 @@
 #include "CgiHandler.hpp"
 #include "SocketBuf.hpp"
 #include "webserv.hpp"
+#include "Config.hpp"
 #include <cassert>
 #include <limits.h>
 #include <signal.h>
@@ -44,19 +45,25 @@ class Connection {
   size_t body_size;
   size_t content_length;
   pid_t cgi_pid;
+  const Config& cf;
+  const Config::Server* srv_cf;
+  const Config::Location* loc_cf;
 
  public:
   // Constructor/Destructor
   Connection() throw();  // Do not implement this
-  explicit Connection(int listen_fd)
-      : client_socket(new SocketBuf(listen_fd)),
+  Connection(std::shared_ptr<Socket> sock, const Config& cf)
+      : client_socket(std::shared_ptr<SocketBuf>(new SocketBuf(sock))),
         cgi_socket(NULL),
         header(),
         status(REQ_START_LINE),
         body(NULL),
         body_size(0),
         content_length(0),
-        cgi_pid(-1){}
+        cgi_pid(-1),
+        cf(cf),
+        srv_cf(NULL),
+        loc_cf(NULL) {}
   ~Connection() throw() {}
   Connection(const Connection &other) throw();  // Do not implement this
   Connection &operator=(

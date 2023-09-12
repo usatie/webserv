@@ -4,7 +4,7 @@ WEBSERV_PORT=8181
 
 # 1. Initialize
 # disown for not make the shell script failure when the server is pkilled
-./webserv & disown
+./webserv tests/test.conf & disown
 # wait for server warm up
 sleep 1.0
 rm -f error.log

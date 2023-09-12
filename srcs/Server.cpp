@@ -34,6 +34,15 @@ Server::Server(const Config& cf): maxfd(-1), listen_socks(), connections(), cf(c
         hints.ai_canonname = NULL;
         hints.ai_addr = NULL;
         hints.ai_next = NULL;
+        // TODO: AF_INET or AF_INET6 depends on the address format
+        // i.e. "192.168.1.1"                             -> AF_INET
+        //      "*"                                       -> AF_INET
+        //      "localhost"                               -> AF_INET
+        //      "google.com"                              -> AF_INET
+        //      "[::]"                                    -> AF_INET6
+        //      "[::1]"                                   -> AF_INET6
+        //      "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -> AF_INET6
+        //hints.ai_family = AF_INET;	/* Allows IPv4 only */
         hints.ai_family = AF_UNSPEC;	/* Allows IPv4 or IPv6 */
         hints.ai_flags = AI_PASSIVE;	/* Wildcard IP address */
         hints.ai_socktype = type;
@@ -63,6 +72,11 @@ Server::Server(const Config& cf): maxfd(-1), listen_socks(), connections(), cf(c
           Log::cdebug() << "listen : " << listen << std::endl;
               /* convert ai_addr from binary to string */
           Log::cdebug() << "ip: " << rp << std::endl;
+          // IPv6 socket listening on a wildcard address [::] will accept only IPv6 connections
+          // Without this option, it will accept both IPv4 and IPv6 connections
+          if (rp->ai_family == AF_INET6) {
+            sock->ipv6only();
+          }
           if (sock->bind(rp->ai_addr, rp->ai_addrlen) < 0) {
             // If wildcard address, it's possible IPv6 socket is already 
             // bound to IPv4 wildcard address. In that case, bind() fails.
@@ -85,9 +99,16 @@ Server::Server(const Config& cf): maxfd(-1), listen_socks(), connections(), cf(c
           if (sock->set_nonblock() < 0) {
             throw std::runtime_error("sock.set_nonblock() failed");
           }
+          // Save the listening ip address to Config::Listen
+          // Here we use const_cast to modify the const object.
+          {
+            memcpy(const_cast<struct sockaddr_storage*>(&listen.addr), rp->ai_addr, rp->ai_addrlen);
+            const_cast<socklen_t&>(listen.addrlen) = rp->ai_addrlen;
+          }
           FD_SET(sock->get_fd(), &readfds);
           maxfd = std::max(maxfd, sock->get_fd());
           listen_socks.push_back(sock);
+          break ; // Success, one socket per one listen directive
         }
         freeaddrinfo(result);
       }
@@ -128,21 +149,9 @@ void Server::remove_all_connections() throw() {
   }
 }
 void Server::accept(std::shared_ptr<Socket> sock) throw() {
-  int fd = ::accept(sock->get_fd(), NULL, NULL);
-  if (fd < 0) {
-    Log::cerror() << "accept() failed: " << strerror(errno) << std::endl;
-    return;
-  }
   try {
-    std::shared_ptr<Connection> conn(NULL);
-    try {
-      conn = std::shared_ptr< Connection >(new Connection(fd));
-    } catch (std::exception &e) {
-      close(fd);
-      Log::cerror() << "new Connection(fd) failed: " << e.what() << std::endl;
-      return;
-    }
-    connections.push_back(conn);
+    std::shared_ptr<Connection> conn(new Connection(sock->accept(), cf)); // throwable
+    connections.push_back(conn); // throwable
     FD_SET(conn->get_fd(), &readfds);
     maxfd = std::max(conn->get_fd(), maxfd);
   } catch (std::exception &e) {
@@ -253,9 +262,12 @@ std::ostream& operator<<(std::ostream& os, const struct addrinfo* rp) {
   if (rp->ai_family == AF_INET) {
     struct sockaddr_in *ipv4 = (struct sockaddr_in *)rp->ai_addr;
     addr = &(ipv4->sin_addr);
-  } else {
+  } else if (rp->ai_family == AF_INET6) {
     struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)rp->ai_addr;
     addr = &(ipv6->sin6_addr);
+  } else {
+    os << "unknown address family: ";
+    return os;
   }
   inet_ntop(rp->ai_family, addr, buf, sizeof buf);
   os << buf;
