@@ -8,6 +8,6 @@ class Connection;
 
 class ErrorHandler {
 public:
-  static void handle(Connection& conn, int status_code) throw();
+  static void handle(Connection& conn, int status_code, bool noredirect = false) throw();
 };
 #endif
