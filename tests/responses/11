@@ -1,6 +1,6 @@
 HTTP/1.1 404 Resource Not Found
 Content-Type: text/html
-Content-Length: 155
+Content-Length: 154
 
 <html>
 <head><title>404 Not Found</title></head>
@@ -9,4 +9,3 @@ Content-Length: 155
 <hr><center>webserv/0.0.1</center>
 </body>
 </html>
-

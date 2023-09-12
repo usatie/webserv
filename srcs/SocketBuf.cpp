@@ -22,9 +22,9 @@ int SocketBuf::send_file(const std::string& filepath) throw() {
     Log::fatal("file open failed");
     return -1;
   }
-  wss << ifs.rdbuf() << CRLF;
+  wss << ifs.rdbuf();
   if (wss.bad()) {
-    Log::fatal("wss << ifs.rdbuf() << CRLF failed");
+    Log::fatal("wss << ifs.rdbuf() failed");
     setbadstate();
     return -1;
   }

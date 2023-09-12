@@ -1,6 +1,6 @@
 HTTP/1.1 400 Bad Request
 Content-Type: text/html
-Content-Length: 159
+Content-Length: 158
 
 <html>
 <head><title>400 Bad Request</title></head>
@@ -9,4 +9,3 @@ Content-Length: 159
 <hr><center>webserv/0.0.1</center>
 </body>
 </html>
-
