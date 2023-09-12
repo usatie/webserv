@@ -285,19 +285,20 @@ bool eq_addr46(const sockaddr_storage *a, const sockaddr_storage *b) {
   }
 }
 
-void Connection::find_main_cf() throw() {
-  main_cf = &cf.http;
-}
-
 // Find config for this request
 // 1. Find listen directive matching port
 // 2. Find listen directive matching ip address
 // 3. Find server_name directive matching host name (if not default server)
-void Connection::find_srv_cf() throw() {
-  struct sockaddr_storage* saddr = &(*client_socket)->saddr;
-  srv_cf = NULL;
-  for (unsigned int i = 0; i < main_cf->servers.size(); i++) {
-    const Config::Server& srv = main_cf->servers[i];
+const Config::Server* select_srv_cf(const Config& cf, const Connection& conn) throw() {
+  struct sockaddr_storage* saddr = &(*conn.client_socket)->saddr;
+  std::string host;
+  if (conn.header.fields.find("Host") != conn.header.fields.end()) {
+    host = conn.header.fields.find("Host")->second;
+  }
+  //struct sockaddr_storage* saddr = &(*client_socket)->saddr;
+  const Config::Server* srv_cf = NULL;
+  for (unsigned int i = 0; i < cf.http.servers.size(); i++) {
+    const Config::Server& srv = cf.http.servers[i];
     for (unsigned int j = 0; j < srv.listens.size(); j++) {
       const Config::Listen& listen = srv.listens[j];
       // 0. Filter by IPv4 or IPv6
@@ -314,7 +315,7 @@ void Connection::find_srv_cf() throw() {
       }
 
       // 3. Filter by host name
-      if (util::vector::contains(srv.server_names, header.fields["Host"])) {
+      if (util::vector::contains(srv.server_names, host)) {
         srv_cf = &srv;
         break;
       }
@@ -323,12 +324,14 @@ void Connection::find_srv_cf() throw() {
   // Some server context must be found because we only listen on
   // specified ports and addresses
   assert(srv_cf != NULL);
+  return srv_cf;
 }
 
 // Note: We don't support regex
 // https://nginx.org/en/docs/http/ngx_http_core_module.html#location
 // To find location matching a given request, nginx first checks locations defined using the prefix strings (prefix locations). Among them, the location with the longest matching prefix is selected and remembered. Then regular expressions are checked, in the order of their appearance in the configuration file. The search of regular expressions terminates on the first match, and the corresponding configuration is used. If no match with a regular expression is found then the configuration of the prefix location remembered earlier is used.
-void Connection::find_loc_cf() throw() {
+const Config::Location* select_loc_cf(const Config::Server* srv_cf, const Connection& conn) throw() {
+  const std::string &path = conn.header.path;
   // Find location for this request
   // 1. Find location directive matching prefix string
   // 2. location with the longest matching prefix is selected and remembered
@@ -340,7 +343,7 @@ void Connection::find_loc_cf() throw() {
   for (unsigned int i = 0; i < srv_cf->locations.size(); i++) {
     const Config::Location& l = srv_cf->locations[i];
     // 1. Filter by prefix
-    if (header.path.substr(0, l.path.size()) == l.path) {
+    if (path.substr(0, l.path.size()) == l.path) {
       // location with the longest matching prefix is selected and remembered
       if (loc == NULL || loc->path.size() < l.path.size()) {
         loc = &l;
@@ -348,12 +351,12 @@ void Connection::find_loc_cf() throw() {
       break;
     }
   }
+  return loc;
 }
 
 int Connection::handle() throw() {
-  find_main_cf();
-  find_srv_cf();
-  find_loc_cf();
+  srv_cf = select_srv_cf(cf, *this);
+  loc_cf = select_loc_cf(srv_cf, *this);
 
   // generate fullpath
   try {

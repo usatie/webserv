@@ -46,7 +46,6 @@ class Connection {
   size_t content_length;
   pid_t cgi_pid;
   const Config& cf;
-  const Config::HTTP* main_cf;
   const Config::Server* srv_cf;
   const Config::Location* loc_cf;
 
@@ -63,7 +62,6 @@ class Connection {
         content_length(0),
         cgi_pid(-1),
         cf(cf),
-        main_cf(NULL),
         srv_cf(NULL),
         loc_cf(NULL) {}
   ~Connection() throw() {}
@@ -146,10 +144,6 @@ class Connection {
   int handle_cgi_parse() throw();
 
   int response() throw();
-private:
-  void find_main_cf() throw();
-  void find_srv_cf() throw();
-  void find_loc_cf() throw();
 };
 
 #endif
