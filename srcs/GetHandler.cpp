@@ -9,7 +9,7 @@
 bool validate(const char* path, size_t& content_length) {
   struct stat st;
   if (stat(path, &st) < 0) {
-    Log::cerror() << "stat() failed: " << path
+    Log::cdebug() << "stat() failed: " << path
                   << ", errno:" << strerror(errno) << std::endl;
     return false;
   }
