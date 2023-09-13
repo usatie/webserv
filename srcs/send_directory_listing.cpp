@@ -1,4 +1,5 @@
 #include <dirent.h>
+#include <iomanip>
 #include "Connection.hpp"
 
 static int compar(const struct dirent** s1, const struct dirent** s2) {
@@ -47,7 +48,7 @@ void send_directory_listing(Connection& conn,
       // Date time with space aligned
       ss << std::setw(68 - strlen(dp->d_name) - (S_ISDIR(st.st_mode) ? 1 : 0));
       char buf[256];
-      struct tm* tm = localtime(&st.st_mtimespec.tv_sec);
+      struct tm* tm = localtime(&st.st_mtime);
       strftime(buf, sizeof(buf), "%d-%b-%Y %H:%M", tm);
       ss << buf;
 
