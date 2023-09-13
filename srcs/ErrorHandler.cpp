@@ -8,7 +8,8 @@
 
 const Config::Location* select_loc_cf(const Config::Server* srv_cf,
                                       const std::string& path) throw();
-bool validate(const char* path, size_t& content_length);
+int resolve_path(const Config::Server* srv_cf, const Config::Location* loc_cf,
+            const std::string& req_path, std::string& path, struct stat& st);
 
 const char* status_line(int status_code) throw() {
   switch (status_code) {
@@ -46,26 +47,11 @@ const Config::ErrorPage* find_error_page(const ConfigItem* cf,
   return NULL;
 }
 
-// This is kind of a constructor, so it may throw.
-std::string resolve_path(const Config::Server* srv_cf,
-                         const Config::Location* loc_cf,
-                         const std::string& path) {
-  std::string fullpath;
-  if (!loc_cf) {
-    // Server Root    : Append path to root
-    Log::cdebug() << "Server Root" << std::endl;
-    return srv_cf->root + path;
-  } else if (!loc_cf->alias.configured) {
-    // Location Root  : Append path to root
-    Log::cdebug() << "Location Root: " << loc_cf->path << std::endl;
-    return loc_cf->root + path;
-  } else {
-    // Location Alias : Replace prefix with alias
-    Log::cdebug() << "Location Alias: " << loc_cf->path << std::endl;
-    return loc_cf->alias + path.substr(loc_cf->path.size());
-  }
-}
-
+#define OK_FILE 0
+#define OK_DIR 1
+#define ERR_403 2
+#define ERR_404 3
+#define ERR_500 4
 int try_error_page(Connection& conn, int status_code) throw() {
   // 1. No context for error_page
   if (!conn.loc_cf && !conn.srv_cf) {
@@ -77,38 +63,39 @@ int try_error_page(Connection& conn, int status_code) throw() {
   if (!error_page) error_page = find_error_page(conn.srv_cf, status_code);
   if (!error_page) return -1;
 
-  // 3. Generate fullpath
-  std::string error_page_path = error_page->uri;
+  // 3. Resolve path
   // TODO: To implement `error_page` properly, we need to implement
   // `internal_redirect` first.
-  Log::cdebug() << "Error page found: " << error_page_path << std::endl;
-  //  1. Select Location config
+  Log::cdebug() << "Error page found: " << error_page->uri << std::endl;
+  int ret;
+  struct stat st;
+  std::string path;
   const Config::Server* srv_cf = conn.srv_cf;
-  const Config::Location* loc_cf = select_loc_cf(conn.srv_cf, error_page_path);
-  //  2. Generate fullpath
-  std::string error_page_fullpath;
+  const Config::Location* loc_cf = select_loc_cf(conn.srv_cf, error_page->uri);
   try {
-    error_page_fullpath = resolve_path(srv_cf, loc_cf, error_page_path);
-  } catch (std::exception& e) {
-    Log::cfatal() << "\"header.fullpath = root or alias + header.path\" failed"
+    ret = resolve_path(srv_cf, loc_cf, error_page->uri, path, st);
+  } catch (const std::exception& e) {
+    Log::cfatal() << "Error page path resolution failed: " << e.what()
                   << std::endl;
     ErrorHandler::handle(conn, 500, true);
     return 0;
   }
 
-  //  3. Send file
-  size_t content_length;
-  if (!validate(error_page_fullpath.c_str(), content_length)) {
-    Log::cfatal() << "Error page file not found: " << error_page_fullpath
+  if (ret == ERR_500) {
+    ErrorHandler::handle(conn, 500, true);
+    return 0;
+  } else if (ret != OK_FILE) {
+    Log::cfatal() << "Error page file not found: " << error_page->uri
                   << std::endl;
     ErrorHandler::handle(conn, 404, true);
     return 0;
   }
+  //  4. Send error page
   *conn.client_socket << status_line(status_code) << CRLF;
   *conn.client_socket << "Content-Type: text/html" << CRLF;
-  *conn.client_socket << "Content-Length: " << content_length << CRLF;
+  *conn.client_socket << "Content-Length: " << st.st_size << CRLF;
   *conn.client_socket << CRLF;  // end of header
-  conn.client_socket->send_file(error_page_fullpath.c_str());
+  conn.client_socket->send_file(path.c_str());
   return 0;
   // This causes an internal redirect to the specified uri with the client
   // request method changed to “GET” (for all methods other than “GET” and
