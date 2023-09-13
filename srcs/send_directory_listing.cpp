@@ -1,5 +1,7 @@
 #include <dirent.h>
+
 #include <iomanip>
+
 #include "Connection.hpp"
 
 static int compar(const struct dirent** s1, const struct dirent** s2) {
@@ -9,8 +11,7 @@ static int compar(const struct dirent** s1, const struct dirent** s2) {
     return strcmp((*s1)->d_name, (*s2)->d_name);
 }
 
-void send_directory_listing(Connection& conn,
-                              const std::string& path) throw() {
+void send_directory_listing(Connection& conn, const std::string& path) throw() {
   *conn.client_socket << "HTTP/1.1 200 OK" << CRLF;
   *conn.client_socket << "Server: " << WEBSERV_VER << CRLF;
   *conn.client_socket << "Content-Type: text/html" << CRLF;

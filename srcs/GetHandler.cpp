@@ -11,9 +11,8 @@
 #include "webserv.hpp"
 
 void send_regular_file(Connection& conn, const std::string& path,
-                         size_t content_length) throw();
-void send_directory_listing(Connection& conn,
-                              const std::string& path) throw();
+                       size_t content_length) throw();
+void send_directory_listing(Connection& conn, const std::string& path) throw();
 
 #define OK_FILE 0
 #define OK_DIR 1
@@ -26,7 +25,8 @@ void send_directory_listing(Connection& conn,
 // 4. Else, return 404 or 403
 // Throwable!
 int resolve_path(const Config::Server* srv_cf, const Config::Location* loc_cf,
-            const std::string& req_path, std::string& path, struct stat& st) {
+                 const std::string& req_path, std::string& path,
+                 struct stat& st) {
   // TODO: normalize req_path
   // 0. `root` and `alias` directive
   if (!loc_cf) {

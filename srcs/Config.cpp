@@ -79,6 +79,9 @@ Config::Location::Location(Command* loc) : path(loc->location) {
                                 cmd->cgi_extensions.end());
         }
         break;
+      case Command::CMD_LOCATION:
+        locations.push_back(Config::Location(cmd));
+        break;
       default:
         throw std::runtime_error("Invalid command");
     }
@@ -276,24 +279,30 @@ std::ostream& operator<<(std::ostream& os, const Config::RedirectReturn& ret) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Config::Location& l) {
-  os << "      location: " << l.path << std::endl;
-  if (l.root.configured) os << "        root: " << l.root << std::endl;
-  if (l.alias.configured) os << "        alias: " << l.alias << std::endl;
-  if (l.index.configured) os << "        index: " << l.index << std::endl;
+  static std::string spacing = "      ";
+  os << spacing << "location: " << l.path << std::endl;
+  spacing += "  ";
+  if (l.root.configured) os << spacing << "root: " << l.root << std::endl;
+  if (l.alias.configured) os << spacing << "alias: " << l.alias << std::endl;
+  if (l.index.configured) os << spacing << "index: " << l.index << std::endl;
   if (l.limit_except.configured)
-    os << "        limit_except: " << l.limit_except.methods << std::endl;
+    os << spacing << "limit_except: " << l.limit_except.methods << std::endl;
   if (l.autoindex.configured)
-    os << "        autoindex: " << l.autoindex << std::endl;
+    os << spacing << "autoindex: " << l.autoindex << std::endl;
   if (l.client_max_body_size.configured)
-    os << "        client_max_body_size: " << l.client_max_body_size
+    os << spacing << "client_max_body_size: " << l.client_max_body_size
        << std::endl;
   if (!l.error_pages.empty())
-    os << "        error_page: " << l.error_pages << std::endl;
+    os << spacing << "error_page: " << l.error_pages << std::endl;
   if (!l.cgi_extensions.empty())
-    os << "        cgi_extension: " << l.cgi_extensions << std::endl;
-  if (!l.returns.empty()) os << "        return: " << l.returns << std::endl;
+    os << spacing << "cgi_extension: " << l.cgi_extensions << std::endl;
+  if (!l.returns.empty()) os << spacing << "return: " << l.returns << std::endl;
   if (l.upload_store.configured)
-    os << "        upload_store: " << l.upload_store << std::endl;
+    os << spacing << "upload_store: " << l.upload_store << std::endl;
+  for (unsigned int j = 0; j < l.locations.size(); ++j) {
+    os << l.locations[j];
+  }
+  spacing.erase(spacing.size() - 2);
   return os;
 }
 

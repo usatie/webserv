@@ -1,7 +1,7 @@
 #include "Connection.hpp"
 
 void send_regular_file(Connection& conn, const std::string& path,
-                         size_t content_length) throw() {
+                       size_t content_length) throw() {
   *conn.client_socket << "HTTP/1.1 200 OK" << CRLF;
   *conn.client_socket << "Server: " << WEBSERV_VER << CRLF;
   // client_socket << "Date: Tue, 11 Jul 2023 07:36:50 GMT" << CRLF;

@@ -12,6 +12,7 @@
 #include "GetHandler.hpp"
 #include "Header.hpp"
 #include "PostHandler.hpp"
+#include "RedirectHandler.hpp"
 #include "SocketBuf.hpp"
 #include "webserv.hpp"
 
