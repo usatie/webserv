@@ -3,9 +3,9 @@
 
 #include <string>
 
-#define KB 1024
-#define MB 1024 * 1024
-#define GB 1024 * 1024 * 1024
+#define KB (1024)
+#define MB (1024 * 1024)
+#define GB (1024 * 1024 * 1024)
 
 struct Token {
   // Generic Members
