@@ -9,7 +9,8 @@
 const Config::Location* select_loc_cf(const Config::Server* srv_cf,
                                       const std::string& path) throw();
 int resolve_path(const Config::Server* srv_cf, const Config::Location* loc_cf,
-            const std::string& req_path, std::string& path, struct stat& st);
+                 const std::string& req_path, std::string& path,
+                 struct stat& st);
 
 const char* status_line(int status_code) throw() {
   switch (status_code) {

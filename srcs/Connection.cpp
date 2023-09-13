@@ -340,34 +340,53 @@ const Config::Server *select_srv_cf(const Config &cf,
 // match, and the corresponding configuration is used. If no match with a
 // regular expression is found then the configuration of the prefix location
 // remembered earlier is used.
-const Config::Location *select_loc_cf(const Config::Server *srv_cf,
-                                      const std::string &path) throw() {
+
+template <typename ConfigItem>
+void traverse_loc(const ConfigItem *cf, const std::string &path, int prefixLen,
+                  int &maxLen, const Config::Location *&loc) {
   // Find location for this request
   // 1. Find location directive matching prefix string
   // 2. location with the longest matching prefix is selected and remembered
-  const Config::Location *loc = NULL;
-  // TODO: header.path must be a normalized URI
-  //       1. decoding the text encoded in the “%XX” form
-  //       2. resolving references to relative path components (“.” and “..”)
-  //       3. possible compression of two or more adjacent slashes into a single
-  //       slash
-  for (unsigned int i = 0; i < srv_cf->locations.size(); i++) {
-    const Config::Location &l = srv_cf->locations[i];
+  for (unsigned int i = 0; i < cf->locations.size(); i++) {
+    const Config::Location &l = cf->locations[i];
+    // TODO: header.path must be a normalized URI
+    //       1. decoding the text encoded in the “%XX” form
+    //       2. resolving references to relative path components (“.” and “..”)
+    //       3. possible compression of two or more adjacent slashes into a
+    //       single slash
     // 1. Filter by prefix
-    if (path.substr(0, l.path.size()) == l.path) {
+    if (path.substr(prefixLen, l.path.size()) == l.path) {
+      prefixLen += l.path.size();
       // location with the longest matching prefix is selected and remembered
-      if (loc == NULL || loc->path.size() < l.path.size()) {
+      if (loc == NULL || maxLen < prefixLen) {
         loc = &l;
+        maxLen = prefixLen;
       }
-      break;
+      traverse_loc(&l, path, prefixLen, maxLen, loc);
+      prefixLen -= l.path.size();
     }
   }
+}
+
+const Config::Location *select_loc_cf(const Config::Server *srv_cf,
+                                      const std::string &path) throw() {
+  const Config::Location *loc = NULL;
+  int maxLen = 0;
+  traverse_loc(srv_cf, path, 0, maxLen, loc);
   return loc;
 }
 
 int Connection::handle() throw() {
   srv_cf = select_srv_cf(cf, *this);
   loc_cf = select_loc_cf(srv_cf, header.path);
+
+  // `return` directive
+  if (loc_cf && loc_cf->returns.size() > 0) {
+    RedirectHandler::handle(*this, loc_cf->returns[0].code,
+                            loc_cf->returns[0].url);
+    status = RESPONSE;
+    return 1;
+  }
 
   // generate fullpath
   // `root` and `alias` directive

@@ -125,7 +125,7 @@ class Config {
     Alias alias;                   // Location only
     LimitExcept limit_except;      // Locatoin only
     CgiExtensions cgi_extensions;  // Location only
-    // std::shared_ptr<Location> child; // Does not support nested location.
+    std::vector<Location> locations;
     Location(Command *cmd);
   };
   class Server {

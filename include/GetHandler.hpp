@@ -2,7 +2,6 @@
 #define GET_HANDLER_HPP
 
 #include "Header.hpp"
-#include "SocketBuf.hpp"
 
 class Connection;
 
