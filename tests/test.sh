@@ -39,7 +39,7 @@ done
 function python_test() {
 	echo -n "Python tests: " | tee -a error.log
 	err=0
-	python3 tests/python/test_server_response.py 2>error.log || let err++
+	python3 tests/python/test_server_response.py 2>>error.log || let err++
 	if [ $err -eq 0 ]; then
 		echo "OK"
 		# Trim the last line of the error.log

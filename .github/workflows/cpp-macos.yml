@@ -27,8 +27,10 @@ jobs:
         # https://emojipedia.org/search/?q=unit+test
         # :microscope: :test_tube: :alembic: :gear: :gear:
         echo "# Unit Tests :test_tube:" >> $GITHUB_STEP_SUMMARY
+        set -o pipefail
         make -s unit | tee -a $GITHUB_STEP_SUMMARY
     - name: make test
       run: |
         echo "# Integration Tests :scientist:" >> $GITHUB_STEP_SUMMARY
+        set -o pipefail
         make -s test | tee -a $GITHUB_STEP_SUMMARY
