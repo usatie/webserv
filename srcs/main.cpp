@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <unistd.h>
 
 #include "Config.hpp"
 #include "Server.hpp"
@@ -6,6 +7,12 @@
 #define PORT 8181
 #define BACKLOG 5
 #define ERROR 1
+
+void	sigpipe(int sig)
+{
+	(void)sig;
+	write(2, "sigpipe\n", 8);
+}
 
 // main function can throw exceptions.
 int main(int argc, char *argv[]) {
@@ -46,7 +53,7 @@ int main(int argc, char *argv[]) {
   // Just end this program in that case.
   Server server(cf);
 
-  if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+  if (signal(SIGPIPE, sigpipe) == SIG_ERR) {
     Log::fatal("signal() failed");
     return ERROR;
   }

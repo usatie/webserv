@@ -1,6 +1,7 @@
 #ifndef SOCKET_HPP
 #define SOCKET_HPP
 
+#include "Log.hpp"
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -60,9 +61,13 @@ class Socket {
   }
 
   ~Socket() throw() {
+    if (::shutdown(fd, SHUT_WR) < 0) {
+      Log::error("shutdown() failed");
+    }
     if (::close(fd) < 0) {
       Log::error("close() failed");
     }
+	Log::debug("~Socket(%d)\n", fd);
   }
 
   // Accessors
