@@ -23,6 +23,7 @@ void send_regular_file(Connection& conn, const std::string& path,
     *conn.client_socket << "Content-Type: text/html" << CRLF;
   else
     *conn.client_socket << "Content-Type: text/plain" << CRLF;
+  *conn.client_socket << "Connection: close" << CRLF;
   *conn.client_socket << "Content-Length: " << content_length << CRLF;
   *conn.client_socket << CRLF;  // end of header
   if (conn.client_socket->send_file(path) < 0) {
