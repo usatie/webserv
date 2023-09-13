@@ -45,8 +45,10 @@ Server::Server(const Config& cf)
         //      "[::]"                                    -> AF_INET6
         //      "[::1]"                                   -> AF_INET6
         //      "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -> AF_INET6
-        // hints.ai_family = AF_INET;	/* Allows IPv4 only */
+
         hints.ai_family = AF_UNSPEC; /* Allows IPv4 or IPv6 */
+        if ((listen.address == "*"))
+			hints.ai_family = AF_INET;	/* Allows IPv4 only */
         hints.ai_flags = AI_PASSIVE; /* Wildcard IP address */
         hints.ai_socktype = type;
 
