@@ -1,0 +1,16 @@
+HTTP/1.1 200 OK
+Server: webserv/0.0.1
+Content-Type: text/html
+Content-Length: 704
+
+<html>
+<head><title>Index of /autoindex/</title></head>
+<body>
+<h1>Index of /autoindex/</h1><hr><pre><a href="../">../</a>
+<a href="dir/">dir/</a>                                               13-Sep-2023 12:37                   -
+<a href="bar">bar</a>                                                13-Sep-2023 12:36                   4
+<a href="foo">foo</a>                                                13-Sep-2023 12:36                   4
+<a href="foo.html">foo.html</a>                                           13-Sep-2023 14:05                   0
+<a href="foobar">foobar</a>                                             13-Sep-2023 12:36                   7
+</pre><hr></body>
+</html>

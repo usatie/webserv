@@ -15,7 +15,7 @@ mkdir -p /tmp/www/pouic/toto \
 # 2. Tests
 # arg for save error count
 cnt=0
-for i in {1..24}; do
+for i in {1..27}; do
   echo -n "Test${i}   : " | tee -a error.log
   echo "" >>error.log
   if [[ "$(uname -s)" == "Linux" ]]; then
