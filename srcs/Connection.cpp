@@ -370,6 +370,7 @@ int Connection::handle() throw() {
   loc_cf = select_loc_cf(srv_cf, header.path);
 
   // generate fullpath
+  // `root` and `alias` directive
   try {
     if (!loc_cf) {
       // Server Root    : Append path to root
@@ -390,6 +391,17 @@ int Connection::handle() throw() {
     ErrorHandler::handle(*this, 500);
     status = RESPONSE;
     return 1;
+  }
+
+  // `limit_except` directive
+  if (loc_cf && loc_cf->limit_except.configured) {
+    if (util::vector::contains(loc_cf->limit_except.methods, header.method) ==
+        false) {
+      Log::cinfo() << "Unsupported method: " << header.method << std::endl;
+      ErrorHandler::handle(*this, 405);
+      status = RESPONSE;
+      return 1;
+    }
   }
 
   // if CGI
