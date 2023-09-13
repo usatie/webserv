@@ -44,7 +44,7 @@ int resolve_path(const Config::Server* srv_cf, const Config::Location* loc_cf,
   }
 
   // 1. If path is regular file, send it
-  if (stat(path.c_str(), &st) < 0 && errno == ENOENT) {
+  if (stat(path.c_str(), &st) < 0 && errno != ENOENT) {
     Log::cdebug() << "stat() failed: " << path << ", errno:" << strerror(errno)
                   << std::endl;
     return ERR_500;
@@ -68,7 +68,7 @@ int resolve_path(const Config::Server* srv_cf, const Config::Location* loc_cf,
   }
   // 3. Else if path ends with '/', try to list directory
   if (path.back() == '/') {
-    if (stat(path.c_str(), &st) < 0 && errno == ENOENT) {
+    if (stat(path.c_str(), &st) < 0 && errno != ENOENT) {
       Log::cdebug() << "stat() failed: " << path
                     << ", errno:" << strerror(errno) << std::endl;
       return ERR_500;
