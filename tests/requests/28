@@ -1,0 +1,2 @@
+GET /redirect/path/ HTTP/1.1
+
