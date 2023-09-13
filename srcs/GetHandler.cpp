@@ -1,6 +1,8 @@
 #include "GetHandler.hpp"
 
+#include <dirent.h>  // opendir
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <cstring>  // strerror
 
@@ -8,78 +10,98 @@
 #include "ErrorHandler.hpp"
 #include "webserv.hpp"
 
-bool validate(const char* path, size_t& content_length) {
-  struct stat st;
-  if (stat(path, &st) < 0) {
+void send_regular_file(Connection& conn, const std::string& path,
+                         size_t content_length) throw();
+void send_directory_listing(Connection& conn,
+                              const std::string& path) throw();
+
+#define OK_FILE 0
+#define OK_DIR 1
+#define ERR_403 2
+#define ERR_404 3
+#define ERR_500 4
+// 1. If fullpath is regular file, send it
+// 2. Else if fullpath is directory, try to append index.html
+// 3. Else if fullpath ends with '/', try to list directory
+// 4. Else, return 404 or 403
+// Throwable!
+int resolve_path(const Config::Server* srv_cf, const Config::Location* loc_cf,
+            const std::string& req_path, std::string& path, struct stat& st) {
+  // TODO: normalize req_path
+  // 0. `root` and `alias` directive
+  if (!loc_cf) {
+    // Server Root    : Append path to root
+    Log::cdebug() << "Server Root" << std::endl;
+    path = srv_cf->root + req_path;
+  } else if (loc_cf->alias.configured) {
+    // Location Alias : Replace prefix with alias
+    Log::cdebug() << "Location Alias: " << loc_cf->path << std::endl;
+    path = loc_cf->alias + req_path.substr(loc_cf->path.size());
+  } else {
+    // Location Root  : Append path to root
+    Log::cdebug() << "Location Root: " << loc_cf->path << std::endl;
+    path = loc_cf->root + req_path;
+  }
+
+  // 1. If path is regular file, send it
+  if (stat(path.c_str(), &st) < 0 && errno != ENOENT) {
     Log::cdebug() << "stat() failed: " << path << ", errno:" << strerror(errno)
                   << std::endl;
-    return false;
+    return ERR_500;
   }
-  if (S_ISDIR(st.st_mode)) {
-    Log::cdebug() << "is a directory: " << path << std::endl;
-    return false;
+  if (S_ISREG(st.st_mode)) return OK_FILE;
+  // 2. Else if fullpath is directory, try to append index.html
+  const std::vector<std::string>& index =
+      (!loc_cf) ? srv_cf->index : loc_cf->index;
+  for (size_t i = 0; i < index.size(); ++i) {
+    Log::cdebug() << "Trying index: " << path << index[i] << std::endl;
+    if (stat((path + index[i]).c_str(), &st) < 0) {
+      if (errno == ENOENT) continue;
+      Log::cdebug() << "stat() failed: " << path << index[i]
+                    << ", errno:" << strerror(errno) << std::endl;
+      return ERR_500;
+    }
+    if (S_ISREG(st.st_mode)) {
+      path += index[i];
+      return OK_FILE;
+    }
   }
-  if (!S_ISREG(st.st_mode)) {
-    Log::cdebug() << "is not a regular file: " << path << std::endl;
-    return false;
+  // 3. Else if path ends with '/', try to list directory
+  if (path.back() == '/') {
+    if (stat(path.c_str(), &st) < 0 && errno != ENOENT) {
+      Log::cdebug() << "stat() failed: " << path
+                    << ", errno:" << strerror(errno) << std::endl;
+      return ERR_500;
+    }
+    if (loc_cf) {
+      if (loc_cf->autoindex && S_ISDIR(st.st_mode)) return OK_DIR;
+    } else {
+      if (srv_cf->autoindex && S_ISDIR(st.st_mode)) return OK_DIR;
+    }
   }
-  content_length = st.st_size;
-  return true;
+  // TODO: 301 Moved Permanently
+  // TODO: 403 Forbidden
+  return ERR_404;
 }
 
 void GetHandler::handle(Connection& conn) throw() {
   // TODO: Write response headers
-  std::string fullpath = conn.header.fullpath;
-  size_t content_length = 0;
-  bool is_valid = false;
-  // Index
-  if (fullpath.back() == '/') {  // Append index.html
-    const std::vector<std::string>& index =
-        (!conn.loc_cf) ? conn.srv_cf->index : conn.loc_cf->index;
-    for (size_t i = 0; i < index.size(); ++i) {
-      std::string path = fullpath + index[i];
-      Log::cdebug() << "Trying index: " << path << std::endl;
-      is_valid = validate(path.c_str(), content_length);
-      if (is_valid) {
-        fullpath = path;
-        break;
-      }
-    }
-  } else {
-    is_valid = validate(fullpath.c_str(), content_length);
-  }
-  Log::cdebug() << "fullpath: " << fullpath << std::endl;
-  if (!is_valid) {
-    ErrorHandler::handle(conn, 404);
-    return;
-  }
-
-  *conn.client_socket << "HTTP/1.1 200 OK" << CRLF;
-  *conn.client_socket << "Server: " << WEBSERV_VER << CRLF;
-  // client_socket << "Date: Tue, 11 Jul 2023 07:36:50 GMT" << CRLF;
-  if (util::string::ends_with(conn.header.path, ".css"))
-    *conn.client_socket << "Content-Type: text/css" << CRLF;
-  else if (util::string::ends_with(conn.header.path, ".js"))
-    *conn.client_socket << "Content-Type: text/javascript" << CRLF;
-  else if (util::string::ends_with(conn.header.path, ".jpg"))
-    *conn.client_socket << "Content-Type: image/jpeg" << CRLF;
-  else if (util::string::ends_with(conn.header.path, ".png"))
-    *conn.client_socket << "Content-Type: image/png" << CRLF;
-  else if (util::string::ends_with(conn.header.path, ".gif"))
-    *conn.client_socket << "Content-Type: image/gif" << CRLF;
-  else if (util::string::ends_with(conn.header.path, ".ico"))
-    *conn.client_socket << "Content-Type: image/x-icon" << CRLF;
-  else if (util::string::ends_with(conn.header.path, ".svg"))
-    *conn.client_socket << "Content-Type: image/svg+xml" << CRLF;
-  else if (util::string::ends_with(conn.header.path, ".html"))
-    *conn.client_socket << "Content-Type: text/html" << CRLF;
-  else
-    *conn.client_socket << "Content-Type: text/plain" << CRLF;
-  *conn.client_socket << "Content-Length: " << content_length << CRLF;
-  *conn.client_socket << CRLF;  // end of header
-  if (conn.client_socket->send_file(fullpath) < 0) {
-    Log::error("send_file() failed");
+  struct stat st;
+  std::string path;
+  int response_type =
+      resolve_path(conn.srv_cf, conn.loc_cf, conn.header.path, path, st);
+  if (response_type == ERR_500) {
     ErrorHandler::handle(conn, 500);
-    return;
+  } else if (response_type == ERR_404) {
+    ErrorHandler::handle(conn, 404);
+  } else if (response_type == ERR_403) {
+    ErrorHandler::handle(conn, 403);
+  } else if (response_type == OK_DIR) {
+    send_directory_listing(conn, path);
+  } else if (response_type == OK_FILE) {
+    send_regular_file(conn, path, st.st_size);
+  } else {
+    Log::cerror() << "Unknown response type: " << response_type << std::endl;
+    ErrorHandler::handle(conn, 500);
   }
 }
