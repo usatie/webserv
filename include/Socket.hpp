@@ -144,7 +144,7 @@ class Socket {
     int connfd = ::accept(fd, (struct sockaddr*)&caddr, &caddrlen);
     static unsigned int cnt = 0;
     cnt++;
-    Log::cfatal()
+    Log::cinfo()
       << cnt << "th connection accepted: "
       << "connfd(" << connfd << "), port("
       << ntohs(((struct sockaddr_in*)&caddr)->sin_port) << ")"
