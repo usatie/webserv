@@ -61,13 +61,9 @@ class Socket {
   }
 
   ~Socket() throw() {
-    if (::shutdown(fd, SHUT_WR) < 0) {
-      Log::error("shutdown() failed");
-    }
     if (::close(fd) < 0) {
       Log::error("close() failed");
     }
-	Log::debug("~Socket(%d)\n", fd);
   }
 
   // Accessors
@@ -127,6 +123,18 @@ class Socket {
     return 0;
   }
 
+  // This 
+  int set_nolinger(int linger) throw() {
+    struct linger l;
+    l.l_onoff = 1;
+    l.l_linger = linger;
+    if (setsockopt(fd, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
+      Log::error("setsockopt() failed");
+      return -1;
+    }
+    return 0;
+  }
+
   // This is a kind of constructor, so it is THROWABLE
   //  std::runtime_error if accept() failed
   //  std::bad_alloc if new Socket() failed
@@ -134,6 +142,13 @@ class Socket {
     struct sockaddr_storage caddr;
     socklen_t caddrlen = sizeof(caddr);
     int connfd = ::accept(fd, (struct sockaddr*)&caddr, &caddrlen);
+    static unsigned int cnt = 0;
+    cnt++;
+    Log::cfatal()
+      << cnt << "th connection accepted: "
+      << "connfd(" << connfd << "), port("
+      << ntohs(((struct sockaddr_in*)&caddr)->sin_port) << ")"
+      << std::endl;
     if (connfd < 0) {
       Log::error("accept() failed");
       throw std::runtime_error("accept() failed");
@@ -144,6 +159,7 @@ class Socket {
       connsock = std::shared_ptr<Socket>(
           new Socket(connfd, (struct sockaddr*)&saddr, (struct sockaddr*)&caddr,
                      saddrlen, caddrlen));
+      //connsock->set_nolinger(0);
       return connsock;
     } catch (std::bad_alloc& e) {
       Log::error("new Socket() failed");
