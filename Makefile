@@ -80,9 +80,9 @@ $(UNITTEST): $(OBJS) $(UNIT_OBJS)
 unit: $(UNITTEST)
 	./$(UNITTEST)
 
-.PHONY: siege
-siege: $(NAME)
-	siege --concurrent=128 --time=60s http://localhost:8181/kapouet/pouic/toto/pouet -b >/dev/null
+.PHONY: bench
+bench: $(NAME)
+	./tests/bench.sh
 
 .PHONY: format
 format:
