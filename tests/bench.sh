@@ -8,7 +8,7 @@ WEBSERV_PORT=8181
 sleep 1.0
 
 # 2. Tests
-siege --concurrent=128 --time=60s http://localhost:$WEBSERV_PORT/kapouet/pouic/toto/pouet -b >/dev/null
+siege --concurrent=128 --time=60s http://localhost:$WEBSERV_PORT/kapouet/pouic/toto/pouet -b
 
 # 3. Clean up
 pkill webserv
