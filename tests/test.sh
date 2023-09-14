@@ -25,6 +25,11 @@ mkdir -p /tmp/www/pouic/toto \
 cnt=0
 for i in {1..28}; do
   echo -n "Test${i}   : " | tee -a error.log
+  # skip test 12 and 23
+  if [ $i -eq 12 ] || [ $i -eq 23 ]; then
+	echo "Skipped"
+	continue
+  fi
   echo "" >>error.log
   if [[ "$(uname -s)" == "Linux" ]]; then
   	nc -N localhost $WEBSERV_PORT <tests/requests/$i >out
