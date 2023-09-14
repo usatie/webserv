@@ -41,19 +41,24 @@ endif
 # General rules #
 #################
 
+.PHONY: all
 all: $(NAME)
 
+.PHONY: clean
 clean:
 	rm -f $(OBJS) $(DEPS) $(UNIT_OBJS) $(UNIT_DEPS)
 
+.PHONY: fclean
 fclean: clean 
 	rm -f $(NAME) $(UNITTEST)
 
+.PHONY: re
 re: fclean all
 
 %.o: %.cpp %.d
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+.PHONY: debug
 debug: CXXFLAGS = -std=c++98 -Wall -Wextra -pedantic -MMD -MP -fsanitize=address -fsanitize=undefined -D DEBUG -I include -I srcs
 debug: re
 d: debug
@@ -61,6 +66,7 @@ d: debug
 $(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
 
+.PHONY: test
 test: $(NAME)
 	./tests/test.sh
 
@@ -70,11 +76,15 @@ UNIT_DEPS = $(UNIT_SRCS:.cpp=.d)
 $(UNITTEST): $(OBJS) $(UNIT_OBJS)
 	$(CXX) -I srcs -I include $(UNIT_OBJS) $(filter-out srcs/main.o, $(OBJS)) -o $(UNITTEST)
 
-.PHONE: unit
+.PHONY: unit
 unit: $(UNITTEST)
 	./$(UNITTEST)
 
+.PHONY: bench
+bench: $(NAME)
+	./tests/bench.sh
 
+.PHONY: format
 format:
 	clang-format -style=google $(SRCS) $(INCLUDES) -i
 	cppcheck --enable=all --inconclusive --suppress=missingIncludeSystem srcs -I $(INCLUDES)
