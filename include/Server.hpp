@@ -7,7 +7,7 @@
 
 #include "webserv.hpp"
 
-#define BACKLOG 5
+#define BACKLOG -1
 #define BUFF_SIZE 1024
 
 class Connection;
