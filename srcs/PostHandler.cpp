@@ -6,6 +6,7 @@
 // This is throwable
 int upload_file(Connection& conn, const std::string& upload_store, std::string& filepath) {
   // Create directory
+  // TODO: Check if directory exists when starting the server
   if (mkdir(upload_store.c_str(), 0755) == -1) {
     if (errno != EEXIST) {
       Log::fatal("mkdir failed");
@@ -81,30 +82,4 @@ void PostHandler::handle(Connection& conn) throw() {
   } else {
     ErrorHandler::handle(conn, 405);
   }
-  /*
-  // Create file
-  std::ofstream ofs(conn.header.fullpath.c_str(), std::ios::binary);
-  if (!ofs.is_open()) {
-    Log::fatal("file open failed");
-    ErrorHandler::handle(conn, 500);
-    return;
-  }
-  ofs.write(
-      conn.body,
-      conn.content_length);  // does not throw ref:
-                             // https://en.cppreference.com/w/cpp/io/basic_ostream/write
-  if (ofs.bad()) {
-    Log::fatal("ofs.write failed");
-    ErrorHandler::handle(conn, 500);
-    return;
-  }
-  // Send response
-  *conn.client_socket << "HTTP/1.1 201 Created" << CRLF;
-  *conn.client_socket << "Location: " << conn.header.path << CRLF;
-  *conn.client_socket << "Content-Type: application/json" << CRLF;
-  *conn.client_socket << "Content-Length: 18" << CRLF;
-  *conn.client_socket << CRLF;
-  *conn.client_socket << "{\"success\":\"true\"}";
-  *conn.client_socket << CRLF;
-  */
 }
