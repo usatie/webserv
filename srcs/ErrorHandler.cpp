@@ -22,6 +22,8 @@ const char* status_line(int status_code) throw() {
       return "HTTP/1.1 404 Not Found";
     case 405:
       return "HTTP/1.1 405 Method Not Allowed";
+    case 413:
+      return "HTTP/1.1 413 Request Entity Too Large";
     case 500:
       return "HTTP/1.1 500 Internal Server Error";
     default:
@@ -157,6 +159,14 @@ void ErrorHandler::handle(Connection& conn, int status_code,
                           << sizeof(http_error_405_page) - 1 << CRLF;
       *conn.client_socket << CRLF;  // end of header
       *conn.client_socket << http_error_405_page;
+      break;
+    case 413:
+      *conn.client_socket << "HTTP/1.1 413 Request Entity Too Large" << CRLF;
+      *conn.client_socket << "Content-Type: text/html" << CRLF;
+      *conn.client_socket << "Content-Length: "
+                          << sizeof(http_error_413_page) - 1 << CRLF;
+      *conn.client_socket << CRLF;  // end of header
+      *conn.client_socket << http_error_413_page;
       break;
     case 500:
       *conn.client_socket << "HTTP/1.1 500 Internal Server Error" << CRLF;
