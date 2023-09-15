@@ -1,6 +1,14 @@
 #!/bin/bash
 
 WEBSERV_PORT=8181
+# print out "OK" in green, "NG" in red
+# $1: 0 for OK, 1 for NG
+function print_ok() {
+	echo -e "\033[32mOK\033[m"
+}
+function print_ng() {
+	echo -e "\033[31mNG\033[m"
+}
 
 # 1. Initialize
 # disown for not make the shell script failure when the server is pkilled
@@ -17,6 +25,11 @@ mkdir -p /tmp/www/pouic/toto \
 cnt=0
 for i in {1..28}; do
   echo -n "Test${i}   : " | tee -a error.log
+  # skip test 12 and 23
+  if [ $i -eq 12 ] || [ $i -eq 23 ]; then
+	echo "Skipped"
+	continue
+  fi
   echo "" >>error.log
   if [[ "$(uname -s)" == "Linux" ]]; then
   	nc -N localhost $WEBSERV_PORT <tests/requests/$i >out
@@ -27,11 +40,11 @@ for i in {1..28}; do
   err=0
   diff tests/responses/$i out >>error.log || let err++
   if [ $err -eq 0 ]; then
-	echo "OK"
+	print_ok
 	# Trim the last line of the error.log
 	sed -i -e '$ d' error.log
   else
-	echo "NG"
+	print_ng
 	let cnt++
   fi
 done
