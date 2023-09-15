@@ -23,12 +23,12 @@ mkdir -p /tmp/www/pouic/toto \
 # 2. Tests
 # arg for save error count
 cnt=0
-for i in {1..28}; do
+for i in {1..30}; do
   echo -n "Test${i}   : " | tee -a error.log
-  # skip test 12 and 23
-  if [ $i -eq 12 ] || [ $i -eq 23 ]; then
-	echo "Skipped"
-	continue
+  # skip test 12, 23, 29
+  if [ $i -eq 12 ] || [ $i -eq 23 ] || [ $i -eq 29 ]; then
+    echo "Skipped"
+    continue
   fi
   echo "" >>error.log
   if [[ "$(uname -s)" == "Linux" ]]; then

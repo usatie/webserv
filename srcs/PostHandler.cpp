@@ -3,38 +3,47 @@
 #include "Connection.hpp"
 #include "ErrorHandler.hpp"
 
+#define SUCCESS 0
+#define ERR_405 1
+#define ERR_413 2
+#define ERR_500 3
+
 // This is throwable
-int upload_file(Connection& conn, const std::string& upload_store, std::string& filepath) {
+template <typename ConfigItem>
+static int internal_handle(Connection& conn, ConfigItem* cf) throw() {
+  // `upload_store` directive
+  if (!cf->upload_store.configured)
+    return ERR_405;
+  // `client_max_body_size` directive
+  if (cf->client_max_body_size < conn.content_length)
+    return ERR_413;
   // Create directory
   // TODO: Check if directory exists when starting the server
-  if (mkdir(upload_store.c_str(), 0755) == -1) {
+  if (mkdir(cf->upload_store.c_str(), 0755) == -1) {
     if (errno != EEXIST) {
       Log::fatal("mkdir failed");
-      ErrorHandler::handle(conn, 500);
-      return -1;
+      return ERR_500;
     }
   }
-  std::string filename;
+  std::string filename, filepath;
   try {
     // Generate a unique filename in the upload directory
     do {
       // filename = "{timestamp}-{random number}"
       filename = std::to_string(time(NULL)) + "-" + std::to_string(rand());
-      filepath = upload_store + "/" + filename;
+      filepath = cf->upload_store + "/" + filename;
     } while (access(filename.c_str(), F_OK) != -1);
   } catch (std::exception& e) {
     Log::fatal("std::to_string failed");
     filepath.clear();
-    ErrorHandler::handle(conn, 500);
-    return -1;
+    return ERR_500;
   }
 
   // Create file
   std::ofstream ofs(filepath.c_str(), std::ios::binary);
   if (!ofs.is_open()) {
     Log::fatal("file open failed");
-    ErrorHandler::handle(conn, 500);
-    return -1;
+    return ERR_500;
   }
   ofs.write(
       conn.body,
@@ -46,11 +55,9 @@ int upload_file(Connection& conn, const std::string& upload_store, std::string& 
     ofs.close();
     if (std::remove(filepath.c_str()) == -1) {
       Log::fatal("remove failed");
-      ErrorHandler::handle(conn, 500);
-      return -1;
+      return ERR_500;
     }
-    ErrorHandler::handle(conn, 500);
-    return -1;
+    return ERR_500;
   }
   ofs.close();
   // Send response
@@ -66,20 +73,28 @@ int upload_file(Connection& conn, const std::string& upload_store, std::string& 
   *conn.client_socket << CRLF;
   *conn.client_socket << "{\"success\":\"true\"}";
   *conn.client_socket << CRLF;
-  return 0;
+  return SUCCESS;
 }
 
 void PostHandler::handle(Connection& conn) throw() {
-  // `upload_store` directive
-  std::string filepath;
+  int err;
   if (conn.loc_cf) {
-    if (conn.loc_cf->upload_store.configured)
-      upload_file(conn, conn.loc_cf->upload_store, filepath);
-    else
-      ErrorHandler::handle(conn, 405);
-  } else if (conn.srv_cf->upload_store.configured) {
-    upload_file(conn, conn.srv_cf->upload_store, filepath);
+    err = internal_handle(conn, conn.loc_cf);
   } else {
-    ErrorHandler::handle(conn, 405);
+    err = internal_handle(conn, conn.srv_cf);
+  }
+  switch (err) {
+    case SUCCESS:
+      return;
+    case ERR_405:
+      ErrorHandler::handle(conn, 405);
+      break;
+    case ERR_413:
+      ErrorHandler::handle(conn, 413);
+      break;
+    case ERR_500:
+    default:
+      ErrorHandler::handle(conn, 500);
+      break;
   }
 }
