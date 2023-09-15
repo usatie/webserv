@@ -16,6 +16,7 @@ Command *limit_except(Token **rest, Token *tok, int context);
 Command *upload_store(Token **rest, Token *tok, int context);
 Command *client_max_body_size(Token **rest, Token *tok, int context);
 Command *cgi_extension(Token **rest, Token *tok, int context);
+Command *cgi_handler(Token **rest, Token *tok, int context);
 Command *redirect_return(Token **rest, Token *tok, int context);
 Command *location(Token **rest, Token *tok, int context);
 Command *alias(Token **rest, Token *tok, int context);
@@ -109,6 +110,7 @@ Command *block(Token **rest, Token *tok, int context) {
 //         | upload_store
 //         | client_max_body_size
 //         | cgi_extension
+//         | cgi_handler
 //         | return
 //         | location
 //         | alias
@@ -141,6 +143,8 @@ Command *command(Token **rest, Token *tok, int context) {
     cmd = client_max_body_size(rest, tok, context);
   } else if (is_equal(tok, "cgi_extension")) {
     cmd = cgi_extension(rest, tok, context);
+  } else if (is_equal(tok, "cgi_handler")) {
+    cmd = cgi_handler(rest, tok, context);
   } else if (is_equal(tok, "return")) {
     cmd = redirect_return(rest, tok, context);
   } else if (is_equal(tok, "location")) {
@@ -396,6 +400,30 @@ Command *cgi_extension(Token **rest, Token *tok, int context) {
   }
   *rest = skip(tok, ";");
   Log::debug("cgi_extension end");
+  return cmd;
+}
+
+// Syntax:	cgi_handler extension ... interpreter_path;
+// Default:	none
+// Context:	server, location
+Command *cgi_handler(Token **rest, Token *tok, int context) {
+  Log::debug("cgi_handler");
+  Command *cmd = new Command(Command::CMD_CGI_HANDLER);
+  expect_context(context, WSV_HTTP_SRV_CONF | WSV_HTTP_LOC_CONF);
+  tok = skip(tok, "cgi_handler");
+  while (tok->type == Token::TK_STR) {
+    cmd->cgi_extensions.push_back(tok->str);
+    tok = tok->next;
+  }
+  if (cmd->cgi_extensions.size() < 2) {
+    throw std::runtime_error(
+        "invalid number of arguments in \"cgi_handler\" directive");
+  }
+  // The last one is interpreter_path
+  cmd->cgi_interpreter_path = cmd->cgi_extensions.back();
+  cmd->cgi_extensions.pop_back();
+  *rest = skip(tok, ";");
+  Log::debug("cgi_handler end");
   return cmd;
 }
 

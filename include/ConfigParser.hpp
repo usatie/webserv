@@ -63,6 +63,7 @@ struct Command {
     CMD_UPLOAD_STORE,
     CMD_CLIENT_MAX_BODY_SIZE,
     CMD_CGI_EXTENSION,
+    CMD_CGI_HANDLER,
     CMD_RETURN,
     CMD_LOCATION,
     CMD_ALIAS,
@@ -103,6 +104,9 @@ struct Command {
         break;
       case CMD_CGI_EXTENSION:
         name = "cgi_extension";
+        break;
+      case CMD_CGI_HANDLER:
+        name = "cgi_handler";
         break;
       case CMD_RETURN:
         name = "return";
@@ -172,8 +176,11 @@ struct Command {
   // UploadStore
   std::string upload_store;
 
-  // CGI Extension
+  // CGI Extension / CGI Handler
   std::vector<std::string> cgi_extensions;
+
+  // CGI Handler
+  std::string cgi_interpreter_path;
 
   // Location
   std::string location;

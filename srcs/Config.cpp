@@ -79,6 +79,9 @@ Config::Location::Location(Command* loc) : path(loc->location) {
                                 cmd->cgi_extensions.end());
         }
         break;
+      case Command::CMD_CGI_HANDLER:
+        cgi_handlers.push_back(CgiHandler(cmd->cgi_extensions, cmd->cgi_interpreter_path));
+        break;
       case Command::CMD_LOCATION:
         locations.push_back(Config::Location(cmd));
         break;
@@ -159,6 +162,9 @@ Config::Server::Server(Command* srv) {
                                 cmd->cgi_extensions.end());
         }
         break;
+      case Command::CMD_CGI_HANDLER:
+        cgi_handlers.push_back(CgiHandler(cmd->cgi_extensions, cmd->cgi_interpreter_path));
+        break;
       default:
         throw std::runtime_error("Invalid command type");
     }
@@ -185,6 +191,7 @@ Config::Server::Server(Command* srv) {
     if (!loc.client_max_body_size.configured)
       loc.client_max_body_size = client_max_body_size;
     if (!loc.cgi_extensions.configured) loc.cgi_extensions = cgi_extensions;
+    if (loc.cgi_handlers.empty()) loc.cgi_handlers = cgi_handlers;
     if (loc.error_pages.empty()) loc.error_pages = error_pages;
     // Return is always inherited if configured
     if (!returns.empty()) loc.returns = returns;
