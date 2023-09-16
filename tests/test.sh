@@ -10,6 +10,9 @@ function print_ng() {
 	echo -e "\033[31mNG\033[m"
 }
 
+# 0. Compile html/cgi-bin/
+make -C tests/html/cgi-bin
+
 # 1. Initialize
 # disown for not make the shell script failure when the server is pkilled
 ./webserv tests/test.conf & disown
