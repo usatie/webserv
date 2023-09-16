@@ -34,6 +34,8 @@ int resolve_path(const Config::Server* srv_cf, const Config::Location* loc_cf,
     Log::cdebug() << "Server Root" << std::endl;
     path = srv_cf->root + req_path;
   } else if (loc_cf->alias.configured) {
+    // TODO: Question: What if parent location has alias?
+    // TODO: What if location is nested?
     // Location Alias : Replace prefix with alias
     Log::cdebug() << "Location Alias: " << loc_cf->path << std::endl;
     path = loc_cf->alias + req_path.substr(loc_cf->path.size());

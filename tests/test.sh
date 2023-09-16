@@ -10,6 +10,9 @@ function print_ng() {
 	echo -e "\033[31mNG\033[m"
 }
 
+# 0. Compile html/cgi-bin/
+make -C tests/html/cgi-bin
+
 # 1. Initialize
 # disown for not make the shell script failure when the server is pkilled
 ./webserv tests/test.conf & disown
@@ -23,7 +26,7 @@ mkdir -p /tmp/www/pouic/toto \
 # 2. Tests
 # arg for save error count
 cnt=0
-for i in {1..30}; do
+for i in {1..31}; do
   echo -n "Test${i}   : " | tee -a error.log
   # skip test 12, 23, 29
   if [ $i -eq 12 ] || [ $i -eq 23 ] || [ $i -eq 29 ]; then

@@ -1,0 +1,8 @@
+HTTP/1.1 200 OK
+Content-type: text/html
+Content-Length: 190
+
+<html><head><title>CGI</title></head><body>
+<h1>CGI</h1>
+<p>CGI is a standard for interfacing external applications with information servers, such as HTTP or web servers.</p>
+</body></html>

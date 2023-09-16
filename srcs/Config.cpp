@@ -21,10 +21,16 @@ Config::Location::Location(Command* loc) : path(loc->location) {
   for (Command* cmd = loc->block; cmd; cmd = cmd->next) {
     switch (cmd->type) {
       case Command::CMD_ROOT:
-        if (root.configured) {
+        if (root.configured || alias.configured) {
           throw std::runtime_error("Duplicate root");
         }
         root = Root(cmd->root);
+        break;
+      case Command::CMD_ALIAS:
+        if (alias.configured || root.configured) {
+          throw std::runtime_error("Duplicate alias");
+        }
+        alias = Alias(cmd->alias);
         break;
       case Command::CMD_INDEX:
         if (!index.configured) {
@@ -58,12 +64,6 @@ Config::Location::Location(Command* loc) : path(loc->location) {
       case Command::CMD_RETURN:
         returns.push_back(RedirectReturn(cmd->return_code, cmd->return_url));
         break;
-      case Command::CMD_ALIAS:
-        if (alias.configured) {
-          throw std::runtime_error("Duplicate alias");
-        }
-        alias = Alias(cmd->alias);
-        break;
       case Command::CMD_LIMIT_EXCEPT:
         if (limit_except.configured) {
           throw std::runtime_error("Duplicate limit_except");
@@ -71,6 +71,9 @@ Config::Location::Location(Command* loc) : path(loc->location) {
         limit_except = LimitExcept(cmd->methods);
         break;
       case Command::CMD_CGI_EXTENSION:
+        if (cgi_handlers.size() > 0) {
+          throw std::runtime_error("cgi_handler is already configured");
+        }
         if (!cgi_extensions.configured) {
           cgi_extensions = CgiExtensions(cmd->cgi_extensions);
         } else {
@@ -78,6 +81,12 @@ Config::Location::Location(Command* loc) : path(loc->location) {
                                 cmd->cgi_extensions.begin(),
                                 cmd->cgi_extensions.end());
         }
+        break;
+      case Command::CMD_CGI_HANDLER:
+        if (cgi_extensions.configured) {
+          throw std::runtime_error("cgi_extensions is already configured");
+        }
+        cgi_handlers.push_back(CgiHandler(cmd->cgi_extensions, cmd->cgi_interpreter_path));
         break;
       case Command::CMD_LOCATION:
         locations.push_back(Config::Location(cmd));
@@ -151,6 +160,9 @@ Config::Server::Server(Command* srv) {
         returns.push_back(new_return);
       } break;
       case Command::CMD_CGI_EXTENSION:
+        if (cgi_handlers.size() > 0) {
+          throw std::runtime_error("cgi_handler is already configured");
+        }
         if (!cgi_extensions.configured) {
           cgi_extensions = CgiExtensions(cmd->cgi_extensions);
         } else {
@@ -158,6 +170,12 @@ Config::Server::Server(Command* srv) {
                                 cmd->cgi_extensions.begin(),
                                 cmd->cgi_extensions.end());
         }
+        break;
+      case Command::CMD_CGI_HANDLER:
+        if (cgi_extensions.configured) {
+          throw std::runtime_error("cgi_extensions is already configured");
+        }
+        cgi_handlers.push_back(CgiHandler(cmd->cgi_extensions, cmd->cgi_interpreter_path));
         break;
       default:
         throw std::runtime_error("Invalid command type");
@@ -184,7 +202,15 @@ Config::Server::Server(Command* srv) {
     if (!loc.upload_store.configured) loc.upload_store = upload_store;
     if (!loc.client_max_body_size.configured)
       loc.client_max_body_size = client_max_body_size;
-    if (!loc.cgi_extensions.configured) loc.cgi_extensions = cgi_extensions;
+    // If both cgi_extensions and cgi_handlers are not configured,
+    // inherit cgi_extensions or cgi_handlers from server
+    if (!loc.cgi_extensions.configured && loc.cgi_handlers.empty()) {
+      if (cgi_extensions.configured) {
+        loc.cgi_extensions = cgi_extensions;
+      } else if (!cgi_handlers.empty()) {
+        loc.cgi_handlers = cgi_handlers;
+      }
+    }
     if (loc.error_pages.empty()) loc.error_pages = error_pages;
     // Return is always inherited if configured
     if (!returns.empty()) loc.returns = returns;
@@ -278,6 +304,12 @@ std::ostream& operator<<(std::ostream& os, const Config::RedirectReturn& ret) {
   return os;
 }
 
+std::ostream& operator<<(std::ostream& os,
+                         const Config::CgiHandler& cgi_handler) {
+  os << "{" << cgi_handler.extensions << " " << cgi_handler.interpreter_path << "}";
+  return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const Config::Location& l) {
   static std::string spacing = "      ";
   os << spacing << "location: " << l.path << std::endl;
@@ -296,6 +328,8 @@ std::ostream& operator<<(std::ostream& os, const Config::Location& l) {
     os << spacing << "error_page: " << l.error_pages << std::endl;
   if (!l.cgi_extensions.empty())
     os << spacing << "cgi_extension: " << l.cgi_extensions << std::endl;
+  if (!l.cgi_handlers.empty())
+    os << spacing << "cgi_handlers: " << l.cgi_handlers << std::endl;
   if (!l.returns.empty()) os << spacing << "return: " << l.returns << std::endl;
   if (l.upload_store.configured)
     os << spacing << "upload_store: " << l.upload_store << std::endl;
@@ -322,6 +356,8 @@ std::ostream& operator<<(std::ostream& os, const Config::Server& s) {
     os << "      upload_store: " << s.upload_store << std::endl;
   if (s.cgi_extensions.size() > 0)
     os << "        cgi_extension: " << s.cgi_extensions << std::endl;
+  if (s.cgi_handlers.size() > 0)
+    os << "        cgi_handler: " << s.cgi_handlers << std::endl;
   if (s.returns.size() > 0) os << "      return: " << s.returns << std::endl;
   for (unsigned int j = 0; j < s.locations.size(); ++j) {
     os << s.locations[j];

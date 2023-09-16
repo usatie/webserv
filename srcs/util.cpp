@@ -6,6 +6,16 @@ bool util::string::ends_with(const std::string& str,
          str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
+// Returns extension with dot
+// This is kind of a constructor, so it is throwable
+std::string util::path::get_extension(const std::string& filepath) {
+  size_t pos = filepath.rfind('.');
+  if (pos == std::string::npos) {
+    return "";
+  }
+  return filepath.substr(pos);
+}
+
 // https://tools.ietf.org/html/rfc7230#section-3.2.6
 /*
  token          = 1*tchar

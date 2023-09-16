@@ -111,6 +111,15 @@ class Config {
         : std::vector<std::string>(extensions), configured(true) {}
     CgiExtensions() : std::vector<std::string>(), configured(false) {}
   };
+  class CgiHandler {
+    public:
+      std::vector<std::string> extensions;
+      std::string interpreter_path;
+      bool configured;
+      CgiHandler(const std::vector<std::string> &extensions, const std::string &interpreter_path)
+        : extensions(extensions), interpreter_path(interpreter_path), configured(true) {}
+      CgiHandler() : extensions(), interpreter_path(), configured(false) {}
+  };
   // Composite Configuration Items
   class Location {
    public:
@@ -124,7 +133,8 @@ class Config {
     std::vector<RedirectReturn> returns;
     Alias alias;                   // Location only
     LimitExcept limit_except;      // Locatoin only
-    CgiExtensions cgi_extensions;  // Location only
+    CgiExtensions cgi_extensions;
+    std::vector<CgiHandler> cgi_handlers;
     std::vector<Location> locations;
     Location(Command *cmd);
   };
@@ -140,6 +150,7 @@ class Config {
     UploadStore upload_store;
     ClientMaxBodySize client_max_body_size;
     CgiExtensions cgi_extensions;
+    std::vector<CgiHandler> cgi_handlers;
     std::vector<RedirectReturn> returns;
 
     Server();
