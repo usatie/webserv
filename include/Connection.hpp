@@ -51,6 +51,8 @@ class Connection {
   const Config &cf;
   const Config::Server *srv_cf;
   const Config::Location *loc_cf;
+  const Config::CgiHandler *cgi_handler_cf;
+  const Config::CgiExtensions *cgi_ext_cf;
 
  public:
   // Constructor/Destructor

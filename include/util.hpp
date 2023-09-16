@@ -9,6 +9,10 @@ namespace util {
 namespace string {
 bool ends_with(const std::string& str, const std::string& suffix);
 }
+namespace path {
+std::string get_extension(const std::string& str);
+}
+
 namespace vector {
 template <typename T>
 bool contains(const std::vector<T>& vec, const T& str) {

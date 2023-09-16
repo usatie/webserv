@@ -13,7 +13,7 @@ class CgiHandler {
 
  public:
   // Member fuctions
-  static void handle(Connection& conn) throw();
+  static int handle(Connection& conn) throw();
 };
 
 #endif
