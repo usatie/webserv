@@ -376,8 +376,9 @@ const Config::Location *select_loc_cf(const Config::Server *srv_cf,
   return loc;
 }
 
+// throwable
 template <typename ConfigItem>
-const Config::CgiHandler *select_cgi_handler_cf(const ConfigItem *cf, const std::string &path) throw() {
+const Config::CgiHandler *select_cgi_handler_cf(const ConfigItem *cf, const std::string &path) {
   if (cf->cgi_handlers.empty()) {
     return NULL;
   }
@@ -393,8 +394,9 @@ const Config::CgiHandler *select_cgi_handler_cf(const ConfigItem *cf, const std:
   return NULL;
 }
 
+// throwable
 template <typename ConfigItem>
-const Config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf, const std::string &path) throw() {
+const Config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf, const std::string &path) {
   if (!cf->cgi_extensions.configured) {
     return NULL;
   }
@@ -409,12 +411,19 @@ const Config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf, const std::
 int Connection::handle() throw() {
   srv_cf = select_srv_cf(cf, *this);
   loc_cf = select_loc_cf(srv_cf, header.path);
-  cgi_handler_cf = loc_cf
-    ? select_cgi_handler_cf(loc_cf, header.path)
-    : select_cgi_handler_cf(srv_cf, header.path);
-  cgi_ext_cf = loc_cf
-    ? select_cgi_ext_cf(loc_cf, header.path)
-    : select_cgi_ext_cf(srv_cf, header.path);
+  try {
+    cgi_handler_cf = loc_cf
+      ? select_cgi_handler_cf(loc_cf, header.path)
+      : select_cgi_handler_cf(srv_cf, header.path);
+    cgi_ext_cf = loc_cf
+      ? select_cgi_ext_cf(loc_cf, header.path)
+      : select_cgi_ext_cf(srv_cf, header.path);
+  } catch (const std::exception &e) {
+    Log::cerror() << e.what() << std::endl;
+    ErrorHandler::handle(*this, 500);
+    status = RESPONSE;
+    return 1;
+  }
   
 
   // `return` directive
