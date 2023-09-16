@@ -383,7 +383,7 @@ const Config::CgiHandler *select_cgi_handler_cf(const ConfigItem *cf, const std:
   }
   // Find CGI handler for this request
   // TODO: check `index` directive
-  std::string ext = util::path::get_extension(path);
+  std::string ext = util::path::get_extension(path); // throwable
   for (unsigned int i = 0; i < cf->cgi_handlers.size(); i++) {
     const Config::CgiHandler &cgi = cf->cgi_handlers[i];
     if (util::vector::contains(cgi.extensions, ext)) {
@@ -399,7 +399,8 @@ const Config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf, const std::
     return NULL;
   }
   // Find CGI handler for this request
-  if (util::vector::contains(cf->cgi_extensions, path)) {
+  std::string ext = util::path::get_extension(path); // throwable
+  if (util::vector::contains(cf->cgi_extensions, ext)) {
     return &cf->cgi_extensions;
   }
   return NULL;
