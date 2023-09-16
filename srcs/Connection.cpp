@@ -424,6 +424,9 @@ int Connection::handle() throw() {
   }
 
   // if CGI
+  // TODO: Check if it is a CGI request
+  // 1. Check if cgi_extension matches
+  // 2. cgi_handler
   if (header.path.find("/cgi/") != std::string::npos) {
     // TODO: write(body, body_size) in handle()
     CgiHandler::handle(*this);
