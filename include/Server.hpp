@@ -2,7 +2,6 @@
 #define SERVER_HPP
 
 #include <algorithm>  // std::find
-#include <memory>     // std::shared_ptr
 #include <vector>     // std::vector
 
 #include "webserv.hpp"
@@ -16,9 +15,9 @@ class Config;
 
 class Server {
  private:
-  typedef std::vector<std::shared_ptr<Connection> > ConnVector;
+  typedef std::vector<util::shared_ptr<Connection> > ConnVector;
   typedef ConnVector::iterator ConnIterator;
-  typedef std::vector<std::shared_ptr<Socket> > SockVector;
+  typedef std::vector<util::shared_ptr<Socket> > SockVector;
   typedef SockVector::iterator SockIterator;
   fd_set readfds, writefds;
   fd_set ready_rfds, ready_wfds;
@@ -36,22 +35,22 @@ class Server {
   ~Server() throw() {}
 
   // Member functions
-  void remove_connection(std::shared_ptr<Connection> connection) throw();
+  void remove_connection(util::shared_ptr<Connection> connection) throw();
 
   void remove_all_connections() throw();
 
-  void accept(std::shared_ptr<Socket> sock) throw();
+  void accept(util::shared_ptr<Socket> sock) throw();
 
-  void update_fdset(std::shared_ptr<Connection> conn) throw();
+  void update_fdset(util::shared_ptr<Connection> conn) throw();
 
   int wait() throw();
 
-  bool canResume(std::shared_ptr<Connection> conn) const throw();
+  bool canResume(util::shared_ptr<Connection> conn) const throw();
 
-  std::shared_ptr<Socket> get_ready_socket() throw();
+  util::shared_ptr<Socket> get_ready_socket() throw();
 
   // Logically it is not const because it returns a non-const pointer.
-  std::shared_ptr<Connection> get_ready_connection() throw();
+  util::shared_ptr<Connection> get_ready_connection() throw();
 
   void process() throw();
 };

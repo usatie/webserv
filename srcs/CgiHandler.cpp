@@ -69,7 +69,7 @@ int CgiHandler::handle(Connection& conn) throw() {
     close(cgi_socket[1]);
     try {
       conn.cgi_socket =
-          std::shared_ptr<SocketBuf>(new SocketBuf(cgi_socket[0]));
+          util::shared_ptr<SocketBuf>(new SocketBuf(cgi_socket[0]));
     } catch (std::exception& e) {
       Log::fatal("new SocketBuf(cgi_socket[0]) failed");
       close(cgi_socket[0]);

@@ -71,7 +71,7 @@ Server::Server(const Config& cf)
           // Don't handle exception to close the socket, because if the
           // construct of sock fails, Server can't be constructed and thus the
           // program terminates.
-          std::shared_ptr<Socket> sock(new Socket(sfd));
+          util::shared_ptr<Socket> sock(new Socket(sfd));
           if (sock->reuseaddr() < 0) {
             throw std::runtime_error("sock.set_reuseaddr() failed");
           }
@@ -124,7 +124,7 @@ Server::Server(const Config& cf)
   }
 }
 
-void Server::remove_connection(std::shared_ptr<Connection> connection) throw() {
+void Server::remove_connection(util::shared_ptr<Connection> connection) throw() {
   connections.erase(
       std::find(connections.begin(), connections.end(), connection));
   FD_CLR(connection->get_fd(), &readfds);
@@ -154,9 +154,9 @@ void Server::remove_all_connections() throw() {
     maxfd = std::max(maxfd, (*it)->get_fd());
   }
 }
-void Server::accept(std::shared_ptr<Socket> sock) throw() {
+void Server::accept(util::shared_ptr<Socket> sock) throw() {
   try {
-    std::shared_ptr<Connection> conn(
+    util::shared_ptr<Connection> conn(
         new Connection(sock->accept(), cf));  // throwable
     connections.push_back(conn);              // throwable
     FD_SET(conn->get_fd(), &readfds);
@@ -165,7 +165,7 @@ void Server::accept(std::shared_ptr<Socket> sock) throw() {
     Log::cerror() << "Server::accept() failed: " << e.what() << std::endl;
   }
 }
-void Server::update_fdset(std::shared_ptr<Connection> conn) throw() {
+void Server::update_fdset(util::shared_ptr<Connection> conn) throw() {
   FD_CLR(conn->get_fd(), &readfds);
   FD_CLR(conn->get_fd(), &writefds);
   if (conn->get_cgifd() != -1) {
@@ -206,7 +206,7 @@ int Server::wait() throw() {
   }
   return 0;
 }
-bool Server::canResume(std::shared_ptr<Connection> conn) const throw() {
+bool Server::canResume(util::shared_ptr<Connection> conn) const throw() {
   switch (conn->getIOStatus()) {
     case Connection::CLIENT_RECV:
       return FD_ISSET(conn->get_fd(), &ready_rfds);
@@ -220,33 +220,33 @@ bool Server::canResume(std::shared_ptr<Connection> conn) const throw() {
       return false;
   }
 }
-std::shared_ptr<Socket> Server::get_ready_socket() throw() {
+util::shared_ptr<Socket> Server::get_ready_socket() throw() {
   for (SockIterator it = listen_socks.begin(); it != listen_socks.end(); ++it) {
     if (FD_ISSET((*it)->get_fd(), &ready_rfds)) {
       return *it;
     }
   }
-  return std::shared_ptr<Socket>(NULL);
+  return util::shared_ptr<Socket>(NULL);
 }
 // Logically it is not const because it returns a non-const pointer.
-std::shared_ptr<Connection> Server::get_ready_connection() throw() {
+util::shared_ptr<Connection> Server::get_ready_connection() throw() {
   // TODO: equally distribute the processing time to each connection
   for (ConnIterator it = connections.begin(); it != connections.end(); ++it) {
     if (canResume(*it)) {
       return *it;
     }
   }
-  return std::shared_ptr<Connection>(NULL);
+  return util::shared_ptr<Connection>(NULL);
 }
 void Server::process() throw() {
   if (wait() < 0) {
     return;
   }
-  std::shared_ptr<Connection> conn;
-  std::shared_ptr<Socket> sock;
+  util::shared_ptr<Connection> conn;
+  util::shared_ptr<Socket> sock;
   if ((sock = get_ready_socket()) != NULL) {
     accept(sock);
-  } else if ((conn = get_ready_connection())) {
+  } else if ((conn = get_ready_connection()) != NULL) {
     if (conn->resume() < 0) {
       Log::cerror() << "connection aborted" << std::endl;
       remove_connection(conn);

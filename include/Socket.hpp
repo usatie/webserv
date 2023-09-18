@@ -138,7 +138,7 @@ class Socket {
   // This is a kind of constructor, so it is THROWABLE
   //  std::runtime_error if accept() failed
   //  std::bad_alloc if new Socket() failed
-  std::shared_ptr<Socket> accept() {
+  util::shared_ptr<Socket> accept() {
     struct sockaddr_storage caddr;
     socklen_t caddrlen = sizeof(caddr);
     int connfd = ::accept(fd, (struct sockaddr*)&caddr, &caddrlen);
@@ -154,9 +154,9 @@ class Socket {
       throw std::runtime_error("accept() failed");
     }
     // If allocation failed, must close connfd
-    std::shared_ptr<Socket> connsock;
+    util::shared_ptr<Socket> connsock;
     try {
-      connsock = std::shared_ptr<Socket>(
+      connsock = util::shared_ptr<Socket>(
           new Socket(connfd, (struct sockaddr*)&saddr, (struct sockaddr*)&caddr,
                      saddrlen, caddrlen));
       //connsock->set_nolinger(0);

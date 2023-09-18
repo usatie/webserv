@@ -23,7 +23,7 @@ class SocketBuf {
   // Member data
  public:
  private:
-  std::shared_ptr<Socket> socket;
+  util::shared_ptr<Socket> socket;
   std::stringstream rss, wss;
 
   SocketBuf() throw();  // Do not implement this
@@ -34,7 +34,7 @@ class SocketBuf {
  public:
   // Constructor/Destructor
   // Constructor for TCP socket
-  explicit SocketBuf(std::shared_ptr<Socket> socket)
+  explicit SocketBuf(util::shared_ptr<Socket> socket)
       : socket(socket), rss(), wss() {
     if (socket->set_nonblock() < 0) {
       throw std::runtime_error("socket->set_nonblock() failed");
@@ -42,7 +42,7 @@ class SocketBuf {
   }
   // Constructor for unix domain socket
   explicit SocketBuf(int fd)
-      : socket(std::shared_ptr<Socket>(new Socket(fd))), rss(), wss() {
+      : socket(util::shared_ptr<Socket>(new Socket(fd))), rss(), wss() {
     if (socket->set_nonblock() < 0) {
       throw std::runtime_error("socket->set_nonblock() failed");
     }
@@ -97,8 +97,8 @@ class SocketBuf {
 
   // Operators
   // member of pointer operators
-  std::shared_ptr<Socket> operator->() throw() { return socket; }
-  const std::shared_ptr<Socket> operator->() const throw() { return socket; }
+  util::shared_ptr<Socket> operator->() throw() { return socket; }
+  const util::shared_ptr<Socket> operator->() const throw() { return socket; }
   // indirection operators
   Socket& operator*() throw() { return *socket; }
   const Socket& operator*() const throw() { return *socket; }
