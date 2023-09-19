@@ -59,7 +59,7 @@ re: fclean all
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 .PHONY: debug
-debug: CXXFLAGS = -std=c++98 -Wall -Wextra -pedantic -MMD -MP -fsanitize=address -fsanitize=undefined -D DEBUG -I include -I srcs
+debug: CXXFLAGS += -fsanitize=address -fsanitize=undefined -D DEBUG -g
 debug: re
 d: debug
 
