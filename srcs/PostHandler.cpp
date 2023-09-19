@@ -1,4 +1,5 @@
 #include "PostHandler.hpp"
+#include <ctime>
 
 #include "Connection.hpp"
 #include "ErrorHandler.hpp"
@@ -27,10 +28,15 @@ static int internal_handle(Connection& conn, ConfigItem* cf) throw() {
   }
   std::string filename, filepath;
   try {
+  	std::stringstream ss;
     // Generate a unique filename in the upload directory
     do {
+	  ss.str("");
+      ss.clear();
+	  std::time_t ts = std::time(NULL);
+	  ss << std::ctime(&ts) << "-" << rand();
       // filename = "{timestamp}-{random number}"
-      filename = std::to_string(time(NULL)) + "-" + std::to_string(rand());
+      filename = ss.str();
       filepath = cf->upload_store + "/" + filename;
     } while (access(filename.c_str(), F_OK) != -1);
   } catch (std::exception& e) {
