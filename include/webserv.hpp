@@ -8,7 +8,7 @@
 #include <stdlib.h>  // exit for now, but should be removed before submission
 
 #include <iostream>
-#include <memory>  // std::shared_ptr for now, but should be removed before submission
+#include <memory>  // util::shared_ptr for now, but should be removed before submission
 
 #include "Log.hpp"
 #include "util.hpp"

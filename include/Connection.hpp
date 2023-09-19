@@ -40,8 +40,8 @@ class Connection {
   } IOStatus;
 
   // Member data
-  std::shared_ptr<SocketBuf> client_socket;
-  std::shared_ptr<SocketBuf> cgi_socket;
+  util::shared_ptr<SocketBuf> client_socket;
+  util::shared_ptr<SocketBuf> cgi_socket;
   Header header;
   Status status;
   char *body;
@@ -57,8 +57,8 @@ class Connection {
  public:
   // Constructor/Destructor
   Connection() throw();  // Do not implement this
-  Connection(std::shared_ptr<Socket> sock, const Config &cf)
-      : client_socket(std::shared_ptr<SocketBuf>(new SocketBuf(sock))),
+  Connection(util::shared_ptr<Socket> sock, const Config &cf)
+      : client_socket(util::shared_ptr<SocketBuf>(new SocketBuf(sock))),
         cgi_socket(NULL),
         header(),
         status(REQ_START_LINE),
