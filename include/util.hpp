@@ -72,13 +72,13 @@ namespace util {
       bool operator==(const shared_ptr<T> other) const {
         return ptr == other.ptr;
       }
-      bool operator==(nullptr_t other) const {
+      bool operator==(T* other) const {
         return ptr == other;
       }
       bool operator!=(const shared_ptr<T> other) const {
         return ptr != other.ptr;
       }
-      bool operator!=(nullptr_t other) const {
+      bool operator!=(T* other) const {
         return ptr != other;
       }
   };
