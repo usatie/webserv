@@ -32,7 +32,7 @@ class Server {
   // Constructor/Destructor
   Server() throw();  // Do not implement this
   Server(const Config& cf);
-  ~Server() throw() {}
+  ~Server() throw();
 
   // Member functions
   void remove_connection(util::shared_ptr<Connection> connection) throw();

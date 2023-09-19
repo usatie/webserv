@@ -4,54 +4,49 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-#include "Log.hpp"
 
 namespace util {
-  template <typename T>
+  template <typename U>
+  class Deleter {
+    public:
+      void operator()(U* ptr) {
+        delete ptr;
+      }
+  };
+
+  template <typename T, class D=Deleter<T> >
   class shared_ptr {
     private:
       T* ptr;
       int* ref_count;
-      void (*deleter)( void* );
+      D d;
     public:
       ~shared_ptr() {
-        Log::debug("shared_ptr: destroctor");
         if (ref_count != NULL) {
           (*ref_count)--;
-          Log::cdebug() << ptr << " " << *ref_count << std::endl;
           if (*ref_count == 0) {
-            deleter(ptr);
+            d(ptr);
             delete ref_count;
           }
-        } else {
-          Log::debug("shared_ptr: ref_count is NULL");
         }
       }
-      shared_ptr(): ptr(), ref_count(NULL), deleter(operator delete) {
-        Log::debug("shared_ptr: default constructor");
-      }
-      shared_ptr(T* ptr): ptr(ptr), ref_count(new int), deleter(operator delete) {
-        Log::debug("shared_ptr: constructor");
+      shared_ptr(): ptr(), ref_count(NULL), d(Deleter<T>()) {}
+      shared_ptr(T* ptr): ptr(ptr), ref_count(new int), d(Deleter<T>()) {
         *ref_count = 1;
-        Log::cdebug() << ptr << " " << *ref_count << std::endl;
       }
-      shared_ptr(const shared_ptr<T>& other): ptr(other.ptr), ref_count(other.ref_count), deleter(other.deleter) {
-        Log::debug("shared_ptr: copy constructor");
+      shared_ptr(const shared_ptr<T>& other): ptr(other.ptr), ref_count(other.ref_count), d(other.d) {
         if (ref_count != NULL) {
           (*ref_count)++;
         }
-        Log::cdebug() << ptr << " " << *ref_count << std::endl;
       }
       shared_ptr<T>& operator=(const shared_ptr<T>& other) {
-        Log::debug("shared_ptr: copy assignment");
         if (this == &other) {
           return *this;
         }
         if (ref_count != NULL) {
           (*ref_count)--;
           if (*ref_count == 0) {
-            Log::cdebug() << ptr << " " << *ref_count << std::endl;
-            deleter(ptr);
+            d(ptr);
             delete ref_count;
           }
         }
@@ -60,7 +55,6 @@ namespace util {
         if (ref_count != NULL) {
           (*ref_count)++;
         }
-        Log::cdebug() << ptr << " " << *ref_count << std::endl;
         return *this;
       }
       T* operator->() const {
