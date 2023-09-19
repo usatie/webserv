@@ -2,6 +2,7 @@
 
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <cerrno>
 
 #include <cstring>  // memset, strerror
 
@@ -21,10 +22,12 @@ Server::Server(const Config& cf)
     for (unsigned int j = 0; j < server.listens.size(); ++j) {
       Log::cdebug() << "j: " << j << std::endl;
       const Config::Listen& listen = server.listens[j];
-      int port = listen.port;
       const char* host =
           (listen.address == "*") ? NULL : listen.address.c_str();
-      std::string port_str = std::to_string(port);
+      int port = listen.port;
+      std::stringstream ss;
+      ss << port;
+      std::string port_str = ss.str();
       const char* service = port_str.c_str();
       int type = SOCK_STREAM;
       {

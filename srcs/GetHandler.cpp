@@ -3,6 +3,7 @@
 #include <dirent.h>  // opendir
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <cerrno>
 
 #include <cstring>  // strerror
 

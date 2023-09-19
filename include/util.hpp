@@ -12,6 +12,7 @@ namespace util {
     private:
       T* ptr;
       int* ref_count;
+      void (*deleter)( void* );
     public:
       ~shared_ptr() {
         Log::debug("shared_ptr: destroctor");
@@ -19,22 +20,22 @@ namespace util {
           (*ref_count)--;
           Log::cdebug() << ptr << " " << *ref_count << std::endl;
           if (*ref_count == 0) {
-            delete ptr;
+            deleter(ptr);
             delete ref_count;
           }
         } else {
           Log::debug("shared_ptr: ref_count is NULL");
         }
       }
-      shared_ptr(): ptr(), ref_count(NULL) {
+      shared_ptr(): ptr(), ref_count(NULL), deleter(operator delete) {
         Log::debug("shared_ptr: default constructor");
       }
-      shared_ptr(T* ptr): ptr(ptr), ref_count(new int) {
+      shared_ptr(T* ptr): ptr(ptr), ref_count(new int), deleter(operator delete) {
         Log::debug("shared_ptr: constructor");
         *ref_count = 1;
         Log::cdebug() << ptr << " " << *ref_count << std::endl;
       }
-      shared_ptr(const shared_ptr<T>& other): ptr(other.ptr), ref_count(other.ref_count) {
+      shared_ptr(const shared_ptr<T>& other): ptr(other.ptr), ref_count(other.ref_count), deleter(other.deleter) {
         Log::debug("shared_ptr: copy constructor");
         if (ref_count != NULL) {
           (*ref_count)++;
@@ -50,7 +51,7 @@ namespace util {
           (*ref_count)--;
           if (*ref_count == 0) {
             Log::cdebug() << ptr << " " << *ref_count << std::endl;
-            delete ptr;
+            deleter(ptr);
             delete ref_count;
           }
         }
