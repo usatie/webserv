@@ -94,13 +94,13 @@ int SocketBuf::read_telnet_line(std::string& line) throw() {
   // However, we recommend that applications, when parsing such headers,
   // recognize a single LF as a line terminator and ignore the leading CR.
   // https://www.rfc-editor.org/rfc/rfc2616#section-19.3
-  if (line.back() != CR) {
+  if (line[line.size() - 1] != CR) {
     Log::debug("only LF found");
     return 0;
   }
   // 4. CRLF found
   Log::debug("CRLF found");
-  line.pop_back();
+  line.resize(line.size() - 1);//line.pop_back();
   return 0;
 }
 ssize_t SocketBuf::read(char* buf, size_t size) throw() {

@@ -70,7 +70,7 @@ int resolve_path(const Config::Server* srv_cf, const Config::Location* loc_cf,
     }
   }
   // 3. Else if path ends with '/', try to list directory
-  if (path.back() == '/') {
+  if (path[path.size() - 1] == '/') {
     if (stat(path.c_str(), &st) < 0 && errno != ENOENT) {
       Log::cdebug() << "stat() failed: " << path
                     << ", errno:" << strerror(errno) << std::endl;

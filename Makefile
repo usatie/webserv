@@ -24,7 +24,7 @@ UNAME_P := $(shell uname -p)
 # We need to replace them with C++98 features.
 # (clang on macos doesn't throw any error, but g++ on linux does.)
 ifeq ($(UNAME_S),Linux)
-	CXXFLAGS += -D LINUX -std=c++11
+	CXXFLAGS += -D LINUX -std=c++98
 endif
 
 # macos x86

@@ -107,11 +107,12 @@ Token *tokenize(const std::string &s) {
     } else if (issize(str)) {
       cur->type = Token::TK_SIZE;
       cur->num = atoi(str.c_str());
-      if (str.back() == 'k') {
+	  char c = str[str.size() - 1];
+      if (c == 'k') {
         cur->num *= KB;
-      } else if (str.back() == 'm') {
+      } else if (c == 'm') {
         cur->num *= MB;
-      } else if (str.back() == 'g') {
+      } else if (c == 'g') {
         cur->num *= GB;
       }
     }
