@@ -107,7 +107,7 @@ Token *tokenize(const std::string &s) {
     } else if (issize(str)) {
       cur->type = Token::TK_SIZE;
       cur->num = atoi(str.c_str());
-	  char c = str[str.size() - 1];
+	    char c = str[str.size() - 1];
       if (c == 'k') {
         cur->num *= KB;
       } else if (c == 'm') {
