@@ -34,7 +34,7 @@ static int internal_handle(Connection& conn, ConfigItem* cf) throw() {
 	  ss.str("");
       ss.clear();
 	  std::time_t ts = std::time(NULL);
-	  ss << std::ctime(&ts) << "-" << rand();
+	  ss << ts << "-" << rand();
       // filename = "{timestamp}-{random number}"
       filename = ss.str();
       filepath = cf->upload_store + "/" + filename;

@@ -1,4 +1,5 @@
 #include "Connection.hpp"
+#include "DeleteHandler.hpp"
 
 #include <sys/wait.h>
 
@@ -483,6 +484,8 @@ int Connection::handle() throw() {
     GetHandler::handle(*this);
   } else if (header.method == "POST") {
     PostHandler::handle(*this);
+  } else if (header.method == "DELETE") {
+    DeleteHandler::handle(*this);
   } else {
     Log::cinfo() << "Unsupported method: " << header.method << std::endl;
     ErrorHandler::handle(*this, 405);
