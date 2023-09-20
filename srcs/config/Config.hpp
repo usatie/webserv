@@ -8,7 +8,7 @@
 
 #include "ConfigParser.hpp"
 
-namespace Config {
+namespace config {
   class Config;
   class Server;
   class Location;
@@ -37,7 +37,7 @@ namespace Config {
   std::ostream &operator<<(std::ostream &os, const Config &cf);
 }
 
-class Config::Listen {
+class config::Listen {
  public:
   std::string address;  // ip address, wildcard, or hostname
   int port;
@@ -50,7 +50,7 @@ class Config::Listen {
   }
   Listen() : address("*"), port(8181), configured(false) {}
 };
-class Config::ErrorPage {
+class config::ErrorPage {
  public:
   std::vector<int> codes;
   std::string uri;
@@ -59,7 +59,7 @@ class Config::ErrorPage {
       : codes(codes), uri(uri), configured(true) {}
   ErrorPage() : codes(), uri(""), configured(false) {}
 };
-class Config::LimitExcept {
+class config::LimitExcept {
  public:
   std::vector<std::string> methods;
   bool configured;
@@ -67,7 +67,7 @@ class Config::LimitExcept {
       : methods(methods), configured(true) {}
   LimitExcept() : methods(), configured(false) {}
 };
-class Config::RedirectReturn {
+class config::RedirectReturn {
  public:
   int code;
   std::string url;
@@ -76,14 +76,14 @@ class Config::RedirectReturn {
       : code(code), url(url), configured(true) {}
   RedirectReturn() : code(), url(""), configured(false) {}
 };
-class Config::Root : public std::string {
+class config::Root : public std::string {
  public:
   bool configured;
   explicit Root(const std::string &path)
       : std::string(path), configured(true) {}
   Root() : std::string("html"), configured(false) {}
 };
-class Config::Index : public std::vector<std::string> {
+class config::Index : public std::vector<std::string> {
  public:
   bool configured;
   explicit Index(const std::vector<std::string> &index_files)
@@ -92,14 +92,14 @@ class Config::Index : public std::vector<std::string> {
     push_back("index.html");
   }
 };
-class Config::Alias : public std::string {
+class config::Alias : public std::string {
  public:
   bool configured;
   explicit Alias(const std::string &path)
       : std::string(path), configured(true) {}
   Alias() : std::string(), configured(false) {}
 };
-class Config::ClientMaxBodySize {
+class config::ClientMaxBodySize {
  private:
   size_t size;
 
@@ -111,7 +111,7 @@ class Config::ClientMaxBodySize {
   void set(const size_t &size) { this->size = size; }
   operator size_t() const { return size; }
 };
-class Config::AutoIndex {
+class config::AutoIndex {
  private:
   bool value;
 
@@ -122,7 +122,7 @@ class Config::AutoIndex {
   void set(const bool &value) { this->value = value; }
   operator bool() const { return value; }
 };
-class Config::UploadStore : public std::string {
+class config::UploadStore : public std::string {
  public:
   bool configured;
   explicit UploadStore(const std::string &path)
@@ -130,14 +130,14 @@ class Config::UploadStore : public std::string {
   UploadStore() : std::string("upload"), configured(false) {}
   void set(const std::string &path) { this->assign(path); }
 };
-class Config::CgiExtensions : public std::vector<std::string> {
+class config::CgiExtensions : public std::vector<std::string> {
  public:
   bool configured;
   explicit CgiExtensions(const std::vector<std::string> &extensions)
       : std::vector<std::string>(extensions), configured(true) {}
   CgiExtensions() : std::vector<std::string>(), configured(false) {}
 };
-class Config::CgiHandler {
+class config::CgiHandler {
  public:
   std::vector<std::string> extensions;
   std::string interpreter_path;
@@ -150,7 +150,7 @@ class Config::CgiHandler {
   CgiHandler() : extensions(), interpreter_path(), configured(false) {}
 };
 // Composite Configuration Items
-class Config::Location {
+class config::Location {
  public:
   std::string path;
   Root root;
@@ -167,7 +167,7 @@ class Config::Location {
   std::vector<Location> locations;
   Location(Command *cmd);
 };
-class Config::Server {
+class config::Server {
  public:
   std::vector<Location> locations;
   std::vector<Listen> listens;
@@ -185,7 +185,7 @@ class Config::Server {
   Server();
   Server(Command *cmd);
 };
-class Config::HTTP {
+class config::HTTP {
  public:
   HTTP();
   HTTP(Module *mod);
@@ -200,7 +200,7 @@ class Config::HTTP {
   ClientMaxBodySize client_max_body_size;
   bool configured;
 };
-class Config::Config {
+class config::Config {
  public:
   // Primitive Configuration Items
 
@@ -213,7 +213,7 @@ class Config::Config {
 };
 
 template <typename T>
-std::ostream &Config::operator<<(std::ostream &os, const std::vector<T> &v) {
+std::ostream &config::operator<<(std::ostream &os, const std::vector<T> &v) {
   // if (v.configured) {
   //   std::cout << "[configured] ";
   // }
@@ -222,6 +222,6 @@ std::ostream &Config::operator<<(std::ostream &os, const std::vector<T> &v) {
   }
   return os;
 }
-void printConfig(const Config::Config &cf);
+void printConfig(const config::Config &cf);
 
 #endif

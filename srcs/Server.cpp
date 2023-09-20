@@ -13,17 +13,17 @@ std::ostream& operator<<(std::ostream& os, const struct addrinfo* rp);
 
 Server::~Server() throw() {}
 
-Server::Server(const Config::Config& cf)
+Server::Server(const config::Config& cf)
     : maxfd(-1), listen_socks(), connections(), cf(cf) {
   FD_ZERO(&readfds);
   FD_ZERO(&writefds);
   int backlog = BACKLOG;
   for (unsigned int i = 0; i < cf.http.servers.size(); ++i) {
     Log::cdebug() << "i: " << i << std::endl;
-    const Config::Server& server = cf.http.servers[i];
+    const config::Server& server = cf.http.servers[i];
     for (unsigned int j = 0; j < server.listens.size(); ++j) {
       Log::cdebug() << "j: " << j << std::endl;
-      const Config::Listen& listen = server.listens[j];
+      const config::Listen& listen = server.listens[j];
       const char* host =
           (listen.address == "*") ? NULL : listen.address.c_str();
       int port = listen.port;
@@ -111,7 +111,7 @@ Server::Server(const Config::Config& cf)
           if (sock->set_nonblock() < 0) {
             throw std::runtime_error("sock.set_nonblock() failed");
           }
-          // Save the listening ip address to Config::Listen
+          // Save the listening ip address to config::Listen
           // Here we use const_cast to modify the const object.
           {
             memcpy(const_cast<struct sockaddr_storage*>(&listen.addr),

@@ -293,7 +293,7 @@ bool eq_addr46(const sockaddr_storage *a, const sockaddr_storage *b) {
 // 1. Find listen directive matching port
 // 2. Find listen directive matching ip address
 // 3. Find server_name directive matching host name (if not default server)
-const Config::Server *select_srv_cf(const Config::Config &cf,
+const config::Server *select_srv_cf(const config::Config &cf,
                                     const Connection &conn) throw() {
   struct sockaddr_storage *saddr = &(*conn.client_socket)->saddr;
   std::string host;
@@ -301,11 +301,11 @@ const Config::Server *select_srv_cf(const Config::Config &cf,
     host = conn.header.fields.find("Host")->second;
   }
   // struct sockaddr_storage* saddr = &(*client_socket)->saddr;
-  const Config::Server *srv_cf = NULL;
+  const config::Server *srv_cf = NULL;
   for (unsigned int i = 0; i < cf.http.servers.size(); i++) {
-    const Config::Server &srv = cf.http.servers[i];
+    const config::Server &srv = cf.http.servers[i];
     for (unsigned int j = 0; j < srv.listens.size(); j++) {
-      const Config::Listen &listen = srv.listens[j];
+      const config::Listen &listen = srv.listens[j];
       // 0. Filter by IPv4 or IPv6
       // 1. Filter by port
       // 2. Filter by address
@@ -345,12 +345,12 @@ const Config::Server *select_srv_cf(const Config::Config &cf,
 
 template <typename ConfigItem>
 void traverse_loc(const ConfigItem *cf, const std::string &path, int prefixLen,
-                  int &maxLen, const Config::Location *&loc) {
+                  int &maxLen, const config::Location *&loc) {
   // Find location for this request
   // 1. Find location directive matching prefix string
   // 2. location with the longest matching prefix is selected and remembered
   for (unsigned int i = 0; i < cf->locations.size(); i++) {
-    const Config::Location &l = cf->locations[i];
+    const config::Location &l = cf->locations[i];
     // TODO: header.path must be a normalized URI
     //       1. decoding the text encoded in the “%XX” form
     //       2. resolving references to relative path components (“.” and “..”)
@@ -370,9 +370,9 @@ void traverse_loc(const ConfigItem *cf, const std::string &path, int prefixLen,
   }
 }
 
-const Config::Location *select_loc_cf(const Config::Server *srv_cf,
+const config::Location *select_loc_cf(const config::Server *srv_cf,
                                       const std::string &path) throw() {
-  const Config::Location *loc = NULL;
+  const config::Location *loc = NULL;
   int maxLen = 0;
   traverse_loc(srv_cf, path, 0, maxLen, loc);
   return loc;
@@ -380,7 +380,7 @@ const Config::Location *select_loc_cf(const Config::Server *srv_cf,
 
 // throwable
 template <typename ConfigItem>
-const Config::CgiHandler *select_cgi_handler_cf(const ConfigItem *cf,
+const config::CgiHandler *select_cgi_handler_cf(const ConfigItem *cf,
                                                 const std::string &path) {
   if (cf->cgi_handlers.empty()) {
     return NULL;
@@ -389,7 +389,7 @@ const Config::CgiHandler *select_cgi_handler_cf(const ConfigItem *cf,
   // TODO: check `index` directive
   std::string ext = util::path::get_extension(path);  // throwable
   for (unsigned int i = 0; i < cf->cgi_handlers.size(); i++) {
-    const Config::CgiHandler &cgi = cf->cgi_handlers[i];
+    const config::CgiHandler &cgi = cf->cgi_handlers[i];
     if (util::vector::contains(cgi.extensions, ext)) {
       return &cgi;
     }
@@ -399,7 +399,7 @@ const Config::CgiHandler *select_cgi_handler_cf(const ConfigItem *cf,
 
 // throwable
 template <typename ConfigItem>
-const Config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf,
+const config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf,
                                                const std::string &path) {
   if (!cf->cgi_extensions.configured) {
     return NULL;
