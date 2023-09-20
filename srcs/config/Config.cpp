@@ -1,8 +1,8 @@
 #include "Config.hpp"
 
-config::Config::Config() : http() {}
+namespace config {
 
-config::Config::Config(Module* mod) {
+Config::Config(Module* mod) {
   for (; mod; mod = mod->next) {
     if (mod->type != Module::MOD_HTTP) {
       throw std::runtime_error("Invalid module type");
@@ -14,7 +14,7 @@ config::Config::Config(Module* mod) {
   }
 }
 
-config::Location::Location(Command* loc) : path(loc->location) {
+Location::Location(Command* loc) : path(loc->location) {
   if (path.empty()) {
     throw std::runtime_error("Empty location path");
   }
@@ -98,16 +98,7 @@ config::Location::Location(Command* loc) : path(loc->location) {
   }
 }
 
-config::Server::Server() {
-  if (listens.empty()) {
-    listens.push_back(Listen());
-  }
-  if (server_names.empty()) {
-    server_names.push_back("");
-  }
-}
-
-config::Server::Server(Command* srv) {
+Server::Server(Command* srv) {
   for (Command* cmd = srv->block; cmd; cmd = cmd->next) {
     switch (cmd->type) {
       case Command::CMD_LOCATION:
@@ -219,8 +210,6 @@ config::Server::Server(Command* srv) {
   }
 }
 
-config::HTTP::HTTP() : configured(false) { servers.push_back(Server()); }
-
 // About Inheritance of directives
 //
 // Inheritance
@@ -234,7 +223,7 @@ config::HTTP::HTTP() : configured(false) { servers.push_back(Server()); }
 // If you define multiple directives in different contexts then the lower
 // context will replace the higher context ones. cf.
 // https://blog.martinfjordvald.com/understanding-the-nginx-configuration-inheritance-model/
-config::HTTP::HTTP(Module* mod) : configured(true) {
+HTTP::HTTP(Module* mod) : configured(true) {
   for (Command* cmd = mod->block; cmd; cmd = cmd->next) {
     switch (cmd->type) {
       case Command::CMD_SERVER:
@@ -288,30 +277,28 @@ config::HTTP::HTTP(Module* mod) : configured(true) {
 }
 
 // Stream
-std::ostream& config::operator<<(std::ostream& os, const Listen& listen) {
+std::ostream& operator<<(std::ostream& os, const Listen& listen) {
   os << listen.address << ":" << listen.port;
   return os;
 }
 
-std::ostream& config::operator<<(std::ostream& os,
-                                 const ErrorPage& error_page) {
+std::ostream& operator<<(std::ostream& os, const ErrorPage& error_page) {
   os << "{" << error_page.codes << " " << error_page.uri << "}";
   return os;
 }
 
-std::ostream& config::operator<<(std::ostream& os, const RedirectReturn& ret) {
+std::ostream& operator<<(std::ostream& os, const RedirectReturn& ret) {
   os << ret.code << " " << ret.url << " ";
   return os;
 }
 
-std::ostream& config::operator<<(std::ostream& os,
-                                 const CgiHandler& cgi_handler) {
+std::ostream& operator<<(std::ostream& os, const CgiHandler& cgi_handler) {
   os << "{" << cgi_handler.extensions << " " << cgi_handler.interpreter_path
      << "}";
   return os;
 }
 
-std::ostream& config::operator<<(std::ostream& os, const Location& l) {
+std::ostream& operator<<(std::ostream& os, const Location& l) {
   static std::string spacing = "      ";
   os << spacing << "location: " << l.path << std::endl;
   spacing += "  ";
@@ -341,7 +328,7 @@ std::ostream& config::operator<<(std::ostream& os, const Location& l) {
   return os;
 }
 
-std::ostream& config::operator<<(std::ostream& os, const Server& s) {
+std::ostream& operator<<(std::ostream& os, const Server& s) {
   os << "    server: " << std::endl;
   os << "      listen: " << s.listens << std::endl;
   os << "      server_name: " << s.server_names << std::endl;
@@ -366,7 +353,7 @@ std::ostream& config::operator<<(std::ostream& os, const Server& s) {
   return os;
 }
 
-std::ostream& config::operator<<(std::ostream& os, const HTTP& http) {
+std::ostream& operator<<(std::ostream& os, const HTTP& http) {
   if (http.root.configured) {
     os << "    root: " << http.root << std::endl;
   } else {
@@ -394,12 +381,14 @@ std::ostream& config::operator<<(std::ostream& os, const HTTP& http) {
   return os;
 }
 
-std::ostream& config::operator<<(std::ostream& os, const Config& cf) {
+std::ostream& operator<<(std::ostream& os, const Config& cf) {
   os << "Config" << std::endl;
   os << "  HTTP" << std::endl;
   os << cf.http;
   return os;
 }
+
+}  // namespace config
 
 namespace config {
 void print(const Config& cf) { std::cout << cf; }

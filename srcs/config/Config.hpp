@@ -57,7 +57,7 @@ class config::Config {
  public:
   HTTP http;
 
-  Config();
+  Config() {}
   Config(Module *mod);
 };
 

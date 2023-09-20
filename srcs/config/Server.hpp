@@ -32,7 +32,11 @@ class Server {
   std::vector<CgiHandler> cgi_handlers;
   std::vector<RedirectReturn> returns;
 
-  Server();
+  Server() {
+    listens.push_back(Listen());
+    server_names.push_back("");
+  }
+
   Server(Command *cmd);
 };
 }  // namespace config

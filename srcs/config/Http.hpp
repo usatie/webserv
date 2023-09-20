@@ -13,7 +13,7 @@
 namespace config {
 class HTTP {
  public:
-  HTTP();
+  HTTP() : configured(false) { servers.push_back(Server()); }
   HTTP(Module *mod);
   ~HTTP() {}
 
