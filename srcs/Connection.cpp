@@ -515,7 +515,10 @@ int Connection::handle() throw() {
 }
 
 int Connection::handle_cgi_req() throw() {
+  Log::debug("handle_cgi_req");
+  Log::cdebug() << "isSendBufEmpty: " << cgi_socket->isSendBufEmpty() << std::endl;
   if (cgi_socket->isSendBufEmpty()) {
+    shutdown(cgi_socket->get_fd(), SHUT_WR);
     status = HANDLE_CGI_RES;
     return 1;
   }
@@ -605,7 +608,7 @@ int Connection::handle_cgi_parse() throw() {
   while (cgi_socket->readline(line) == 0) {
     Log::cdebug() << "CGI line: " << line << std::endl;
     // Empty line indicates the end of header fields
-    if (line == "") {
+    if (line == "" || line == "\r") {
       status = RESPONSE;
       break;
     }
@@ -620,8 +623,10 @@ int Connection::handle_cgi_parse() throw() {
   }
   if (cgi_header_fields.find("Status") != cgi_header_fields.end()) {
     // TODO: validate status code
+	  Log::cdebug() << "Status found: " << cgi_header_fields["Status"] << std::endl;
     *client_socket << "HTTP/1.1 " << cgi_header_fields["Status"] << CRLF;
   } else {
+	  Log::cdebug() << "Status not found" << std::endl;
     *client_socket << "HTTP/1.1 200 OK" << CRLF;
   }
   // Send header fields
@@ -638,6 +643,7 @@ int Connection::handle_cgi_parse() throw() {
     *client_socket << CRLF;  // End of header fields
     *cgi_socket >> *client_socket;
   } else {
+    *client_socket << "Content-Length: 0" << CRLF;
     *client_socket << CRLF;  // End of header fields
   }
   status = RESPONSE;

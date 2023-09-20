@@ -44,6 +44,7 @@ int CgiHandler::handle(Connection& conn) throw() {
   }
   if (pid == 0) {
     // Child process
+    char * const env[] = {strdup("REQUEST_METHOD=GET"), strdup("SERVER_PROTOCOL=HTTP/1.1"), strdup("PATH_INFO=/"), NULL};
     if (conn.cgi_ext_cf) {  // binary or script with shebang
       const char* const argv[] = {conn.header.fullpath.c_str(), NULL};
       close(cgi_socket[0]);
@@ -60,7 +61,7 @@ int CgiHandler::handle(Connection& conn) throw() {
       dup2(cgi_socket[1], STDIN_FILENO);
       // TODO: Create environment variables
       // TODO: Create appropriate argv
-      execve(conn.cgi_handler_cf->interpreter_path.c_str(), (char**)argv, NULL);
+      execve(conn.cgi_handler_cf->interpreter_path.c_str(), (char**)argv, env);
     }
     // This log would be printed to std::err and visible to the server process.
     Log::cfatal() << "execve error" << std::endl;
@@ -77,6 +78,7 @@ int CgiHandler::handle(Connection& conn) throw() {
       ErrorHandler::handle(conn, 500);
       return -1;
     }
+    Log::cdebug() << "body_size: " << conn.body_size;
     conn.cgi_socket->write(conn.body, conn.body_size);
     conn.cgi_pid = pid;
   }
