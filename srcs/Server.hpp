@@ -12,7 +12,7 @@
 class Connection;
 class Socket;
 namespace config {
-  class Config;
+class Config;
 }
 
 class Server {

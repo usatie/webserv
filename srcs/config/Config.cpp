@@ -219,9 +219,7 @@ config::Server::Server(Command* srv) {
   }
 }
 
-config::HTTP::HTTP() : configured(false) {
-  servers.push_back(Server());
-}
+config::HTTP::HTTP() : configured(false) { servers.push_back(Server()); }
 
 // About Inheritance of directives
 //
@@ -296,7 +294,7 @@ std::ostream& config::operator<<(std::ostream& os, const Listen& listen) {
 }
 
 std::ostream& config::operator<<(std::ostream& os,
-                         const ErrorPage& error_page) {
+                                 const ErrorPage& error_page) {
   os << "{" << error_page.codes << " " << error_page.uri << "}";
   return os;
 }
@@ -307,7 +305,7 @@ std::ostream& config::operator<<(std::ostream& os, const RedirectReturn& ret) {
 }
 
 std::ostream& config::operator<<(std::ostream& os,
-                         const CgiHandler& cgi_handler) {
+                                 const CgiHandler& cgi_handler) {
   os << "{" << cgi_handler.extensions << " " << cgi_handler.interpreter_path
      << "}";
   return os;
@@ -403,4 +401,6 @@ std::ostream& config::operator<<(std::ostream& os, const Config& cf) {
   return os;
 }
 
-void printConfig(const config::Config& cf) { std::cout << cf; }
+namespace config {
+void print(const Config& cf) { std::cout << cf; }
+}  // namespace config

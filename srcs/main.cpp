@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     delete tokens;
   }
   // TODO: Use config
-  printConfig(cf);
+  config::print(cf);
 
   // We do not handle exceptions in constructor of Server.
   // Just end this program in that case.
