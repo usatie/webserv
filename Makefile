@@ -2,9 +2,9 @@
 # Variables #
 #############
 
-INCLUDES  = $(wildcard include/*.hpp)
-CXXFLAGS  = -Wall -Wextra -Werror -pedantic -MMD -MP -I include -I srcs
+CXXFLAGS  = -Wall -Wextra -Werror -pedantic -MMD -MP -I srcs
 SRCS      = $(wildcard srcs/*.cpp)
+INCLUDES  = $(wildcard srcs/*.hpp)
 OBJS	  = $(SRCS:.cpp=.o)
 DEPS	  = $(SRCS:.cpp=.d)
 NAME      = webserv
@@ -74,7 +74,7 @@ UNIT_SRCS = $(wildcard tests/unit/*.cpp)
 UNIT_OBJS = $(UNIT_SRCS:.cpp=.o)
 UNIT_DEPS = $(UNIT_SRCS:.cpp=.d)
 $(UNITTEST): $(OBJS) $(UNIT_OBJS)
-	$(CXX) -I srcs -I include $(UNIT_OBJS) $(filter-out srcs/main.o, $(OBJS)) -o $(UNITTEST)
+	$(CXX) $(CXXFLAGS) $(UNIT_OBJS) $(filter-out srcs/main.o, $(OBJS)) -o $(UNITTEST)
 
 .PHONY: unit
 unit: $(UNITTEST)
