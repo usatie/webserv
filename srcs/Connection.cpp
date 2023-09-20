@@ -74,6 +74,10 @@ int Connection::resume() throw() {
         break;
       case DONE:
         cont = false;
+	break;
+      case CLEAR:
+	cont = false;
+	break;
     }
   }
   // Finally, check if there is any error while handling the request
@@ -83,6 +87,22 @@ int Connection::resume() throw() {
     return -1;
   }
   return 0;
+}
+
+int Connection::clear() {
+	cgi_socket = util::shared_ptr< SocketBuf >();
+	header.clear();
+	status = REQ_START_LINE;
+	if (body) { delete[] body; }
+	body = NULL;
+	body_size = 0;
+	content_length = 0;
+	cgi_pid = 0;
+	srv_cf = NULL;
+	loc_cf = NULL;
+	cgi_handler_cf = NULL;
+	cgi_ext_cf = NULL;
+	return 0;
 }
 
 Connection::IOStatus Connection::getIOStatus() const throw() {
@@ -626,7 +646,7 @@ int Connection::handle_cgi_parse() throw() {
 
 int Connection::response() throw() {
   if (client_socket->isSendBufEmpty()) {
-    status = DONE;
+    status = CLEAR;
     return 1;
   }
   return 0;
