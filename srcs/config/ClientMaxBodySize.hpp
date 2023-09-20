@@ -2,6 +2,7 @@
 #define CONFIG_CLIENTMAXBODYSIZE_HPP
 
 #define MB (1024 * 1024)
+#include <cstddef> // size_t
 
 namespace config {
 class ClientMaxBodySize {
