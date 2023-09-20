@@ -2,11 +2,12 @@
 # Variables #
 #############
 
-CXXFLAGS  = -Wall -Wextra -Werror -pedantic -MMD -MP -I srcs
+CXXFLAGS  = -Wall -Wextra -Werror -pedantic -I srcs -MMD -MP
 SRCS      = $(wildcard srcs/*.cpp)
 INCLUDES  = $(wildcard srcs/*.hpp)
-OBJS	  = $(SRCS:.cpp=.o)
-DEPS	  = $(SRCS:.cpp=.d)
+OBJDIR    = objs
+OBJS      = $(addprefix $(OBJDIR)/, $(SRCS:.cpp=.o))
+DEPS      = $(OBJS:.o=.d)
 NAME      = webserv
 UNITTEST  = unit_test
 
@@ -47,6 +48,7 @@ all: $(NAME)
 .PHONY: clean
 clean:
 	rm -f $(OBJS) $(DEPS) $(UNIT_OBJS) $(UNIT_DEPS)
+	rm -rf $(OBJDIR)
 
 .PHONY: fclean
 fclean: clean 
@@ -55,7 +57,8 @@ fclean: clean
 .PHONY: re
 re: fclean all
 
-%.o: %.cpp %.d
+$(OBJS): $(OBJDIR)/%.o: %.cpp $(OBJDIR)/%.d
+	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 .PHONY: debug
