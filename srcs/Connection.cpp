@@ -293,7 +293,7 @@ bool eq_addr46(const sockaddr_storage *a, const sockaddr_storage *b) {
 // 1. Find listen directive matching port
 // 2. Find listen directive matching ip address
 // 3. Find server_name directive matching host name (if not default server)
-const Config::Server *select_srv_cf(const Config &cf,
+const Config::Server *select_srv_cf(const Config::Config &cf,
                                     const Connection &conn) throw() {
   struct sockaddr_storage *saddr = &(*conn.client_socket)->saddr;
   std::string host;

@@ -13,7 +13,7 @@ std::ostream& operator<<(std::ostream& os, const struct addrinfo* rp);
 
 Server::~Server() throw() {}
 
-Server::Server(const Config& cf)
+Server::Server(const Config::Config& cf)
     : maxfd(-1), listen_socks(), connections(), cf(cf) {
   FD_ZERO(&readfds);
   FD_ZERO(&writefds);

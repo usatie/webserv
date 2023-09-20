@@ -48,7 +48,7 @@ class Connection {
   size_t body_size;
   size_t content_length;
   pid_t cgi_pid;
-  const Config &cf;
+  const Config::Config &cf;
   const Config::Server *srv_cf;
   const Config::Location *loc_cf;
   const Config::CgiHandler *cgi_handler_cf;
@@ -57,7 +57,7 @@ class Connection {
  public:
   // Constructor/Destructor
   Connection() throw();  // Do not implement this
-  Connection(util::shared_ptr<Socket> sock, const Config &cf)
+  Connection(util::shared_ptr<Socket> sock, const Config::Config &cf)
       : client_socket(util::shared_ptr<SocketBuf>(new SocketBuf(sock))),
         cgi_socket(NULL),
         header(),

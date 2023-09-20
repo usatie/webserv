@@ -1,8 +1,8 @@
 #include "Config.hpp"
 
-Config::Config() : http() {}
+Config::Config::Config() : http() {}
 
-Config::Config(Module* mod) {
+Config::Config::Config(Module* mod) {
   for (; mod; mod = mod->next) {
     if (mod->type != Module::MOD_HTTP) {
       throw std::runtime_error("Invalid module type");
@@ -90,7 +90,7 @@ Config::Location::Location(Command* loc) : path(loc->location) {
             CgiHandler(cmd->cgi_extensions, cmd->cgi_interpreter_path));
         break;
       case Command::CMD_LOCATION:
-        locations.push_back(Config::Location(cmd));
+        locations.push_back(Location(cmd));
         break;
       default:
         throw std::runtime_error("Invalid command");
@@ -111,7 +111,7 @@ Config::Server::Server(Command* srv) {
   for (Command* cmd = srv->block; cmd; cmd = cmd->next) {
     switch (cmd->type) {
       case Command::CMD_LOCATION:
-        locations.push_back(Config::Location(cmd));
+        locations.push_back(Location(cmd));
         break;
       case Command::CMD_LISTEN:
         listens.push_back(Listen(cmd->address, cmd->port));
@@ -196,7 +196,7 @@ Config::Server::Server(Command* srv) {
     server_names.push_back("");
   }
   for (unsigned int i = 0; i < locations.size(); i++) {
-    Config::Location& loc = locations[i];
+    Location& loc = locations[i];
     // If both root and alias are not configured, inherit root from server
     if (!loc.root.configured && !loc.alias.configured) loc.root = root;
     if (!loc.index.configured) loc.index = index;
@@ -220,7 +220,7 @@ Config::Server::Server(Command* srv) {
 }
 
 Config::HTTP::HTTP() : configured(false) {
-  servers.push_back(Config::Server());
+  servers.push_back(Server());
 }
 
 // About Inheritance of directives
@@ -276,10 +276,10 @@ Config::HTTP::HTTP(Module* mod) : configured(true) {
     }
   }
   if (servers.empty()) {
-    servers.push_back(Config::Server());
+    servers.push_back(Server());
   }
   for (unsigned int i = 0; i < servers.size(); i++) {
-    Config::Server& srv = servers[i];
+    Server& srv = servers[i];
     if (!srv.root.configured) srv.root = root;
     if (!srv.index.configured) srv.index = index;
     if (!srv.autoindex.configured) srv.autoindex = autoindex;
@@ -290,30 +290,30 @@ Config::HTTP::HTTP(Module* mod) : configured(true) {
 }
 
 // Stream
-std::ostream& operator<<(std::ostream& os, const Config::Listen& listen) {
+std::ostream& Config::operator<<(std::ostream& os, const Listen& listen) {
   os << listen.address << ":" << listen.port;
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os,
-                         const Config::ErrorPage& error_page) {
+std::ostream& Config::operator<<(std::ostream& os,
+                         const ErrorPage& error_page) {
   os << "{" << error_page.codes << " " << error_page.uri << "}";
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const Config::RedirectReturn& ret) {
+std::ostream& Config::operator<<(std::ostream& os, const RedirectReturn& ret) {
   os << ret.code << " " << ret.url << " ";
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os,
-                         const Config::CgiHandler& cgi_handler) {
+std::ostream& Config::operator<<(std::ostream& os,
+                         const CgiHandler& cgi_handler) {
   os << "{" << cgi_handler.extensions << " " << cgi_handler.interpreter_path
      << "}";
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const Config::Location& l) {
+std::ostream& Config::operator<<(std::ostream& os, const Location& l) {
   static std::string spacing = "      ";
   os << spacing << "location: " << l.path << std::endl;
   spacing += "  ";
@@ -343,7 +343,7 @@ std::ostream& operator<<(std::ostream& os, const Config::Location& l) {
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const Config::Server& s) {
+std::ostream& Config::operator<<(std::ostream& os, const Server& s) {
   os << "    server: " << std::endl;
   os << "      listen: " << s.listens << std::endl;
   os << "      server_name: " << s.server_names << std::endl;
@@ -368,7 +368,7 @@ std::ostream& operator<<(std::ostream& os, const Config::Server& s) {
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const Config::HTTP& http) {
+std::ostream& Config::operator<<(std::ostream& os, const HTTP& http) {
   if (http.root.configured) {
     os << "    root: " << http.root << std::endl;
   } else {
@@ -396,11 +396,11 @@ std::ostream& operator<<(std::ostream& os, const Config::HTTP& http) {
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const Config& cf) {
+std::ostream& Config::operator<<(std::ostream& os, const Config& cf) {
   os << "Config" << std::endl;
   os << "  HTTP" << std::endl;
   os << cf.http;
   return os;
 }
 
-void printConfig(const Config& cf) { std::cout << cf; }
+void printConfig(const Config::Config& cf) { std::cout << cf; }

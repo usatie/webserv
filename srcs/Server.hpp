@@ -11,7 +11,9 @@
 
 class Connection;
 class Socket;
-class Config;
+namespace Config {
+  class Config;
+}
 
 class Server {
  private:
@@ -27,11 +29,11 @@ class Server {
   // Member data
   SockVector listen_socks;
   ConnVector connections;
-  const Config& cf;
+  const Config::Config& cf;
 
   // Constructor/Destructor
   Server() throw();  // Do not implement this
-  Server(const Config& cf);
+  Server(const Config::Config& cf);
   ~Server() throw();
 
   // Member functions
