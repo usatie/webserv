@@ -2,9 +2,10 @@
 # Variables #
 #############
 
-CXXFLAGS  = -Wall -Wextra -Werror -pedantic -I srcs -MMD -MP
-SRCS      = $(wildcard srcs/*.cpp)
-INCLUDES  = $(wildcard srcs/*.hpp)
+INCLUDE_DIRS := $(shell find srcs -type d -print)
+CXXFLAGS  = -Wall -Wextra -Werror -pedantic -MMD -MP $(addprefix -I, $(INCLUDE_DIRS))
+SRCS      = $(shell find srcs -type f -name "*.cpp")
+HEADERS   = $(shell find srcs -type f -name "*.hpp")
 OBJDIR    = objs
 OBJS      = $(addprefix $(OBJDIR)/, $(SRCS:.cpp=.o))
 DEPS      = $(OBJS:.o=.d)
@@ -57,7 +58,7 @@ fclean: clean
 .PHONY: re
 re: fclean all
 
-$(OBJS): $(OBJDIR)/%.o: %.cpp $(OBJDIR)/%.d
+$(OBJS): $(OBJDIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
@@ -89,6 +90,6 @@ bench: $(NAME)
 
 .PHONY: format
 format:
-	clang-format -style=google $(SRCS) $(INCLUDES) -i
-	cppcheck --enable=all --inconclusive --suppress=missingIncludeSystem srcs -I $(INCLUDES)
+	clang-format -style=google $(SRCS) $(HEADERS) -i
+	cppcheck --enable=all --inconclusive --suppress=missingIncludeSystem srcs $(addprefix -I, $(INCLUDE_DIRS))
 include $(wildcard $(DEPS))
