@@ -78,7 +78,7 @@ UNIT_SRCS = $(wildcard tests/unit/*.cpp)
 UNIT_OBJS = $(UNIT_SRCS:.cpp=.o)
 UNIT_DEPS = $(UNIT_SRCS:.cpp=.d)
 $(UNITTEST): $(OBJS) $(UNIT_OBJS)
-	$(CXX) $(CXXFLAGS) $(UNIT_OBJS) $(filter-out srcs/main.o, $(OBJS)) -o $(UNITTEST)
+	$(CXX) $(CXXFLAGS) $(UNIT_OBJS) $(filter-out $(OBJDIR)/srcs/main.o, $(OBJS)) -o $(UNITTEST)
 
 .PHONY: unit
 unit: $(UNITTEST)
