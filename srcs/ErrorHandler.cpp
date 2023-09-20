@@ -6,9 +6,9 @@
 #include "http_special_response.hpp"
 #include "webserv.hpp"
 
-const Config::Location* select_loc_cf(const Config::Server* srv_cf,
+const config::Location* select_loc_cf(const config::Server* srv_cf,
                                       const std::string& path) throw();
-int resolve_path(const Config::Server* srv_cf, const Config::Location* loc_cf,
+int resolve_path(const config::Server* srv_cf, const config::Location* loc_cf,
                  const std::string& req_path, std::string& path,
                  struct stat& st);
 
@@ -33,12 +33,12 @@ const char* status_line(int status_code) throw() {
 }
 
 template <typename ConfigItem>
-const Config::ErrorPage* find_error_page(const ConfigItem* cf,
+const config::ErrorPage* find_error_page(const ConfigItem* cf,
                                          int status_code) throw() {
   if (!cf) {
     return NULL;
   }
-  std::vector<Config::ErrorPage>::const_iterator it, end;
+  std::vector<config::ErrorPage>::const_iterator it, end;
   it = cf->error_pages.begin();
   end = cf->error_pages.end();
   for (; it != end; ++it) {
@@ -61,7 +61,7 @@ int try_error_page(Connection& conn, int status_code) throw() {
     return -1;
   }
   // 2. Find error_page for status_code
-  const Config::ErrorPage* error_page;
+  const config::ErrorPage* error_page;
   error_page = find_error_page(conn.loc_cf, status_code);
   if (!error_page) error_page = find_error_page(conn.srv_cf, status_code);
   if (!error_page) return -1;
@@ -73,8 +73,8 @@ int try_error_page(Connection& conn, int status_code) throw() {
   int ret;
   struct stat st;
   std::string path;
-  const Config::Server* srv_cf = conn.srv_cf;
-  const Config::Location* loc_cf = select_loc_cf(conn.srv_cf, error_page->uri);
+  const config::Server* srv_cf = conn.srv_cf;
+  const config::Location* loc_cf = select_loc_cf(conn.srv_cf, error_page->uri);
   try {
     ret = resolve_path(srv_cf, loc_cf, error_page->uri, path, st);
   } catch (const std::exception& e) {

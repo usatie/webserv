@@ -7,10 +7,9 @@
 #define PORT 8181
 #define ERROR 1
 
-void	sigpipe(int sig)
-{
-	(void)sig;
-	write(2, "sigpipe\n", 8);
+void sigpipe(int sig) {
+  (void)sig;
+  write(2, "sigpipe\n", 8);
 }
 
 // main function can throw exceptions.
@@ -30,7 +29,7 @@ int main(int argc, char *argv[]) {
   // Even default constructor of Config can throw exceptions.
   // But we do not handle exceptions in main function, so that
   // we can just end this program in that case.
-  Config cf;
+  config::Config cf;
   if (argc == 2) {
     std::ifstream ifs(argv[1]);
     if (!ifs.is_open()) {
@@ -41,12 +40,12 @@ int main(int argc, char *argv[]) {
                   std::istreambuf_iterator<char>());
     Token *tokens = tokenize(s);
     Module *mod = parse(tokens);
-    cf = Config(mod);
+    cf = config::Config(mod);
     delete mod;
     delete tokens;
   }
   // TODO: Use config
-  printConfig(cf);
+  config::print(cf);
 
   // We do not handle exceptions in constructor of Server.
   // Just end this program in that case.

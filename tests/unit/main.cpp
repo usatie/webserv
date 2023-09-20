@@ -22,9 +22,9 @@ int test_tokenize_and_parse() {
     std::cout << "Parse Success!" << std::endl;
     print_mod(mod);
     title("Config");
-    Config cf(mod);
+    config::Config cf(mod);
     std::cout << "Config Success!" << std::endl;
-    printConfig(cf);
+    config::print(cf);
     return 0;
   } catch (std::exception &e) {
     std::cout << e.what() << std::endl;

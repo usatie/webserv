@@ -1,8 +1,10 @@
 #include "DeleteHandler.hpp"
+
+#include <errno.h>
+#include <sys/stat.h>
+
 #include "Connection.hpp"
 #include "ErrorHandler.hpp"
-#include <sys/stat.h>
-#include <errno.h>
 
 void DeleteHandler::handle(Connection& conn) throw() {
   (void)conn;
@@ -18,7 +20,8 @@ void DeleteHandler::handle(Connection& conn) throw() {
     // TODO: What if location is nested?
     // Location Alias : Replace prefix with alias
     Log::cdebug() << "Location Alias: " << conn.loc_cf->path << std::endl;
-    path = conn.loc_cf->alias + conn.header.path.substr(conn.loc_cf->path.size());
+    path =
+        conn.loc_cf->alias + conn.header.path.substr(conn.loc_cf->path.size());
   } else {
     // Location Root  : Append path to root
     Log::cdebug() << "Location Root: " << conn.loc_cf->path << std::endl;
@@ -29,9 +32,12 @@ void DeleteHandler::handle(Connection& conn) throw() {
   if (stat(path.c_str(), &st) < 0) {
     Log::cdebug() << "stat() failed: " << path << ", errno:" << strerror(errno)
                   << std::endl;
-    if (errno == EACCES) return ErrorHandler::handle(conn, 403);
-    else if (errno == ENOENT) return ErrorHandler::handle(conn, 404);
-    else return ErrorHandler::handle(conn, 500);
+    if (errno == EACCES)
+      return ErrorHandler::handle(conn, 403);
+    else if (errno == ENOENT)
+      return ErrorHandler::handle(conn, 404);
+    else
+      return ErrorHandler::handle(conn, 500);
   }
   if (!S_ISREG(st.st_mode)) {
     Log::cdebug() << "Not a regular file: " << path << std::endl;
@@ -55,11 +61,14 @@ void DeleteHandler::handle(Connection& conn) throw() {
   } while (stat(trash_path.c_str(), &st) == 0 || errno != ENOENT);
   // 4. Delete the file (Move to trash directory)
   if (std::rename(path.c_str(), trash_path.c_str()) < 0) {
-    Log::cdebug() << "rename() failed: " << path << ", errno:" << strerror(errno)
-                  << std::endl;
-    if (errno == EACCES) return ErrorHandler::handle(conn, 403);
-    else if (errno == ENOENT) return ErrorHandler::handle(conn, 404);
-    else return ErrorHandler::handle(conn, 500);
+    Log::cdebug() << "rename() failed: " << path
+                  << ", errno:" << strerror(errno) << std::endl;
+    if (errno == EACCES)
+      return ErrorHandler::handle(conn, 403);
+    else if (errno == ENOENT)
+      return ErrorHandler::handle(conn, 404);
+    else
+      return ErrorHandler::handle(conn, 500);
   }
 
   // 5. Send the response

@@ -44,7 +44,7 @@ int CgiHandler::handle(Connection& conn) throw() {
   }
   if (pid == 0) {
     // Child process
-    if (conn.cgi_ext_cf) { // binary or script with shebang
+    if (conn.cgi_ext_cf) {  // binary or script with shebang
       const char* const argv[] = {conn.header.fullpath.c_str(), NULL};
       close(cgi_socket[0]);
       dup2(cgi_socket[1], STDOUT_FILENO);
@@ -52,14 +52,15 @@ int CgiHandler::handle(Connection& conn) throw() {
       // TODO: Create environment variables
       // TODO: Create appropriate argv
       execve(conn.header.fullpath.c_str(), (char**)argv, NULL);
-    } else { // script without shebang
-      const char * const argv[] = {conn.cgi_handler_cf->interpreter_path.c_str(), conn.header.fullpath.c_str(), NULL};
+    } else {  // script without shebang
+      const char* const argv[] = {conn.cgi_handler_cf->interpreter_path.c_str(),
+                                  conn.header.fullpath.c_str(), NULL};
       close(cgi_socket[0]);
       dup2(cgi_socket[1], STDOUT_FILENO);
       dup2(cgi_socket[1], STDIN_FILENO);
       // TODO: Create environment variables
       // TODO: Create appropriate argv
-      execve(conn.cgi_handler_cf->interpreter_path.c_str(), (char **)argv, NULL);
+      execve(conn.cgi_handler_cf->interpreter_path.c_str(), (char**)argv, NULL);
     }
     // This log would be printed to std::err and visible to the server process.
     Log::cfatal() << "execve error" << std::endl;

@@ -3,8 +3,8 @@
 #include <dirent.h>  // opendir
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <cerrno>
 
+#include <cerrno>
 #include <cstring>  // strerror
 
 #include "Connection.hpp"
@@ -25,7 +25,7 @@ void send_directory_listing(Connection& conn, const std::string& path) throw();
 // 3. Else if fullpath ends with '/', try to list directory
 // 4. Else, return 404 or 403
 // Throwable!
-int resolve_path(const Config::Server* srv_cf, const Config::Location* loc_cf,
+int resolve_path(const config::Server* srv_cf, const config::Location* loc_cf,
                  const std::string& req_path, std::string& path,
                  struct stat& st) {
   // TODO: normalize req_path

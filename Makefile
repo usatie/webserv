@@ -2,11 +2,13 @@
 # Variables #
 #############
 
-INCLUDES  = $(wildcard include/*.hpp)
-CXXFLAGS  = -Wall -Wextra -Werror -pedantic -MMD -MP -I include -I srcs
-SRCS      = $(wildcard srcs/*.cpp)
-OBJS	  = $(SRCS:.cpp=.o)
-DEPS	  = $(SRCS:.cpp=.d)
+INCLUDE_DIRS := $(shell find srcs -type d -print)
+CXXFLAGS  = -Wall -Wextra -Werror -pedantic -MMD -MP $(addprefix -I, $(INCLUDE_DIRS))
+SRCS      = $(shell find srcs -type f -name "*.cpp")
+HEADERS   = $(shell find srcs -type f -name "*.hpp")
+OBJDIR    = objs
+OBJS      = $(addprefix $(OBJDIR)/, $(SRCS:.cpp=.o))
+DEPS      = $(OBJS:.o=.d)
 NAME      = webserv
 UNITTEST  = unit_test
 
@@ -47,6 +49,7 @@ all: $(NAME)
 .PHONY: clean
 clean:
 	rm -f $(OBJS) $(DEPS) $(UNIT_OBJS) $(UNIT_DEPS)
+	rm -rf $(OBJDIR)
 
 .PHONY: fclean
 fclean: clean 
@@ -55,7 +58,8 @@ fclean: clean
 .PHONY: re
 re: fclean all
 
-%.o: %.cpp %.d
+$(OBJS): $(OBJDIR)/%.o: %.cpp
+	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 .PHONY: debug
@@ -74,7 +78,7 @@ UNIT_SRCS = $(wildcard tests/unit/*.cpp)
 UNIT_OBJS = $(UNIT_SRCS:.cpp=.o)
 UNIT_DEPS = $(UNIT_SRCS:.cpp=.d)
 $(UNITTEST): $(OBJS) $(UNIT_OBJS)
-	$(CXX) -I srcs -I include $(UNIT_OBJS) $(filter-out srcs/main.o, $(OBJS)) -o $(UNITTEST)
+	$(CXX) $(CXXFLAGS) $(UNIT_OBJS) $(filter-out $(OBJDIR)/srcs/main.o, $(OBJS)) -o $(UNITTEST)
 
 .PHONY: unit
 unit: $(UNITTEST)
@@ -86,6 +90,6 @@ bench: $(NAME)
 
 .PHONY: format
 format:
-	clang-format -style=google $(SRCS) $(INCLUDES) -i
-	cppcheck --enable=all --inconclusive --suppress=missingIncludeSystem srcs -I $(INCLUDES)
+	clang-format -style=google $(SRCS) $(HEADERS) -i
+	cppcheck --enable=all --inconclusive --suppress=missingIncludeSystem srcs $(addprefix -I, $(INCLUDE_DIRS))
 include $(wildcard $(DEPS))
