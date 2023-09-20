@@ -2,8 +2,8 @@
 
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <cerrno>
 
+#include <cerrno>
 #include <cstring>  // memset, strerror
 
 #include "Config.hpp"
@@ -129,7 +129,8 @@ Server::Server(const Config& cf)
   }
 }
 
-void Server::remove_connection(util::shared_ptr<Connection> connection) throw() {
+void Server::remove_connection(
+    util::shared_ptr<Connection> connection) throw() {
   connections.erase(
       std::find(connections.begin(), connections.end(), connection));
   FD_CLR(connection->get_fd(), &readfds);

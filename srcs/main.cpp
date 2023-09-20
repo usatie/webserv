@@ -7,10 +7,9 @@
 #define PORT 8181
 #define ERROR 1
 
-void	sigpipe(int sig)
-{
-	(void)sig;
-	write(2, "sigpipe\n", 8);
+void sigpipe(int sig) {
+  (void)sig;
+  write(2, "sigpipe\n", 8);
 }
 
 // main function can throw exceptions.

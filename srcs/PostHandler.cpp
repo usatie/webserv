@@ -1,4 +1,5 @@
 #include "PostHandler.hpp"
+
 #include <ctime>
 
 #include "Connection.hpp"
@@ -13,11 +14,9 @@
 template <typename ConfigItem>
 static int internal_handle(Connection& conn, ConfigItem* cf) throw() {
   // `upload_store` directive
-  if (!cf->upload_store.configured)
-    return ERR_405;
+  if (!cf->upload_store.configured) return ERR_405;
   // `client_max_body_size` directive
-  if (cf->client_max_body_size < conn.content_length)
-    return ERR_413;
+  if (cf->client_max_body_size < conn.content_length) return ERR_413;
   // Create directory
   // TODO: Check if directory exists when starting the server
   if (mkdir(cf->upload_store.c_str(), 0755) == -1) {
@@ -28,13 +27,13 @@ static int internal_handle(Connection& conn, ConfigItem* cf) throw() {
   }
   std::string filename, filepath;
   try {
-  	std::stringstream ss;
+    std::stringstream ss;
     // Generate a unique filename in the upload directory
     do {
-	  ss.str("");
+      ss.str("");
       ss.clear();
-	  std::time_t ts = std::time(NULL);
-	  ss << ts << "-" << rand();
+      std::time_t ts = std::time(NULL);
+      ss << ts << "-" << rand();
       // filename = "{timestamp}-{random number}"
       filename = ss.str();
       filepath = cf->upload_store + "/" + filename;

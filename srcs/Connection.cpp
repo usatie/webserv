@@ -1,9 +1,10 @@
 #include "Connection.hpp"
-#include "DeleteHandler.hpp"
 
 #include <sys/wait.h>
 
 #include <map>
+
+#include "DeleteHandler.hpp"
 
 int Connection::resume() throw() {
   // 1. Socket I/O
@@ -379,13 +380,14 @@ const Config::Location *select_loc_cf(const Config::Server *srv_cf,
 
 // throwable
 template <typename ConfigItem>
-const Config::CgiHandler *select_cgi_handler_cf(const ConfigItem *cf, const std::string &path) {
+const Config::CgiHandler *select_cgi_handler_cf(const ConfigItem *cf,
+                                                const std::string &path) {
   if (cf->cgi_handlers.empty()) {
     return NULL;
   }
   // Find CGI handler for this request
   // TODO: check `index` directive
-  std::string ext = util::path::get_extension(path); // throwable
+  std::string ext = util::path::get_extension(path);  // throwable
   for (unsigned int i = 0; i < cf->cgi_handlers.size(); i++) {
     const Config::CgiHandler &cgi = cf->cgi_handlers[i];
     if (util::vector::contains(cgi.extensions, ext)) {
@@ -397,12 +399,13 @@ const Config::CgiHandler *select_cgi_handler_cf(const ConfigItem *cf, const std:
 
 // throwable
 template <typename ConfigItem>
-const Config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf, const std::string &path) {
+const Config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf,
+                                               const std::string &path) {
   if (!cf->cgi_extensions.configured) {
     return NULL;
   }
   // Find CGI handler for this request
-  std::string ext = util::path::get_extension(path); // throwable
+  std::string ext = util::path::get_extension(path);  // throwable
   if (util::vector::contains(cf->cgi_extensions, ext)) {
     return &cf->cgi_extensions;
   }
@@ -413,19 +416,16 @@ int Connection::handle() throw() {
   srv_cf = select_srv_cf(cf, *this);
   loc_cf = select_loc_cf(srv_cf, header.path);
   try {
-    cgi_handler_cf = loc_cf
-      ? select_cgi_handler_cf(loc_cf, header.path)
-      : select_cgi_handler_cf(srv_cf, header.path);
-    cgi_ext_cf = loc_cf
-      ? select_cgi_ext_cf(loc_cf, header.path)
-      : select_cgi_ext_cf(srv_cf, header.path);
+    cgi_handler_cf = loc_cf ? select_cgi_handler_cf(loc_cf, header.path)
+                            : select_cgi_handler_cf(srv_cf, header.path);
+    cgi_ext_cf = loc_cf ? select_cgi_ext_cf(loc_cf, header.path)
+                        : select_cgi_ext_cf(srv_cf, header.path);
   } catch (const std::exception &e) {
     Log::cerror() << e.what() << std::endl;
     ErrorHandler::handle(*this, 500);
     status = RESPONSE;
     return 1;
   }
-  
 
   // `return` directive
   if (loc_cf && loc_cf->returns.size() > 0) {

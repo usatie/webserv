@@ -100,7 +100,7 @@ int SocketBuf::read_telnet_line(std::string& line) throw() {
   }
   // 4. CRLF found
   Log::debug("CRLF found");
-  line.resize(line.size() - 1);//line.pop_back();
+  line.resize(line.size() - 1);  // line.pop_back();
   return 0;
 }
 ssize_t SocketBuf::read(char* buf, size_t size) throw() {

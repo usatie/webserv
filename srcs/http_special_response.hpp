@@ -23,7 +23,8 @@ static const char http_error_405_page[] =
     "<body>" CRLF "<center><h1>405 Not Allowed</h1></center>" CRLF ERROR_TAIL;
 
 static const char http_error_413_page[] =
-    "<html>" CRLF "<head><title>413 Request Entity Too Large</title></head>" CRLF
+    "<html>" CRLF
+    "<head><title>413 Request Entity Too Large</title></head>" CRLF
     "<body>" CRLF
     "<center><h1>413 Request Entity Too Large</h1></center>" CRLF ERROR_TAIL;
 

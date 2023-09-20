@@ -86,7 +86,8 @@ Config::Location::Location(Command* loc) : path(loc->location) {
         if (cgi_extensions.configured) {
           throw std::runtime_error("cgi_extensions is already configured");
         }
-        cgi_handlers.push_back(CgiHandler(cmd->cgi_extensions, cmd->cgi_interpreter_path));
+        cgi_handlers.push_back(
+            CgiHandler(cmd->cgi_extensions, cmd->cgi_interpreter_path));
         break;
       case Command::CMD_LOCATION:
         locations.push_back(Config::Location(cmd));
@@ -175,7 +176,8 @@ Config::Server::Server(Command* srv) {
         if (cgi_extensions.configured) {
           throw std::runtime_error("cgi_extensions is already configured");
         }
-        cgi_handlers.push_back(CgiHandler(cmd->cgi_extensions, cmd->cgi_interpreter_path));
+        cgi_handlers.push_back(
+            CgiHandler(cmd->cgi_extensions, cmd->cgi_interpreter_path));
         break;
       default:
         throw std::runtime_error("Invalid command type");
@@ -306,7 +308,8 @@ std::ostream& operator<<(std::ostream& os, const Config::RedirectReturn& ret) {
 
 std::ostream& operator<<(std::ostream& os,
                          const Config::CgiHandler& cgi_handler) {
-  os << "{" << cgi_handler.extensions << " " << cgi_handler.interpreter_path << "}";
+  os << "{" << cgi_handler.extensions << " " << cgi_handler.interpreter_path
+     << "}";
   return os;
 }
 

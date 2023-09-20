@@ -1,7 +1,6 @@
 #ifndef SOCKET_HPP
 #define SOCKET_HPP
 
-#include "Log.hpp"
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -9,6 +8,8 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+
+#include "Log.hpp"
 #define MAXLINE 1024
 #include <fcntl.h>
 
@@ -123,7 +124,7 @@ class Socket {
     return 0;
   }
 
-  // This 
+  // This
   int set_nolinger(int linger) throw() {
     struct linger l;
     l.l_onoff = 1;
@@ -144,11 +145,10 @@ class Socket {
     int connfd = ::accept(fd, (struct sockaddr*)&caddr, &caddrlen);
     static unsigned int cnt = 0;
     cnt++;
-    Log::cinfo()
-      << cnt << "th connection accepted: "
-      << "connfd(" << connfd << "), port("
-      << ntohs(((struct sockaddr_in*)&caddr)->sin_port) << ")"
-      << std::endl;
+    Log::cinfo() << cnt << "th connection accepted: "
+                 << "connfd(" << connfd << "), port("
+                 << ntohs(((struct sockaddr_in*)&caddr)->sin_port) << ")"
+                 << std::endl;
     if (connfd < 0) {
       Log::error("accept() failed");
       throw std::runtime_error("accept() failed");
@@ -159,7 +159,7 @@ class Socket {
       connsock = util::shared_ptr<Socket>(
           new Socket(connfd, (struct sockaddr*)&saddr, (struct sockaddr*)&caddr,
                      saddrlen, caddrlen));
-      //connsock->set_nolinger(0);
+      // connsock->set_nolinger(0);
       return connsock;
     } catch (std::bad_alloc& e) {
       Log::error("new Socket() failed");
