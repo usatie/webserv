@@ -504,6 +504,8 @@ int Connection::handle() throw() {
     GetHandler::handle(*this);
   } else if (header.method == "POST") {
     PostHandler::handle(*this);
+  } else if (header.method == "PUT") {
+    PostHandler::handle(*this);
   } else if (header.method == "DELETE") {
     DeleteHandler::handle(*this);
   } else {
