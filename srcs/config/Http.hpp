@@ -10,6 +10,8 @@
 #include "config/Root.hpp"
 #include "config/Server.hpp"
 
+struct Module;
+
 namespace config {
 class HTTP {
  public:
