@@ -7,7 +7,7 @@
 
 #include <cstdlib>  // exit
 
-int CgiHandler::handle(Connection& conn) throw() {
+int CgiHandler::handle(Connection& conn) {  // throwable
   // Check if 404
   if (access(conn.header.fullpath.c_str(), F_OK) == -1) {
     ErrorHandler::handle(conn, 404);
@@ -71,15 +71,8 @@ int CgiHandler::handle(Connection& conn) throw() {
   } else {
     // Parent process
     close(cgi_socket[1]);
-    try {
-      conn.cgi_socket =
-          util::shared_ptr<SocketBuf>(new SocketBuf(cgi_socket[0]));
-    } catch (std::exception& e) {
-      Log::fatal("new SocketBuf(cgi_socket[0]) failed");
-      close(cgi_socket[0]);
-      ErrorHandler::handle(conn, 500);
-      return -1;
-    }
+    conn.cgi_socket =
+        util::shared_ptr<SocketBuf>(new SocketBuf(cgi_socket[0]));  // throwable
     Log::cdebug() << "body_size: " << conn.body_size;
     conn.cgi_socket->write(conn.body, conn.body_size);
     conn.cgi_pid = pid;

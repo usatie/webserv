@@ -66,19 +66,19 @@ class SocketBuf {
   }
   int send_file(const std::string& filepath) throw();
 
-  int readline(std::string& line) throw();
+  int readline(std::string& line);  // throwable
 
   // Read line from buffer, if found, remove it from buffer and return 0
   // Otherwise, return -1
-  int read_telnet_line(std::string& line) throw();
+  int read_telnet_line(std::string& line);
 
   ssize_t read(char* buf, size_t size) throw();
 
   // Actually send data on socket
-  int flush() throw();
+  int flush();  // throwable
 
   // Actually receive data from socket
-  int fill() throw();
+  int fill();  // throwable
 
   void clear_sendbuf() throw() {
     wss.str("");

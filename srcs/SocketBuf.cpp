@@ -31,24 +31,17 @@ int SocketBuf::send_file(const std::string& filepath) throw() {
   }
   return 0;
 }
-int SocketBuf::readline(std::string& line) throw() {
+int SocketBuf::readline(std::string& line) {
   StreamCleaner _(rss, wss);
   if (bad()) {
     return -1;
   }
   // 1. getline
-  try {
-    // If there is an error while getline, return -1
-    // i.e. str.max_size() characters have been stored.
-    if (!std::getline(rss, line)) {  // throwable
-      Log::debug("std::getline(LF) failed");
-      line.clear();
-      return -1;
-    }
-  } catch (std::exception& e) {
-    Log::fatal("getline() failed");
+  // If there is an error while getline, return -1
+  // i.e. str.max_size() characters have been stored.
+  if (!std::getline(rss, line)) {  // throwable
+    Log::debug("std::getline(LF) failed");
     line.clear();
-    setbadstate();
     return -1;
   }
 
@@ -63,24 +56,17 @@ int SocketBuf::readline(std::string& line) throw() {
   Log::debug("LF found");
   return 0;
 }
-int SocketBuf::read_telnet_line(std::string& line) throw() {
+int SocketBuf::read_telnet_line(std::string& line) {  // throwable
   StreamCleaner _(rss, wss);
   if (bad()) {
     return -1;
   }
   // 1. getline
-  try {
-    // If there is an error while getline, return -1
-    // i.e. str.max_size() characters have been stored.
-    if (!std::getline(rss, line, LF)) {  // throwable
-      Log::debug("std::getline(LF) failed");
-      line.clear();
-      return -1;
-    }
-  } catch (std::exception& e) {
-    Log::fatal("getline() failed");
+  // If there is an error while getline, return -1
+  // i.e. str.max_size() characters have been stored.
+  if (!std::getline(rss, line, LF)) {  // throwable
+    Log::debug("std::getline(LF) failed");
     line.clear();
-    setbadstate();
     return -1;
   }
   // 2. EOF before LF (i.e. no LF found)
@@ -115,7 +101,7 @@ ssize_t SocketBuf::read(char* buf, size_t size) throw() {
   if (rss.bad()) return -1;
   return rss.gcount();
 }
-int SocketBuf::flush() throw() {
+int SocketBuf::flush() {
   StreamCleaner _(rss, wss);
   if (bad()) {
     return -1;
@@ -123,41 +109,35 @@ int SocketBuf::flush() throw() {
   if (isSendBufEmpty()) {
     return 0;
   }
-  try {
-    Log::cdebug() << "wss.tellg(): " << wss.tellg() << "\n";
-    // TODO: wss.fail() may be true, we need to handle it
-    // in that case, tellg() returns -1
-    if (wss.tellg() < 0) {
-      Log::cerror() << "wss.tellg() failed\n";
-      return -1;
-    }
-    std::string buf(wss.str());
-    // TODO: buf may contain unnecessary leading data, we need to remove them
-
-#ifdef LINUX
-    ssize_t ret = ::send(socket->get_fd(), &buf.c_str()[wss.tellg()],
-                         buf.size() - wss.tellg(), 0);
-#else
-    ssize_t ret = ::send(socket->get_fd(), &buf.c_str()[wss.tellg()],
-                         buf.size() - wss.tellg(), SO_NOSIGPIPE);
-#endif
-    if (ret < 0) {
-      Log::cerror() << "send() failed, errno: " << errno
-                    << ", error: " << strerror(errno) << "\n";
-      // TODO: handle EINTR
-      // ETIMEDOUT, EPIPE in any case means the connection is closed
-      socket->beClosed();
-      return -1;
-    }
-    wss.seekg(ret, std::ios::cur);
-    return ret;
-  } catch (std::exception& e) {
-    Log::cfatal() << "wss.str() failed: " << e.what() << "\n";
-    setbadstate();
+  Log::cdebug() << "wss.tellg(): " << wss.tellg() << "\n";
+  // TODO: wss.fail() may be true, we need to handle it
+  // in that case, tellg() returns -1
+  if (wss.tellg() < 0) {
+    Log::cerror() << "wss.tellg() failed\n";
     return -1;
   }
+  std::string buf(wss.str());  // throwable
+  // TODO: buf may contain unnecessary leading data, we need to remove them
+
+#ifdef LINUX
+  ssize_t ret = ::send(socket->get_fd(), &buf.c_str()[wss.tellg()],
+                       buf.size() - wss.tellg(), 0);
+#else
+  ssize_t ret = ::send(socket->get_fd(), &buf.c_str()[wss.tellg()],
+                       buf.size() - wss.tellg(), SO_NOSIGPIPE);
+#endif
+  if (ret < 0) {
+    Log::cerror() << "send() failed, errno: " << errno
+                  << ", error: " << strerror(errno) << "\n";
+    // TODO: handle EINTR
+    // ETIMEDOUT, EPIPE in any case means the connection is closed
+    socket->beClosed();
+    return -1;
+  }
+  wss.seekg(ret, std::ios::cur);
+  return ret;
 }
-int SocketBuf::fill() throw() {
+int SocketBuf::fill() {  // throwable
   StreamCleaner _(rss, wss);
   if (bad()) {
     return -1;
@@ -174,15 +154,9 @@ int SocketBuf::fill() throw() {
     socket->beClosed();
   }
   // Fill ret bytes buf into rss
-  try {
-    std::string s(buf, ret);
-    rss << s;
-    return ret;
-  } catch (std::exception& e) {
-    Log::fatal("std::string(buf, ret) failed");
-    setbadstate();
-    return -1;
-  }
+  std::string s(buf, ret);  // throwable
+  rss << s;
+  return ret;
 }
 SocketBuf& SocketBuf::write(const char* buf, size_t size) throw() {
   StreamCleaner _(rss, wss);

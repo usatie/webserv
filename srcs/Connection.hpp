@@ -86,7 +86,7 @@ class Connection {
 
   // Member functions
   // Returns negative value when an exception is thrown from STL containers
-  int resume() throw();
+  int resume();
   int clear();
 
   IOStatus getIOStatus() const throw();
@@ -94,16 +94,16 @@ class Connection {
   // TODO: make this noexcept
   // https://datatracker.ietf.org/doc/html/rfc2616#section-5.1
   // Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
-  int parse_start_line() throw();
+  int parse_start_line();  // throwable
 
   int split_header_field(const std::string &line, std::string &key,
-                         std::string &value);
+                         std::string &value);  // throwable
 
-  int parse_header_fields() throw();
+  int parse_header_fields();  // throwable
 
-  int parse_body() throw();
+  int parse_body();  // throwable
 
-  int handle() throw();
+  int handle();  // throwable
 
   int handle_cgi_req() throw();
 
@@ -151,7 +151,7 @@ class Connection {
   // status-code    = "200" | "302" | "400" | "501" | extension-code
   // extension-code = 3digit
   // reason-phrase  = *TEXT
-  int handle_cgi_parse() throw();
+  int handle_cgi_parse();  // throwable
 
   int response() throw();
 };
