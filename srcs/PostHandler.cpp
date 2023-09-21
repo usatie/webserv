@@ -1,5 +1,6 @@
 #include "PostHandler.hpp"
 
+#include <cerrno>
 #include <ctime>
 
 #include "Connection.hpp"

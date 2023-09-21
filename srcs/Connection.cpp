@@ -2,6 +2,7 @@
 
 #include <sys/wait.h>
 
+#include <cerrno>
 #include <map>
 
 #include "DeleteHandler.hpp"
