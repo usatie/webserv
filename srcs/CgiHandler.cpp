@@ -44,9 +44,46 @@ int CgiHandler::handle(Connection& conn) {  // throwable
   }
   if (pid == 0) {
     // Child process
-    char* const env[] = {strdup("REQUEST_METHOD=GET"),
-                         strdup("SERVER_PROTOCOL=HTTP/1.1"),
-                         strdup("PATH_INFO=/"), NULL};
+    std::stringstream ss;
+    ss << "CONTENT_LENGTH=" << conn.content_length;
+    std::string
+      auth_type = "AUTH_TYPE=", // TODO: Implement RFC3875 4.1.1
+      content_length = ss.str(),
+      content_type = "CONTENT_TYPE=" + conn.header.fields["Content-Type"],
+      gateway_interface = "GATEWAY_INTERFACE=CGI/1.1",
+      path_info = "PATH_INFO=" + conn.header.path, // TODO: Implement RFC3875 4.1.5
+      path_translated = "PATH_TRANSLATED=" + conn.header.fullpath, // TODO: Implement RFC3875 4.1.6
+      query_string = "QUERY_STRING=", // TODO: Must Implement RFC3875 4.1.7
+      remote_addr = "REMOTE_ADDR=", // TODO: Implement RFC3875 4.1.8
+      remote_host = "REMOTE_HOST=", // TODO: Implement RFC3875 4.1.9
+      remote_ident = "REMOTE_IDENT=", // TODO: Implement RFC3875 4.1.10
+      remote_user = "REMOTE_USER=", // TODO: Implement RFC3875 4.1.11
+      request_method = "REQUEST_METHOD=" + conn.header.method,
+      script_name = "SCRIPT_NAME=" + conn.header.path, // TODO: Implement RFC3875 4.1.12
+      server_name = "SERVER_NAME=" + conn.header.fields["Host"], // TODO: Implement RFC3875 4.1.13
+      server_port = "SERVER_PORT=", // TODO: Implement RFC3875 4.1.14
+      server_protocol = "SERVER_PROTOCOL=HTTP/1.1",
+      server_software = "SERVER_SOFTWARE=webserv/0.0.1";
+    char* const env[] = {
+      (char*)auth_type.c_str(),
+      (char*)content_length.c_str(),
+      (char*)content_type.c_str(),
+      (char*)gateway_interface.c_str(),
+      (char*)path_info.c_str(),
+      (char*)path_translated.c_str(),
+      (char*)query_string.c_str(),
+      (char*)remote_addr.c_str(),
+      (char*)remote_host.c_str(),
+      (char*)remote_ident.c_str(),
+      (char*)remote_user.c_str(),
+      (char*)request_method.c_str(),
+      (char*)script_name.c_str(),
+      (char*)server_name.c_str(),
+      (char*)server_port.c_str(),
+      (char*)server_protocol.c_str(),
+      (char*)server_software.c_str(),
+      NULL
+    };
     if (conn.cgi_ext_cf) {  // binary or script with shebang
       const char* const argv[] = {conn.header.fullpath.c_str(), NULL};
       close(cgi_socket[0]);
