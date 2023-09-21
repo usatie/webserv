@@ -107,6 +107,8 @@ int SocketBuf::flush() {
     return -1;
   }
   if (isSendBufEmpty()) {
+    Log::cerror()
+        << "Something's wrong: send buffer is empty and flush() is called.\n";
     return 0;
   }
   Log::cdebug() << "wss.tellg(): " << wss.tellg() << "\n";
@@ -147,11 +149,16 @@ int SocketBuf::fill() {  // throwable
   ssize_t ret =
       ::recv(socket->get_fd(), static_cast<void*>(buf), MAXLINE, flags);
   if (ret < 0) {
-    Log::error("recv() failed");
+    Log::cerror() << "recv() failed, errno: " << errno
+                  << ", error: " << strerror(errno) << "\n";
     return -1;
   }
   if (ret == 0) {
-    socket->beClosed();
+    Log::cdebug() << "received EOF" << std::endl;
+    // Just save the EOF flag and do not close the socket in order to send
+    // the remaining data.
+    hasReceivedEof = true;
+    return 0;
   }
   // Fill ret bytes buf into rss
   std::string s(buf, ret);  // throwable

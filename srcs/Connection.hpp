@@ -63,6 +63,9 @@ class Connection {
   const config::CgiExtensions *cgi_ext_cf;
 
  public:
+  IOStatus io_status;
+
+ public:
   // Constructor/Destructor
   Connection() throw();  // Do not implement this
   Connection(util::shared_ptr<Socket> sock, const config::Config &cf)
@@ -76,7 +79,8 @@ class Connection {
         cgi_pid(-1),
         cf(cf),
         srv_cf(NULL),
-        loc_cf(NULL) {}
+        loc_cf(NULL),
+        io_status(NO_IO) {}
   ~Connection() throw() {
     if (body != NULL) delete[] body;
   }
@@ -97,8 +101,6 @@ class Connection {
   // Returns negative value when an exception is thrown from STL containers
   int resume();
   int clear();
-
-  IOStatus getIOStatus() const throw();
 
  private:
   // TODO: make this noexcept
