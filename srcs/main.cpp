@@ -7,7 +7,7 @@
 #define PORT 8181
 #define ERROR 1
 
-void run_server(char *filename);
+int run_server(char *filename);
 
 int main(int argc, char *argv[]) {
 #ifdef DEBUG
@@ -24,8 +24,8 @@ int main(int argc, char *argv[]) {
     return ERROR;
   }
   try {
-    run_server(argv[1]);  // throwable
-    return 0;
+    run_server(argv[1]); // throwable
+    return ERROR; // if startup is successful, this line is unreachable
   } catch (std::exception &e) {
     Log::cfatal() << "Caught exception while starting server: " << e.what();
     return ERROR;
@@ -34,13 +34,13 @@ int main(int argc, char *argv[]) {
 
 // Starting servers can throw exceptions, but after the start-up process,
 // the servers will not throw exceptions.
-void run_server(char *filename) {
+int run_server(char *filename) {
   // Construct Config from config file.
   config::Config cf;  // throwable
   if (filename) {
     std::ifstream ifs(filename);
     if (!ifs.is_open()) {
-      throw std::runtime_error("Cannot open config file");
+      return -1;
     }
     std::string s((std::istreambuf_iterator<char>(ifs)),
                   std::istreambuf_iterator<char>());  // no throw
@@ -58,5 +58,6 @@ void run_server(char *filename) {
   server.startup(); // throwable
 
   // Run server
-  server.run();  // no throw, never return
+  server.run();  // no throw
+  return -1; // unreachable, never return
 }
