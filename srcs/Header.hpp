@@ -23,12 +23,12 @@ class Header {
   ~Header() throw() {}
   // Member functions
   int clear() {
-	  method.clear();
-	  path.clear();
-	  version.clear();
-	  fullpath.clear();
-	  fields.clear();
-	  return 0;
+    method.clear();
+    path.clear();
+    version.clear();
+    fullpath.clear();
+    fields.clear();
+    return 0;
   }
 };
 

@@ -44,7 +44,9 @@ int CgiHandler::handle(Connection& conn) throw() {
   }
   if (pid == 0) {
     // Child process
-    char * const env[] = {strdup("REQUEST_METHOD=GET"), strdup("SERVER_PROTOCOL=HTTP/1.1"), strdup("PATH_INFO=/"), NULL};
+    char* const env[] = {strdup("REQUEST_METHOD=GET"),
+                         strdup("SERVER_PROTOCOL=HTTP/1.1"),
+                         strdup("PATH_INFO=/"), NULL};
     if (conn.cgi_ext_cf) {  // binary or script with shebang
       const char* const argv[] = {conn.header.fullpath.c_str(), NULL};
       close(cgi_socket[0]);

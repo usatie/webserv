@@ -75,10 +75,10 @@ int Connection::resume() throw() {
         break;
       case DONE:
         cont = false;
-	break;
+        break;
       case CLEAR:
-	cont = false;
-	break;
+        cont = false;
+        break;
     }
   }
   // Finally, check if there is any error while handling the request
@@ -91,19 +91,21 @@ int Connection::resume() throw() {
 }
 
 int Connection::clear() {
-	cgi_socket = util::shared_ptr< SocketBuf >();
-	header.clear();
-	status = REQ_START_LINE;
-	if (body) { delete[] body; }
-	body = NULL;
-	body_size = 0;
-	content_length = 0;
-	cgi_pid = 0;
-	srv_cf = NULL;
-	loc_cf = NULL;
-	cgi_handler_cf = NULL;
-	cgi_ext_cf = NULL;
-	return 0;
+  cgi_socket = util::shared_ptr<SocketBuf>();
+  header.clear();
+  status = REQ_START_LINE;
+  if (body) {
+    delete[] body;
+  }
+  body = NULL;
+  body_size = 0;
+  content_length = 0;
+  cgi_pid = 0;
+  srv_cf = NULL;
+  loc_cf = NULL;
+  cgi_handler_cf = NULL;
+  cgi_ext_cf = NULL;
+  return 0;
 }
 
 Connection::IOStatus Connection::getIOStatus() const throw() {
@@ -519,7 +521,8 @@ int Connection::handle() throw() {
 
 int Connection::handle_cgi_req() throw() {
   Log::debug("handle_cgi_req");
-  Log::cdebug() << "isSendBufEmpty: " << cgi_socket->isSendBufEmpty() << std::endl;
+  Log::cdebug() << "isSendBufEmpty: " << cgi_socket->isSendBufEmpty()
+                << std::endl;
   if (cgi_socket->isSendBufEmpty()) {
     shutdown(cgi_socket->get_fd(), SHUT_WR);
     status = HANDLE_CGI_RES;
@@ -626,10 +629,11 @@ int Connection::handle_cgi_parse() throw() {
   }
   if (cgi_header_fields.find("Status") != cgi_header_fields.end()) {
     // TODO: validate status code
-	  Log::cdebug() << "Status found: " << cgi_header_fields["Status"] << std::endl;
+    Log::cdebug() << "Status found: " << cgi_header_fields["Status"]
+                  << std::endl;
     *client_socket << "HTTP/1.1 " << cgi_header_fields["Status"] << CRLF;
   } else {
-	  Log::cdebug() << "Status not found" << std::endl;
+    Log::cdebug() << "Status not found" << std::endl;
     *client_socket << "HTTP/1.1 200 OK" << CRLF;
   }
   // Send header fields
