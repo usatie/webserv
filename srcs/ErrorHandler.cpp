@@ -55,7 +55,7 @@ const config::ErrorPage* find_error_page(const ConfigItem* cf,
 #define ERR_403 2
 #define ERR_404 3
 #define ERR_500 4
-int try_error_page(Connection& conn, int status_code) { // throwable
+int try_error_page(Connection& conn, int status_code) {  // throwable
   // 1. No context for error_page
   if (!conn.loc_cf && !conn.srv_cf) {
     return -1;
@@ -108,12 +108,11 @@ int try_error_page(Connection& conn, int status_code) { // throwable
   //
 }
 
-void ErrorHandler::handle(Connection& conn, int status_code,
-                          bool noredirect) {
+void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
   conn.client_socket->clear_sendbuf();
   // Error Page by `error_page` directive
   if (!noredirect) {
-    if (try_error_page(conn, status_code) == 0) { // throwable
+    if (try_error_page(conn, status_code) == 0) {  // throwable
       return;
     }
   }

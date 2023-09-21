@@ -56,7 +56,7 @@ int SocketBuf::readline(std::string& line) {
   Log::debug("LF found");
   return 0;
 }
-int SocketBuf::read_telnet_line(std::string& line) { // throwable
+int SocketBuf::read_telnet_line(std::string& line) {  // throwable
   StreamCleaner _(rss, wss);
   if (bad()) {
     return -1;
@@ -116,7 +116,7 @@ int SocketBuf::flush() {
     Log::cerror() << "wss.tellg() failed\n";
     return -1;
   }
-  std::string buf(wss.str()); // throwable
+  std::string buf(wss.str());  // throwable
   // TODO: buf may contain unnecessary leading data, we need to remove them
 
 #ifdef LINUX
@@ -137,7 +137,7 @@ int SocketBuf::flush() {
   wss.seekg(ret, std::ios::cur);
   return ret;
 }
-int SocketBuf::fill() { // throwable
+int SocketBuf::fill() {  // throwable
   StreamCleaner _(rss, wss);
   if (bad()) {
     return -1;
@@ -154,7 +154,7 @@ int SocketBuf::fill() { // throwable
     socket->beClosed();
   }
   // Fill ret bytes buf into rss
-  std::string s(buf, ret); // throwable
+  std::string s(buf, ret);  // throwable
   rss << s;
   return ret;
 }

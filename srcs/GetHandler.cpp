@@ -87,7 +87,7 @@ int resolve_path(const config::Server* srv_cf, const config::Location* loc_cf,
   return ERR_404;
 }
 
-void GetHandler::handle(Connection& conn) { // throwable
+void GetHandler::handle(Connection& conn) {  // throwable
   // TODO: Write response headers
   struct stat st;
   std::string path;
@@ -100,7 +100,7 @@ void GetHandler::handle(Connection& conn) { // throwable
   } else if (response_type == ERR_403) {
     ErrorHandler::handle(conn, 403);
   } else if (response_type == OK_DIR) {
-    send_directory_listing(conn, path); // throwable
+    send_directory_listing(conn, path);  // throwable
   } else if (response_type == OK_FILE) {
     send_regular_file(conn, path, st.st_size);
   } else {

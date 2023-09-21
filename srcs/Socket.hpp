@@ -140,7 +140,7 @@ class Socket {
   // However, it has a basic guarantee that it will not leak fd
   //  std::runtime_error if accept() failed
   //  std::bad_alloc if new Socket() failed
-  util::shared_ptr<Socket> accept() { // throwable
+  util::shared_ptr<Socket> accept() {  // throwable
     struct sockaddr_storage caddr;
     socklen_t caddrlen = sizeof(caddr);
     int connfd = ::accept(fd, (struct sockaddr*)&caddr, &caddrlen);

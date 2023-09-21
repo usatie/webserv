@@ -11,7 +11,8 @@ static int compar(const struct dirent** s1, const struct dirent** s2) {
     return strcmp((*s1)->d_name, (*s2)->d_name);
 }
 
-void send_directory_listing(Connection& conn, const std::string& path) { // throwable
+void send_directory_listing(Connection& conn,
+                            const std::string& path) {  // throwable
   // Generate HTML for directory listing
   std::stringstream ss;
   ss << "<html>" << CRLF << "<head><title>Index of " << conn.header.path
@@ -33,8 +34,7 @@ void send_directory_listing(Connection& conn, const std::string& path) { // thro
       ErrorHandler::handle(conn, 500);
       return;
     }
-    if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
-      continue;
+    if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0) continue;
     // Name with link
     ss << "<a href=\"" << dp->d_name;
     if (S_ISDIR(st.st_mode)) ss << "/";
@@ -70,6 +70,6 @@ void send_directory_listing(Connection& conn, const std::string& path) { // thro
   *conn.client_socket << "Server: " << WEBSERV_VER << CRLF;
   *conn.client_socket << "Content-Type: text/html" << CRLF;
   *conn.client_socket << "Content-Length: " << ss.str().length() << CRLF;
-  *conn.client_socket << CRLF;  // end of header
-  *conn.client_socket << ss.str(); // throwable
+  *conn.client_socket << CRLF;      // end of header
+  *conn.client_socket << ss.str();  // throwable
 }

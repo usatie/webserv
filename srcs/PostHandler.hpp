@@ -24,7 +24,7 @@ class PostHandler {
 
  public:
   // Member fuctions
-  static void handle(Connection& conn); // throwable
+  static void handle(Connection& conn);  // throwable
 };
 
 #endif

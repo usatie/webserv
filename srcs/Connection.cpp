@@ -7,21 +7,21 @@
 
 #include "DeleteHandler.hpp"
 
-int Connection::resume() { // throwable
+int Connection::resume() {  // throwable
   // 1. Socket I/O
   IOStatus io_status = getIOStatus();
   switch (io_status) {
     case CLIENT_RECV:
-      client_socket->fill(); // throwable
+      client_socket->fill();  // throwable
       break;
     case CLIENT_SEND:
-      client_socket->flush(); // throwable
+      client_socket->flush();  // throwable
       break;
     case CGI_RECV:
-      cgi_socket->fill(); // throwable
+      cgi_socket->fill();  // throwable
       break;
     case CGI_SEND:
-      cgi_socket->flush(); // throwable
+      cgi_socket->flush();  // throwable
       break;
     case NO_IO:
       break;
@@ -49,16 +49,16 @@ int Connection::resume() { // throwable
   while (cont) {
     switch (status) {
       case REQ_START_LINE:
-        cont = parse_start_line(); // throwable
+        cont = parse_start_line();  // throwable
         break;
       case REQ_HEADER_FIELDS:
-        cont = parse_header_fields(); // throwable
+        cont = parse_header_fields();  // throwable
         break;
       case REQ_BODY:
-        cont = parse_body(); // throwable
+        cont = parse_body();  // throwable
         break;
       case HANDLE:
-        cont = handle(); // throwable
+        cont = handle();  // throwable
         break;
       case HANDLE_CGI_REQ:
         cont = handle_cgi_req();
@@ -67,7 +67,7 @@ int Connection::resume() { // throwable
         cont = handle_cgi_res();
         break;
       case HANDLE_CGI_PARSE:
-        cont = handle_cgi_parse(); // throwable
+        cont = handle_cgi_parse();  // throwable
         status = RESPONSE;
         break;
       case RESPONSE:
@@ -134,7 +134,7 @@ Connection::IOStatus Connection::getIOStatus() const throw() {
 int Connection::parse_start_line() {
   std::string line;
 
-  if (client_socket->read_telnet_line(line) < 0) { // throwable
+  if (client_socket->read_telnet_line(line) < 0) {  // throwable
     return 0;
   }
   Log::cdebug() << "start line: " << line << std::endl;
@@ -186,7 +186,7 @@ int Connection::parse_start_line() {
 }
 
 int Connection::split_header_field(const std::string &line, std::string &key,
-                                   std::string &value) { // throwable
+                                   std::string &value) {  // throwable
   std::stringstream ss(line);  // throwable! (bad alloc)
   // 1. Extract key
   if (!std::getline(ss, key, ':')) {  // throwable
@@ -199,13 +199,13 @@ int Connection::split_header_field(const std::string &line, std::string &key,
   // 2. Remove leading space from value
   ss >> std::ws;
   // 3. Extract remaining string to value
-  std::getline(ss, value);     // throwable
+  std::getline(ss, value);  // throwable
   return 0;
 }
 
-int Connection::parse_header_fields() { // throwable
+int Connection::parse_header_fields() {  // throwable
   std::string line;
-  while (client_socket->read_telnet_line(line) == 0) { // throwable
+  while (client_socket->read_telnet_line(line) == 0) {  // throwable
     // Empty line indicates the end of header fields
     if (line == "") {
       status = REQ_BODY;
@@ -214,7 +214,7 @@ int Connection::parse_header_fields() { // throwable
     Log::cdebug() << "header line: " << line << std::endl;
     // Split line to key and value
     std::string key, value;
-    if (split_header_field(line, key, value) < 0) { // throwable
+    if (split_header_field(line, key, value) < 0) {  // throwable
       ErrorHandler::handle(*this, 500);
       status = RESPONSE;
       return 1;
@@ -230,7 +230,7 @@ int Connection::parse_header_fields() { // throwable
   return 0;
 }
 
-int Connection::parse_body() { // throwable
+int Connection::parse_body() {  // throwable
   if (body == NULL) {
     if (header.fields.find("Content-Length") == header.fields.end()) {
       status = HANDLE;
@@ -422,7 +422,7 @@ const config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf,
   return NULL;
 }
 
-int Connection::handle() { // throwable
+int Connection::handle() {  // throwable
   srv_cf = select_srv_cf(cf, *this);
   loc_cf = select_loc_cf(srv_cf, header.path);
   cgi_handler_cf = loc_cf ? select_cgi_handler_cf(loc_cf, header.path)
@@ -443,15 +443,16 @@ int Connection::handle() { // throwable
   if (!loc_cf) {
     // Server Root    : Append path to root
     Log::cdebug() << "Server Root" << std::endl;
-    header.fullpath = srv_cf->root + header.path; // throwable
+    header.fullpath = srv_cf->root + header.path;  // throwable
   } else if (!loc_cf->alias.configured) {
     // Location Root  : Append path to root
     Log::cdebug() << "Location Root: " << loc_cf->path << std::endl;
-    header.fullpath = loc_cf->root + header.path; // throwable
+    header.fullpath = loc_cf->root + header.path;  // throwable
   } else {
     // Location Alias : Replace prefix with alias
     Log::cdebug() << "Location Alias: " << loc_cf->path << std::endl;
-    header.fullpath = loc_cf->alias + header.path.substr(loc_cf->path.size()); // throwable
+    header.fullpath =
+        loc_cf->alias + header.path.substr(loc_cf->path.size());  // throwable
   }
 
   // `limit_except` directive
@@ -476,16 +477,16 @@ int Connection::handle() { // throwable
   }
   // If not CGI
   if (header.method == "GET") {
-    GetHandler::handle(*this); // throwable
+    GetHandler::handle(*this);  // throwable
   } else if (header.method == "POST") {
-    PostHandler::handle(*this); // throwable
+    PostHandler::handle(*this);  // throwable
   } else if (header.method == "PUT") {
-    PostHandler::handle(*this); // throwable
+    PostHandler::handle(*this);  // throwable
   } else if (header.method == "DELETE") {
     DeleteHandler::handle(*this);
   } else {
     Log::cinfo() << "Unsupported method: " << header.method << std::endl;
-    ErrorHandler::handle(*this, 405); // throwable
+    ErrorHandler::handle(*this, 405);  // throwable
   }
   status = RESPONSE;
   return 1;
@@ -578,12 +579,12 @@ int Connection::handle_cgi_res() throw() {
 // status-code    = "200" | "302" | "400" | "501" | extension-code
 // extension-code = 3digit
 // reason-phrase  = *TEXT
-int Connection::handle_cgi_parse() { // throwable
+int Connection::handle_cgi_parse() {  // throwable
   // TODO: parse
   std::string line;
   // Read header fields
   std::map<std::string, std::string> cgi_header_fields;
-  while (cgi_socket->readline(line) == 0) { // throwable
+  while (cgi_socket->readline(line) == 0) {  // throwable
     Log::cdebug() << "CGI line: " << line << std::endl;
     // Empty line indicates the end of header fields
     if (line == "" || line == "\r") {

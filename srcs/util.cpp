@@ -13,7 +13,7 @@ std::string util::path::get_extension(const std::string& filepath) {
   if (pos == std::string::npos) {
     return "";
   }
-  return filepath.substr(pos); // throwable
+  return filepath.substr(pos);  // throwable
 }
 
 // https://tools.ietf.org/html/rfc7230#section-3.2.6

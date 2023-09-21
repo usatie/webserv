@@ -66,7 +66,7 @@ class SocketBuf {
   }
   int send_file(const std::string& filepath) throw();
 
-  int readline(std::string& line); // throwable
+  int readline(std::string& line);  // throwable
 
   // Read line from buffer, if found, remove it from buffer and return 0
   // Otherwise, return -1
@@ -75,10 +75,10 @@ class SocketBuf {
   ssize_t read(char* buf, size_t size) throw();
 
   // Actually send data on socket
-  int flush(); // throwable
+  int flush();  // throwable
 
   // Actually receive data from socket
-  int fill(); // throwable
+  int fill();  // throwable
 
   void clear_sendbuf() throw() {
     wss.str("");
