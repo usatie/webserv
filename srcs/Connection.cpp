@@ -231,6 +231,28 @@ int Connection::parse_header_fields() {  // throwable
 }
 
 int Connection::parse_body() {  // throwable
+  // TODO: Handle invalid Transfer-Encoding
+  if (header.fields.find("Transfer-Encoding") != header.fields.end()
+      && header.fields["Transfer-Encoding"].find("chunked") != std::string::npos) {
+    if (header.fields.find("Content-Length") != header.fields.end()) {
+      Log::cinfo() << "Both Transfer-Encoding and Content-Length are "
+                      "specified"
+                   << std::endl;
+      ErrorHandler::handle(*this, 400);
+      status = RESPONSE;
+      return 1;
+    }
+    return parse_body_chunked();
+  }
+  return parse_body_content_length();
+}
+
+int Connection::parse_body_chunked() { // throwable
+  // TODO: implement
+  return 1;
+}
+
+int Connection::parse_body_content_length() {  // throwable
   if (body == NULL) {
     if (header.fields.find("Content-Length") == header.fields.end()) {
       status = HANDLE;

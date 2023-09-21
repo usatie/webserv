@@ -91,6 +91,7 @@ class Connection {
 
   IOStatus getIOStatus() const throw();
 
+ private:
   // TODO: make this noexcept
   // https://datatracker.ietf.org/doc/html/rfc2616#section-5.1
   // Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
@@ -102,6 +103,8 @@ class Connection {
   int parse_header_fields();  // throwable
 
   int parse_body();  // throwable
+  int parse_body_chunked();  // throwable
+  int parse_body_content_length();  // throwable
 
   int handle();  // throwable
 
