@@ -14,7 +14,7 @@ class Socket;
 namespace config {
 class Config;
 class Listen;
-}
+}  // namespace config
 
 class Server {
  private:
@@ -45,8 +45,9 @@ class Server {
   const config::Config& cf;
 
   // Member functions
-  int getaddrinfo(const config::Listen& l, struct addrinfo **result); // throwable
-  int listen(const config::Listen& l); // throwable
+  int getaddrinfo(const config::Listen& l,
+                  struct addrinfo** result);  // throwable
+  int listen(const config::Listen& l);        // throwable
 
   void remove_connection(util::shared_ptr<Connection> connection) throw();
 

@@ -19,15 +19,14 @@ Server::Server(const config::Config& cf) throw()
   FD_ZERO(&writefds);
 }
 
-int Server::getaddrinfo(const config::Listen& l, struct addrinfo **result) {
-  const char* host =
-      (l.address == "*") ? NULL : l.address.c_str();
+int Server::getaddrinfo(const config::Listen& l, struct addrinfo** result) {
+  const char* host = (l.address == "*") ? NULL : l.address.c_str();
   std::stringstream ss;
   ss << l.port;
   if (ss.bad()) {
     return -1;
   }
-  std::string port(ss.str()); // throwable
+  std::string port(ss.str());  // throwable
   struct addrinfo hints;
 
   memset(&hints, 0, sizeof(struct addrinfo));
@@ -58,13 +57,13 @@ int Server::getaddrinfo(const config::Listen& l, struct addrinfo **result) {
 }
 
 int Server::listen(const config::Listen& l) {
-  struct addrinfo *result;
-  if (getaddrinfo(l, &result) < 0) { // throwable
+  struct addrinfo* result;
+  if (getaddrinfo(l, &result) < 0) {  // throwable
     return -1;
   }
   /* Walk through returned list until we find an address structure
    * that can be used to successfully connect a socket */
-  for (struct addrinfo *rp = result; rp != NULL; rp = rp->ai_next) {
+  for (struct addrinfo* rp = result; rp != NULL; rp = rp->ai_next) {
     Log::cdebug() << "listen : " << l << std::endl;
     Log::cdebug() << "ip: " << rp << std::endl;
     int sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -73,7 +72,7 @@ int Server::listen(const config::Listen& l) {
                     << ")" << std::endl;
       return -1;
     }
-    util::shared_ptr<Socket> sock(new Socket(sfd)); // throwable
+    util::shared_ptr<Socket> sock(new Socket(sfd));  // throwable
     if (sock->reuseaddr() < 0) {
       Log::cfatal() << "sock.set_reuseaddr() failed. (" << errno << ": "
                     << strerror(errno) << ")" << std::endl;
@@ -105,13 +104,13 @@ int Server::listen(const config::Listen& l) {
     // Save the listening ip address to config::Listen
     // Here we use const_cast to modify the const object.
     {
-      config::Listen& ll = const_cast<config::Listen &>(l);
+      config::Listen& ll = const_cast<config::Listen&>(l);
       memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
       ll.addrlen = rp->ai_addrlen;
     }
     FD_SET(sock->get_fd(), &readfds);
     maxfd = std::max(maxfd, sock->get_fd());
-    listen_socks.push_back(sock); // throwable
+    listen_socks.push_back(sock);  // throwable
     break;  // Success, one socket per one listen directive
   }
   freeaddrinfo(result);
@@ -124,7 +123,7 @@ void Server::startup() {
     const config::Server& server = cf.http.servers[i];
     for (unsigned int j = 0; j < server.listens.size(); ++j) {
       Log::cdebug() << "j: " << j << std::endl;
-      if (listen(server.listens[j]) < 0) { // throwable
+      if (listen(server.listens[j]) < 0) {  // throwable
         std::exit(EXIT_FAILURE);
       }
     }

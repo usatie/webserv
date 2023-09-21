@@ -24,8 +24,8 @@ int main(int argc, char *argv[]) {
     return ERROR;
   }
   try {
-    run_server(argv[1]); // throwable
-    return ERROR; // if startup is successful, this line is unreachable
+    run_server(argv[1]);  // throwable
+    return ERROR;         // if startup is successful, this line is unreachable
   } catch (std::exception &e) {
     Log::cfatal() << "Caught exception while starting server: " << e.what();
     return ERROR;
@@ -54,10 +54,10 @@ int run_server(char *filename) {
   config::print(cf);
 
   // Start up server
-  Server server(cf); // no throw
-  server.startup(); // throwable
+  Server server(cf);  // no throw
+  server.startup();   // throwable
 
   // Run server
   server.run();  // no throw
-  return -1; // unreachable, never return
+  return -1;     // unreachable, never return
 }
