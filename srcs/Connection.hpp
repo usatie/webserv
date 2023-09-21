@@ -20,16 +20,20 @@ class Connection {
  public:
   // Class private enum
   typedef enum Status {
-    REQ_START_LINE,     // CLIENT_RECV
-    REQ_HEADER_FIELDS,  // CLIENT_RECV
-    REQ_BODY,           // CLIENT_RECV
-    HANDLE,             //
-    HANDLE_CGI_REQ,     // CGI_SEND
-    HANDLE_CGI_RES,     // CGI_RECV
-    HANDLE_CGI_PARSE,   //
-    RESPONSE,           // CLIENT_SEND
-    DONE,               // CLIENT_SEND
-    CLEAR               // CLIENT_SEND
+    REQ_START_LINE,                  // CLIENT_RECV
+    REQ_HEADER_FIELDS,               // CLIENT_RECV
+    REQ_BODY,                        //
+    REQ_BODY_CONTENT_LENGTH,         // CLIENT_RECV
+    REQ_BODY_CHUNKED,                // CLIENT_RECV
+    REQ_BODY_CHUNK_DATA,             // CLIENT_RECV
+    REQ_BODY_CHUNK_TRAILER_SECTION,  // CLIENT_RECV
+    HANDLE,                          //
+    HANDLE_CGI_REQ,                  // CGI_SEND
+    HANDLE_CGI_RES,                  // CGI_RECV
+    HANDLE_CGI_PARSE,                //
+    RESPONSE,                        // CLIENT_SEND
+    DONE,                            //
+    CLEAR                            //
   } Status;
 
   typedef enum IOStatus {
@@ -48,6 +52,9 @@ class Connection {
   char *body;
   size_t body_size;
   size_t content_length;
+  std::string chunked_body;  // concatenated chunked body
+  std::string chunk;         // single chunk
+  size_t chunk_size;
   pid_t cgi_pid;
   const config::Config &cf;
   const config::Server *srv_cf;
@@ -102,9 +109,11 @@ class Connection {
 
   int parse_header_fields();  // throwable
 
-  int parse_body();  // throwable
-  int parse_body_chunked();  // throwable
-  int parse_body_content_length();  // throwable
+  int parse_body();                        // throwable
+  int parse_body_chunked();                // throwable
+  int parse_body_content_length();         // throwable
+  int parse_body_chunk_data();             // throwable
+  int parse_body_chunk_trailer_section();  // throwable
 
   int handle();  // throwable
 
