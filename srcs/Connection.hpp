@@ -77,7 +77,9 @@ class Connection {
         cf(cf),
         srv_cf(NULL),
         loc_cf(NULL) {}
-  ~Connection() throw() {}
+  ~Connection() throw() {
+    if (body != NULL) delete[] body;
+  }
   Connection(const Connection &other) throw();  // Do not implement this
   Connection &operator=(
       const Connection &other) throw();  // Do not implement this

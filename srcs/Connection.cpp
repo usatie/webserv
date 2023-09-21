@@ -323,14 +323,15 @@ int Connection::parse_body_chunk_data() {  // throwable
   Log::debug("parse_body_chunk_data");
   Log::cdebug() << "chunk_size: " << chunk_size << std::endl;
   // Add 2 bytes for CRLF
-  char *buf = new char[2 + chunk_size - chunk.size()];  // throwable
-  ssize_t ret = client_socket->read(buf, 2 + chunk_size - chunk.size());
+  std::vector<char> buf(chunk_size + 2); // throwable
+  ssize_t ret = client_socket->read(&buf[0], 2 + chunk_size - chunk.size());
+
   if (ret < 0) {
     return 0;
   } else if (ret == 0) {
     return 0;
   }
-  chunk.append(buf, ret);
+  chunk.append(&buf[0], ret);
   if (chunk.size() == chunk_size + 2) {  // +2 for CRLF
     // Check if the last two bytes are CRLF
     if (chunk.substr(chunk.size() - 2) != CRLF) {  // throwable
