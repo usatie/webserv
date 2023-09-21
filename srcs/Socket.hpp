@@ -137,9 +137,10 @@ class Socket {
   }
 
   // This is a kind of constructor, so it is THROWABLE
+  // However, it has a basic guarantee that it will not leak fd
   //  std::runtime_error if accept() failed
   //  std::bad_alloc if new Socket() failed
-  util::shared_ptr<Socket> accept() {
+  util::shared_ptr<Socket> accept() { // throwable
     struct sockaddr_storage caddr;
     socklen_t caddrlen = sizeof(caddr);
     int connfd = ::accept(fd, (struct sockaddr*)&caddr, &caddrlen);
@@ -161,7 +162,7 @@ class Socket {
                      saddrlen, caddrlen));
       // connsock->set_nolinger(0);
       return connsock;
-    } catch (std::bad_alloc& e) {
+    } catch (std::exception& e) {
       Log::error("new Socket() failed");
       if (::close(connfd) < 0) {
         Log::error("close() failed");
