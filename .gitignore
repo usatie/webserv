@@ -9,3 +9,5 @@ webserv
 unit_test
 !tests/unit
 error.log
+tester
+cgi_tester
