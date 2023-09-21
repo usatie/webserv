@@ -14,6 +14,6 @@ class GetHandler {
   ~GetHandler() throw();                             // Do not implement this
  public:
   // Member functions
-  static void handle(Connection& conn) throw();
+  static void handle(Connection& conn); // throwable
 };
 #endif

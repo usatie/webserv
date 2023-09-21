@@ -476,16 +476,16 @@ int Connection::handle() { // throwable
   }
   // If not CGI
   if (header.method == "GET") {
-    GetHandler::handle(*this);
+    GetHandler::handle(*this); // throwable
   } else if (header.method == "POST") {
-    PostHandler::handle(*this);
+    PostHandler::handle(*this); // throwable
   } else if (header.method == "PUT") {
-    PostHandler::handle(*this);
+    PostHandler::handle(*this); // throwable
   } else if (header.method == "DELETE") {
     DeleteHandler::handle(*this);
   } else {
     Log::cinfo() << "Unsupported method: " << header.method << std::endl;
-    ErrorHandler::handle(*this, 405);
+    ErrorHandler::handle(*this, 405); // throwable
   }
   status = RESPONSE;
   return 1;
