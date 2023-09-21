@@ -13,7 +13,7 @@
 
 // This is throwable
 template <typename ConfigItem>
-static int internal_handle(Connection& conn, ConfigItem* cf) throw() {
+static int internal_handle(Connection& conn, ConfigItem* cf) { // throwable
   // `upload_store` directive
   if (!cf->upload_store.configured) return ERR_405;
   // `client_max_body_size` directive
@@ -27,23 +27,21 @@ static int internal_handle(Connection& conn, ConfigItem* cf) throw() {
     }
   }
   std::string filename, filepath;
-  try {
-    std::stringstream ss;
-    // Generate a unique filename in the upload directory
-    do {
-      ss.str("");
-      ss.clear();
-      std::time_t ts = std::time(NULL);
-      ss << ts << "-" << rand();
-      // filename = "{timestamp}-{random number}"
-      filename = ss.str();
-      filepath = cf->upload_store + "/" + filename;
-    } while (access(filename.c_str(), F_OK) != -1);
-  } catch (std::exception& e) {
-    Log::fatal("std::to_string failed");
-    filepath.clear();
-    return ERR_500;
-  }
+  std::stringstream ss;
+  // Generate a unique filename in the upload directory
+  do {
+    ss.str("");
+    ss.clear();
+    std::time_t ts = std::time(NULL);
+    ss << ts << "-" << rand();
+    // filename = "{timestamp}-{random number}"
+    if (ss.fail()) {
+      Log::fatal("stringstream failed while generating filename");
+      return ERR_500;
+    }
+    filename = ss.str(); // throwable
+    filepath = cf->upload_store + "/" + filename;
+  } while (access(filename.c_str(), F_OK) != -1);
 
   // Create file
   std::ofstream ofs(filepath.c_str(), std::ios::binary);
@@ -82,12 +80,12 @@ static int internal_handle(Connection& conn, ConfigItem* cf) throw() {
   return SUCCESS;
 }
 
-void PostHandler::handle(Connection& conn) throw() {
+void PostHandler::handle(Connection& conn) {
   int err;
   if (conn.loc_cf) {
-    err = internal_handle(conn, conn.loc_cf);
+    err = internal_handle(conn, conn.loc_cf); // throwable
   } else {
-    err = internal_handle(conn, conn.srv_cf);
+    err = internal_handle(conn, conn.srv_cf); // throwable
   }
   switch (err) {
     case SUCCESS:

@@ -55,7 +55,7 @@ const config::ErrorPage* find_error_page(const ConfigItem* cf,
 #define ERR_403 2
 #define ERR_404 3
 #define ERR_500 4
-int try_error_page(Connection& conn, int status_code) throw() {
+int try_error_page(Connection& conn, int status_code) { // throwable
   // 1. No context for error_page
   if (!conn.loc_cf && !conn.srv_cf) {
     return -1;
@@ -75,14 +75,7 @@ int try_error_page(Connection& conn, int status_code) throw() {
   std::string path;
   const config::Server* srv_cf = conn.srv_cf;
   const config::Location* loc_cf = select_loc_cf(conn.srv_cf, error_page->uri);
-  try {
-    ret = resolve_path(srv_cf, loc_cf, error_page->uri, path, st);
-  } catch (const std::exception& e) {
-    Log::cfatal() << "Error page path resolution failed: " << e.what()
-                  << std::endl;
-    ErrorHandler::handle(conn, 500, true);
-    return 0;
-  }
+  ret = resolve_path(srv_cf, loc_cf, error_page->uri, path, st);
 
   if (ret == ERR_500) {
     ErrorHandler::handle(conn, 500, true);
@@ -116,11 +109,11 @@ int try_error_page(Connection& conn, int status_code) throw() {
 }
 
 void ErrorHandler::handle(Connection& conn, int status_code,
-                          bool noredirect) throw() {
+                          bool noredirect) {
   conn.client_socket->clear_sendbuf();
   // Error Page by `error_page` directive
   if (!noredirect) {
-    if (try_error_page(conn, status_code) == 0) {
+    if (try_error_page(conn, status_code) == 0) { // throwable
       return;
     }
   }
