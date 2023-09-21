@@ -254,17 +254,22 @@ void Server::resume(util::shared_ptr<Connection> conn) throw() {
   try {
     conn->resume();  // throwable
   } catch (std::exception& e) {
+    // We don't send 500 error page to keep our life simple.
     remove_connection(conn);
+    return;
   }
+  // If the connection is aborted, remove it.
   if (conn->is_remove()) {
     Log::info("connection aborted");
     remove_connection(conn);
     return;
   }
+  // If the request is done, clear it.
   if (conn->is_clear()) {
     Log::info("Request is done, clear connection");
     conn->clear();
   }
+  // Update fdset
   update_fdset(conn);
 }
 

@@ -86,7 +86,7 @@ class Connection {
 
   // Member functions
   // Returns negative value when an exception is thrown from STL containers
-  int resume() throw();
+  int resume();
   int clear();
 
   IOStatus getIOStatus() const throw();
@@ -99,11 +99,11 @@ class Connection {
   int split_header_field(const std::string &line, std::string &key,
                          std::string &value);
 
-  int parse_header_fields() throw();
+  int parse_header_fields();
 
-  int parse_body() throw();
+  int parse_body();
 
-  int handle() throw();
+  int handle();
 
   int handle_cgi_req() throw();
 

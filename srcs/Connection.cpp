@@ -7,7 +7,7 @@
 
 #include "DeleteHandler.hpp"
 
-int Connection::resume() throw() {
+int Connection::resume() { // throwable
   // 1. Socket I/O
   IOStatus io_status = getIOStatus();
   switch (io_status) {
@@ -52,10 +52,10 @@ int Connection::resume() throw() {
         cont = parse_start_line();
         break;
       case REQ_HEADER_FIELDS:
-        cont = parse_header_fields();
+        cont = parse_header_fields(); // throwable
         break;
       case REQ_BODY:
-        cont = parse_body();
+        cont = parse_body(); // throwable
         break;
       case HANDLE:
         cont = handle();
@@ -186,30 +186,24 @@ int Connection::parse_start_line() throw() {
 }
 
 int Connection::split_header_field(const std::string &line, std::string &key,
-                                   std::string &value) {
-  try {
-    std::stringstream ss(line);  // throwable! (bad alloc)
-                                 // TODO: playground
-    // 1. Extract key
-    if (!std::getline(ss, key, ':')) {  // throwable
-      Log::cerror() << "std::getline(ss, key, ':') failed. line: " << line
-                    << std::endl;
-      ErrorHandler::handle(*this, 500);
-      status = RESPONSE;
-      return 1;
-    }
-    // 2. Remove leading space from value
-    ss >> std::ws;
-    // 3. Extract remaining string to value
-    std::getline(ss, value);     // throwable
-  } catch (std::exception &e) {  // bad alloc
-    Log::cfatal() << "Caught exception in split_line_to_kv: " << std::endl;
-    return -1;
+                                   std::string &value) { // throwable
+  std::stringstream ss(line);  // throwable! (bad alloc)
+  // 1. Extract key
+  if (!std::getline(ss, key, ':')) {  // throwable
+    Log::cerror() << "std::getline(ss, key, ':') failed. line: " << line
+                  << std::endl;
+    ErrorHandler::handle(*this, 500);
+    status = RESPONSE;
+    return 1;
   }
+  // 2. Remove leading space from value
+  ss >> std::ws;
+  // 3. Extract remaining string to value
+  std::getline(ss, value);     // throwable
   return 0;
 }
 
-int Connection::parse_header_fields() throw() {
+int Connection::parse_header_fields() { // throwable
   std::string line;
   while (client_socket->read_telnet_line(line) == 0) {
     // Empty line indicates the end of header fields
@@ -220,7 +214,7 @@ int Connection::parse_header_fields() throw() {
     Log::cdebug() << "header line: " << line << std::endl;
     // Split line to key and value
     std::string key, value;
-    if (split_header_field(line, key, value) < 0) {
+    if (split_header_field(line, key, value) < 0) { // throwable
       ErrorHandler::handle(*this, 500);
       status = RESPONSE;
       return 1;
@@ -236,7 +230,7 @@ int Connection::parse_header_fields() throw() {
   return 0;
 }
 
-int Connection::parse_body() throw() {
+int Connection::parse_body() { // throwable
   if (body == NULL) {
     if (header.fields.find("Content-Length") == header.fields.end()) {
       status = HANDLE;
@@ -244,14 +238,7 @@ int Connection::parse_body() throw() {
     }
     // TODO: Handle invalid Content-Length
     content_length = atoi(header.fields["Content-Length"].c_str());
-    try {
-      body = new char[content_length];
-    } catch (std::exception &e) {
-      Log::cfatal() << "Exception: " << e.what() << std::endl;
-      ErrorHandler::handle(*this, 500);
-      status = RESPONSE;
-      return 1;
-    }
+    body = new char[content_length];
   }
   assert(body != NULL);  // body is guaranteed to be non null
   ssize_t ret =
@@ -435,20 +422,13 @@ const config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf,
   return NULL;
 }
 
-int Connection::handle() throw() {
+int Connection::handle() { // throwable
   srv_cf = select_srv_cf(cf, *this);
   loc_cf = select_loc_cf(srv_cf, header.path);
-  try {
-    cgi_handler_cf = loc_cf ? select_cgi_handler_cf(loc_cf, header.path)
-                            : select_cgi_handler_cf(srv_cf, header.path);
-    cgi_ext_cf = loc_cf ? select_cgi_ext_cf(loc_cf, header.path)
-                        : select_cgi_ext_cf(srv_cf, header.path);
-  } catch (const std::exception &e) {
-    Log::cerror() << e.what() << std::endl;
-    ErrorHandler::handle(*this, 500);
-    status = RESPONSE;
-    return 1;
-  }
+  cgi_handler_cf = loc_cf ? select_cgi_handler_cf(loc_cf, header.path)
+                          : select_cgi_handler_cf(srv_cf, header.path);
+  cgi_ext_cf = loc_cf ? select_cgi_ext_cf(loc_cf, header.path)
+                      : select_cgi_ext_cf(srv_cf, header.path);
 
   // `return` directive
   if (loc_cf && loc_cf->returns.size() > 0) {
@@ -460,26 +440,18 @@ int Connection::handle() throw() {
 
   // generate fullpath
   // `root` and `alias` directive
-  try {
-    if (!loc_cf) {
-      // Server Root    : Append path to root
-      Log::cdebug() << "Server Root" << std::endl;
-      header.fullpath = srv_cf->root + header.path;
-    } else if (!loc_cf->alias.configured) {
-      // Location Root  : Append path to root
-      Log::cdebug() << "Location Root: " << loc_cf->path << std::endl;
-      header.fullpath = loc_cf->root + header.path;
-    } else {
-      // Location Alias : Replace prefix with alias
-      Log::cdebug() << "Location Alias: " << loc_cf->path << std::endl;
-      header.fullpath = loc_cf->alias + header.path.substr(loc_cf->path.size());
-    }
-  } catch (std::exception &e) {
-    Log::cfatal() << "\"header.fullpath = root or alias + header.path\" failed"
-                  << std::endl;
-    ErrorHandler::handle(*this, 500);
-    status = RESPONSE;
-    return 1;
+  if (!loc_cf) {
+    // Server Root    : Append path to root
+    Log::cdebug() << "Server Root" << std::endl;
+    header.fullpath = srv_cf->root + header.path; // throwable
+  } else if (!loc_cf->alias.configured) {
+    // Location Root  : Append path to root
+    Log::cdebug() << "Location Root: " << loc_cf->path << std::endl;
+    header.fullpath = loc_cf->root + header.path; // throwable
+  } else {
+    // Location Alias : Replace prefix with alias
+    Log::cdebug() << "Location Alias: " << loc_cf->path << std::endl;
+    header.fullpath = loc_cf->alias + header.path.substr(loc_cf->path.size()); // throwable
   }
 
   // `limit_except` directive
