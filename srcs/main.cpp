@@ -23,10 +23,8 @@ int main(int argc, char *argv[]) {
     Log::fatal("signal() failed");
     return ERROR;
   }
-  // Starting servers can throw exceptions, but after the start-up process,
-  // the servers will not throw exceptions.
   try {
-    run_server(argv[1]); // throwable
+    run_server(argv[1]);  // throwable
     return 0;
   } catch (std::exception &e) {
     Log::cfatal() << "Caught exception while starting server: " << e.what();
@@ -34,27 +32,31 @@ int main(int argc, char *argv[]) {
   }
 }
 
+// Starting servers can throw exceptions, but after the start-up process,
+// the servers will not throw exceptions.
 void run_server(char *filename) {
   // Construct Config from config file.
-  config::Config cf; // throwable
+  config::Config cf;  // throwable
   if (filename) {
     std::ifstream ifs(filename);
     if (!ifs.is_open()) {
       throw std::runtime_error("Cannot open config file");
     }
     std::string s((std::istreambuf_iterator<char>(ifs)),
-                  std::istreambuf_iterator<char>()); // no throw
-    Token *tokens = tokenize(s); // throwable
-    Module *mod = parse(tokens); // throwable
-    cf = config::Config(mod); // throwable
+                  std::istreambuf_iterator<char>());  // no throw
+    Token *tokens = tokenize(s);                      // throwable
+    Module *mod = parse(tokens);                      // throwable
+    cf = config::Config(mod);                         // throwable
     delete mod;
     delete tokens;
   }
+  // Print config
   config::print(cf);
 
-  // Start server.
-  Server server(cf); // throwable
-  while (1) {
-    server.process(); // no throw
-  }
+  // Start up server
+  Server server(cf); // no throw
+  server.startup(); // throwable
+
+  // Run server
+  server.run();  // no throw, never return
 }

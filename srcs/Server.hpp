@@ -13,6 +13,7 @@ class Connection;
 class Socket;
 namespace config {
 class Config;
+class Listen;
 }
 
 class Server {
@@ -25,23 +26,35 @@ class Server {
   fd_set ready_rfds, ready_wfds;
   int maxfd;
 
+ private:
+  Server() throw();  // Do not implement
+
  public:
+  // Constructor/Destructor
+  Server(const config::Config& cf) throw();
+  ~Server() throw();
+
+  // Member functions
+  void startup();  // throwable
+  void run() throw();
+
+ private:
   // Member data
   SockVector listen_socks;
   ConnVector connections;
   const config::Config& cf;
 
-  // Constructor/Destructor
-  Server() throw();  // Do not implement this
-  Server(const config::Config& cf);
-  ~Server() throw();
-
   // Member functions
+  int getaddrinfo(const config::Listen& l, struct addrinfo **result); // throwable
+  int listen(const config::Listen& l); // throwable
+
   void remove_connection(util::shared_ptr<Connection> connection) throw();
 
   void remove_all_connections() throw();
 
   void accept(util::shared_ptr<Socket> sock) throw();
+
+  void resume(util::shared_ptr<Connection> conn) throw();
 
   void update_fdset(util::shared_ptr<Connection> conn) throw();
 
@@ -49,12 +62,10 @@ class Server {
 
   bool canResume(util::shared_ptr<Connection> conn) const throw();
 
-  util::shared_ptr<Socket> get_ready_socket() throw();
+  util::shared_ptr<Socket> get_ready_listen_socket() throw();
 
   // Logically it is not const because it returns a non-const pointer.
   util::shared_ptr<Connection> get_ready_connection() throw();
-
-  void process() throw();
 };
 
 #endif

@@ -29,8 +29,8 @@ class shared_ptr {
       }
     }
   }
-  shared_ptr() : ptr(), ref_count(NULL), d(Deleter<T>()) {}
-  shared_ptr(T* ptr) : ptr(ptr), ref_count(new int), d(Deleter<T>()) {
+  shared_ptr() throw() : ptr(), ref_count(NULL), d(Deleter<T>()) {}
+  explicit shared_ptr(T* ptr) : ptr(ptr), ref_count(new int), d(Deleter<T>()) {
     *ref_count = 1;
   }
   shared_ptr(const shared_ptr<T>& other)
