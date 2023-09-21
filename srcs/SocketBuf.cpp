@@ -56,24 +56,17 @@ int SocketBuf::readline(std::string& line) {
   Log::debug("LF found");
   return 0;
 }
-int SocketBuf::read_telnet_line(std::string& line) throw() {
+int SocketBuf::read_telnet_line(std::string& line) { // throwable
   StreamCleaner _(rss, wss);
   if (bad()) {
     return -1;
   }
   // 1. getline
-  try {
-    // If there is an error while getline, return -1
-    // i.e. str.max_size() characters have been stored.
-    if (!std::getline(rss, line, LF)) {  // throwable
-      Log::debug("std::getline(LF) failed");
-      line.clear();
-      return -1;
-    }
-  } catch (std::exception& e) {
-    Log::fatal("getline() failed");
+  // If there is an error while getline, return -1
+  // i.e. str.max_size() characters have been stored.
+  if (!std::getline(rss, line, LF)) {  // throwable
+    Log::debug("std::getline(LF) failed");
     line.clear();
-    setbadstate();
     return -1;
   }
   // 2. EOF before LF (i.e. no LF found)

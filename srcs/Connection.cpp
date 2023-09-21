@@ -49,7 +49,7 @@ int Connection::resume() { // throwable
   while (cont) {
     switch (status) {
       case REQ_START_LINE:
-        cont = parse_start_line();
+        cont = parse_start_line(); // throwable
         break;
       case REQ_HEADER_FIELDS:
         cont = parse_header_fields(); // throwable
@@ -58,7 +58,7 @@ int Connection::resume() { // throwable
         cont = parse_body(); // throwable
         break;
       case HANDLE:
-        cont = handle();
+        cont = handle(); // throwable
         break;
       case HANDLE_CGI_REQ:
         cont = handle_cgi_req();
@@ -131,10 +131,10 @@ Connection::IOStatus Connection::getIOStatus() const throw() {
 // TODO: make this noexcept
 // https://datatracker.ietf.org/doc/html/rfc2616#section-5.1
 // Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
-int Connection::parse_start_line() throw() {
+int Connection::parse_start_line() {
   std::string line;
 
-  if (client_socket->read_telnet_line(line) < 0) {
+  if (client_socket->read_telnet_line(line) < 0) { // throwable
     return 0;
   }
   Log::cdebug() << "start line: " << line << std::endl;
@@ -205,7 +205,7 @@ int Connection::split_header_field(const std::string &line, std::string &key,
 
 int Connection::parse_header_fields() { // throwable
   std::string line;
-  while (client_socket->read_telnet_line(line) == 0) {
+  while (client_socket->read_telnet_line(line) == 0) { // throwable
     // Empty line indicates the end of header fields
     if (line == "") {
       status = REQ_BODY;

@@ -70,7 +70,7 @@ class SocketBuf {
 
   // Read line from buffer, if found, remove it from buffer and return 0
   // Otherwise, return -1
-  int read_telnet_line(std::string& line) throw();
+  int read_telnet_line(std::string& line);
 
   ssize_t read(char* buf, size_t size) throw();
 

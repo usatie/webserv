@@ -94,16 +94,16 @@ class Connection {
   // TODO: make this noexcept
   // https://datatracker.ietf.org/doc/html/rfc2616#section-5.1
   // Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
-  int parse_start_line() throw();
+  int parse_start_line(); // throwable
 
   int split_header_field(const std::string &line, std::string &key,
-                         std::string &value);
+                         std::string &value); // throwable
 
-  int parse_header_fields();
+  int parse_header_fields(); // throwable
 
-  int parse_body();
+  int parse_body(); // throwable
 
-  int handle();
+  int handle(); // throwable
 
   int handle_cgi_req() throw();
 
