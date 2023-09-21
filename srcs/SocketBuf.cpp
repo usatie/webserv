@@ -101,7 +101,7 @@ ssize_t SocketBuf::read(char* buf, size_t size) throw() {
   if (rss.bad()) return -1;
   return rss.gcount();
 }
-int SocketBuf::flush() throw() {
+int SocketBuf::flush() {
   StreamCleaner _(rss, wss);
   if (bad()) {
     return -1;
@@ -109,39 +109,33 @@ int SocketBuf::flush() throw() {
   if (isSendBufEmpty()) {
     return 0;
   }
-  try {
-    Log::cdebug() << "wss.tellg(): " << wss.tellg() << "\n";
-    // TODO: wss.fail() may be true, we need to handle it
-    // in that case, tellg() returns -1
-    if (wss.tellg() < 0) {
-      Log::cerror() << "wss.tellg() failed\n";
-      return -1;
-    }
-    std::string buf(wss.str());
-    // TODO: buf may contain unnecessary leading data, we need to remove them
-
-#ifdef LINUX
-    ssize_t ret = ::send(socket->get_fd(), &buf.c_str()[wss.tellg()],
-                         buf.size() - wss.tellg(), 0);
-#else
-    ssize_t ret = ::send(socket->get_fd(), &buf.c_str()[wss.tellg()],
-                         buf.size() - wss.tellg(), SO_NOSIGPIPE);
-#endif
-    if (ret < 0) {
-      Log::cerror() << "send() failed, errno: " << errno
-                    << ", error: " << strerror(errno) << "\n";
-      // TODO: handle EINTR
-      // ETIMEDOUT, EPIPE in any case means the connection is closed
-      socket->beClosed();
-      return -1;
-    }
-    wss.seekg(ret, std::ios::cur);
-    return ret;
-  } catch (std::exception& e) {
-    Log::cfatal() << "wss.str() failed: " << e.what() << "\n";
-    setbadstate();
+  Log::cdebug() << "wss.tellg(): " << wss.tellg() << "\n";
+  // TODO: wss.fail() may be true, we need to handle it
+  // in that case, tellg() returns -1
+  if (wss.tellg() < 0) {
+    Log::cerror() << "wss.tellg() failed\n";
     return -1;
   }
+  std::string buf(wss.str()); // throwable
+  // TODO: buf may contain unnecessary leading data, we need to remove them
+
+#ifdef LINUX
+  ssize_t ret = ::send(socket->get_fd(), &buf.c_str()[wss.tellg()],
+                       buf.size() - wss.tellg(), 0);
+#else
+  ssize_t ret = ::send(socket->get_fd(), &buf.c_str()[wss.tellg()],
+                       buf.size() - wss.tellg(), SO_NOSIGPIPE);
+#endif
+  if (ret < 0) {
+    Log::cerror() << "send() failed, errno: " << errno
+                  << ", error: " << strerror(errno) << "\n";
+    // TODO: handle EINTR
+    // ETIMEDOUT, EPIPE in any case means the connection is closed
+    socket->beClosed();
+    return -1;
+  }
+  wss.seekg(ret, std::ios::cur);
+  return ret;
 }
 int SocketBuf::fill() throw() {
   StreamCleaner _(rss, wss);

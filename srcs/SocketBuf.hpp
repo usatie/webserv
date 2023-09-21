@@ -75,7 +75,7 @@ class SocketBuf {
   ssize_t read(char* buf, size_t size) throw();
 
   // Actually send data on socket
-  int flush() throw();
+  int flush(); // throwable
 
   // Actually receive data from socket
   int fill() throw();

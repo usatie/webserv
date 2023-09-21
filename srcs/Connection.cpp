@@ -15,13 +15,13 @@ int Connection::resume() { // throwable
       client_socket->fill();
       break;
     case CLIENT_SEND:
-      client_socket->flush();
+      client_socket->flush(); // throwable
       break;
     case CGI_RECV:
       cgi_socket->fill();
       break;
     case CGI_SEND:
-      cgi_socket->flush();
+      cgi_socket->flush(); // throwable
       break;
     case NO_IO:
       break;
