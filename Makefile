@@ -92,4 +92,18 @@ bench: $(NAME)
 format:
 	clang-format -style=google $(SRCS) $(HEADERS) -i
 	cppcheck --enable=all --inconclusive --suppress=missingIncludeSystem srcs $(addprefix -I, $(INCLUDE_DIRS))
+
+.PHONY: tester
+tester: ubuntu_tester ubuntu_cgi_tester
+	./webserv tester.conf &
+	./ubuntu_tester http://localhost:8181 0>&-
+
+ubuntu_tester:
+	wget https://cdn.intra.42.fr/document/document/20540/ubuntu_tester -O ubuntu_tester
+	chmod +x ubuntu_tester
+
+ubuntu_cgi_tester:
+	wget https://cdn.intra.42.fr/document/document/20538/ubuntu_cgi_tester -O ubuntu_cgi_tester
+	chmod +x ubuntu_cgi_tester
+
 include $(wildcard $(DEPS))

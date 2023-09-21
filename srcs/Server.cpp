@@ -258,9 +258,12 @@ void Server::process() throw() {
       remove_connection(conn);
       return;
     }
-    if (conn->is_done()) {
+    if (conn->is_remove()) {
       Log::info("connection done");
       remove_connection(conn);
+    } else if (conn->is_clear()) {
+      conn->clear();
+      update_fdset(conn);
     } else {
       update_fdset(conn);
     }

@@ -57,15 +57,15 @@ int resolve_path(const config::Server* srv_cf, const config::Location* loc_cf,
   const std::vector<std::string>& index =
       (!loc_cf) ? srv_cf->index : loc_cf->index;
   for (size_t i = 0; i < index.size(); ++i) {
-    Log::cdebug() << "Trying index: " << path << index[i] << std::endl;
-    if (stat((path + index[i]).c_str(), &st) < 0) {
+    Log::cdebug() << "Trying index: " << path << "/" << index[i] << std::endl;
+    if (stat((path + "/" + index[i]).c_str(), &st) < 0) {
       if (errno == ENOENT) continue;
-      Log::cdebug() << "stat() failed: " << path << index[i]
+      Log::cdebug() << "stat() failed: " << path << "/" << index[i]
                     << ", errno:" << strerror(errno) << std::endl;
       return ERR_500;
     }
     if (S_ISREG(st.st_mode)) {
-      path += index[i];
+      path += "/" + index[i];
       return OK_FILE;
     }
   }

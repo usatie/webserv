@@ -28,7 +28,8 @@ class Connection {
     HANDLE_CGI_RES,     // CGI_RECV
     HANDLE_CGI_PARSE,   //
     RESPONSE,           // CLIENT_SEND
-    DONE                // CLIENT_SEND
+    DONE,               // CLIENT_SEND
+    CLEAR               // CLIENT_SEND
   } Status;
 
   typedef enum IOStatus {
@@ -80,11 +81,13 @@ class Connection {
     if (cgi_socket == NULL) return -1;
     return cgi_socket->get_fd();
   }
-  bool is_done() const throw() { return status == DONE; }
+  bool is_remove() const throw() { return status == DONE; }
+  bool is_clear() const throw() { return status == CLEAR; }
 
   // Member functions
   // Returns negative value when an exception is thrown from STL containers
   int resume() throw();
+  int clear();
 
   IOStatus getIOStatus() const throw();
 

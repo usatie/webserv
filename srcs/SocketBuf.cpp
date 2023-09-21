@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <cerrno>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -141,7 +142,8 @@ int SocketBuf::flush() throw() {
                          buf.size() - wss.tellg(), SO_NOSIGPIPE);
 #endif
     if (ret < 0) {
-      Log::cerror() << "send() failed, errno: " << errno << "\n";
+      Log::cerror() << "send() failed, errno: " << errno
+                    << ", error: " << strerror(errno) << "\n";
       // TODO: handle EINTR
       // ETIMEDOUT, EPIPE in any case means the connection is closed
       socket->beClosed();
