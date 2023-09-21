@@ -1,7 +1,7 @@
 GET /cgi/echo.py HTTP/1.1
+Transfer-Encoding: chunked
 
-27
+1b
 Can you echo this response?
-
 0
 
