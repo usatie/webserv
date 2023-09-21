@@ -145,6 +145,8 @@ Connection::IOStatus Connection::getIOStatus() const throw() {
     case CLEAR:
       return NO_IO;
   }
+  // Unreachable, but some compilers complain without this
+  return NO_IO;
 }
 
 // TODO: make this noexcept
