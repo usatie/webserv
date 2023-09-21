@@ -67,7 +67,7 @@ int Connection::resume() { // throwable
         cont = handle_cgi_res();
         break;
       case HANDLE_CGI_PARSE:
-        cont = handle_cgi_parse();
+        cont = handle_cgi_parse(); // throwable
         status = RESPONSE;
         break;
       case RESPONSE:
@@ -578,12 +578,12 @@ int Connection::handle_cgi_res() throw() {
 // status-code    = "200" | "302" | "400" | "501" | extension-code
 // extension-code = 3digit
 // reason-phrase  = *TEXT
-int Connection::handle_cgi_parse() throw() {
+int Connection::handle_cgi_parse() { // throwable
   // TODO: parse
   std::string line;
   // Read header fields
   std::map<std::string, std::string> cgi_header_fields;
-  while (cgi_socket->readline(line) == 0) {
+  while (cgi_socket->readline(line) == 0) { // throwable
     Log::cdebug() << "CGI line: " << line << std::endl;
     // Empty line indicates the end of header fields
     if (line == "" || line == "\r") {

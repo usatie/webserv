@@ -151,7 +151,7 @@ class Connection {
   // status-code    = "200" | "302" | "400" | "501" | extension-code
   // extension-code = 3digit
   // reason-phrase  = *TEXT
-  int handle_cgi_parse() throw();
+  int handle_cgi_parse(); // throwable
 
   int response() throw();
 };

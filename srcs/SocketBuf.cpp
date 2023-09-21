@@ -31,24 +31,17 @@ int SocketBuf::send_file(const std::string& filepath) throw() {
   }
   return 0;
 }
-int SocketBuf::readline(std::string& line) throw() {
+int SocketBuf::readline(std::string& line) {
   StreamCleaner _(rss, wss);
   if (bad()) {
     return -1;
   }
   // 1. getline
-  try {
-    // If there is an error while getline, return -1
-    // i.e. str.max_size() characters have been stored.
-    if (!std::getline(rss, line)) {  // throwable
-      Log::debug("std::getline(LF) failed");
-      line.clear();
-      return -1;
-    }
-  } catch (std::exception& e) {
-    Log::fatal("getline() failed");
+  // If there is an error while getline, return -1
+  // i.e. str.max_size() characters have been stored.
+  if (!std::getline(rss, line)) {  // throwable
+    Log::debug("std::getline(LF) failed");
     line.clear();
-    setbadstate();
     return -1;
   }
 

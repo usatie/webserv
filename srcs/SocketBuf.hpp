@@ -66,7 +66,7 @@ class SocketBuf {
   }
   int send_file(const std::string& filepath) throw();
 
-  int readline(std::string& line) throw();
+  int readline(std::string& line); // throwable
 
   // Read line from buffer, if found, remove it from buffer and return 0
   // Otherwise, return -1
