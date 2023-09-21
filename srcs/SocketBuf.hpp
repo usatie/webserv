@@ -78,7 +78,7 @@ class SocketBuf {
   int flush(); // throwable
 
   // Actually receive data from socket
-  int fill() throw();
+  int fill(); // throwable
 
   void clear_sendbuf() throw() {
     wss.str("");

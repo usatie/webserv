@@ -12,13 +12,13 @@ int Connection::resume() { // throwable
   IOStatus io_status = getIOStatus();
   switch (io_status) {
     case CLIENT_RECV:
-      client_socket->fill();
+      client_socket->fill(); // throwable
       break;
     case CLIENT_SEND:
       client_socket->flush(); // throwable
       break;
     case CGI_RECV:
-      cgi_socket->fill();
+      cgi_socket->fill(); // throwable
       break;
     case CGI_SEND:
       cgi_socket->flush(); // throwable

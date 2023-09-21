@@ -137,7 +137,7 @@ int SocketBuf::flush() {
   wss.seekg(ret, std::ios::cur);
   return ret;
 }
-int SocketBuf::fill() throw() {
+int SocketBuf::fill() { // throwable
   StreamCleaner _(rss, wss);
   if (bad()) {
     return -1;
@@ -154,15 +154,9 @@ int SocketBuf::fill() throw() {
     socket->beClosed();
   }
   // Fill ret bytes buf into rss
-  try {
-    std::string s(buf, ret);
-    rss << s;
-    return ret;
-  } catch (std::exception& e) {
-    Log::fatal("std::string(buf, ret) failed");
-    setbadstate();
-    return -1;
-  }
+  std::string s(buf, ret); // throwable
+  rss << s;
+  return ret;
 }
 SocketBuf& SocketBuf::write(const char* buf, size_t size) throw() {
   StreamCleaner _(rss, wss);
