@@ -23,7 +23,7 @@ int Server::getaddrinfo(const config::Listen& l, struct addrinfo** result) {
   const char* host = (l.address == "*") ? NULL : l.address.c_str();
   std::stringstream ss;
   ss << l.port;
-  if (ss.bad()) {
+  if (ss.fail()) {
     return -1;
   }
   std::string port(ss.str());  // throwable
