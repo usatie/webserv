@@ -64,7 +64,7 @@ $(OBJS): $(OBJDIR)/%.o: %.cpp
 
 .PHONY: debug
 debug: CXXFLAGS += -fsanitize=address -fsanitize=undefined -D DEBUG -g
-debug: re
+debug: all
 d: debug
 
 $(NAME): $(OBJS)
