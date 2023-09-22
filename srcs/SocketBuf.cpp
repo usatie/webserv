@@ -1,5 +1,6 @@
 #include "SocketBuf.hpp"
 
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -8,8 +9,6 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-
-#include <fcntl.h>
 
 #define FILL_BUF_SIZE (1024 * 1024)
 #define SEND_BUF_SIZE (1024 * 1024)
@@ -50,7 +49,7 @@ int SocketBuf::readline(std::string& line) {
   // 2. EOF before LF (i.e. no LF found)
   if (rss.eof()) {
     Log::debug("no LF found");
-    rss.clear(std::ios::eofbit);  // clear eofbit before seekg
+    rss.clear(std::ios::eofbit);             // clear eofbit before seekg
     rss.seekg(-line.size(), std::ios::cur);  // rewind
     line.clear();
     return -1;
@@ -75,7 +74,7 @@ int SocketBuf::read_telnet_line(std::string& line) {  // throwable
   // 2. EOF before LF (i.e. no LF found)
   if (rss.eof()) {
     Log::debug("no LF found");
-    rss.clear(std::ios::eofbit);  // clear eofbit before seekg
+    rss.clear(std::ios::eofbit);             // clear eofbit before seekg
     rss.seekg(-line.size(), std::ios::cur);  // rewind
     line.clear();
     return -1;
@@ -125,12 +124,15 @@ int SocketBuf::flush() {
   }
   static char buf[SEND_BUF_SIZE];
   wss.read(buf, SEND_BUF_SIZE);
-  // TODO: buf may contain unnecessary leading data, we need to remove them
+  Log::cdebug() << "sent buf: "
+                << std::string(buf, std::min(100, (int)wss.gcount())) << "\n";
 
 #ifdef LINUX
-  ssize_t ret = ::send(socket->get_fd(), static_cast<void*>(buf), wss.gcount(), 0);
+  ssize_t ret =
+      ::send(socket->get_fd(), static_cast<void*>(buf), wss.gcount(), 0);
 #else
-  ssize_t ret = ::send(socket->get_fd(), static_cast<void*>(buf), wss.gcount(), SO_NOSIGPIPE);
+  ssize_t ret = ::send(socket->get_fd(), static_cast<void*>(buf), wss.gcount(),
+                       SO_NOSIGPIPE);
 #endif
   if (ret < 0) {
     Log::cerror() << "send() failed, errno: " << errno
@@ -152,7 +154,6 @@ int SocketBuf::flush() {
   wss.seekg(ret - wss.gcount(), std::ios::cur);
   return ret;
 }
-
 
 int SocketBuf::fill() {  // throwable
   StreamCleaner _(rss, wss);
