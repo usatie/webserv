@@ -50,6 +50,7 @@ int SocketBuf::readline(std::string& line) {
   // 2. EOF before LF (i.e. no LF found)
   if (rss.eof()) {
     Log::debug("no LF found");
+    rss.clear(std::ios::eofbit);  // clear eofbit before seekg
     rss.seekg(-line.size(), std::ios::cur);  // rewind
     line.clear();
     return -1;
@@ -74,6 +75,7 @@ int SocketBuf::read_telnet_line(std::string& line) {  // throwable
   // 2. EOF before LF (i.e. no LF found)
   if (rss.eof()) {
     Log::debug("no LF found");
+    rss.clear(std::ios::eofbit);  // clear eofbit before seekg
     rss.seekg(-line.size(), std::ios::cur);  // rewind
     line.clear();
     return -1;
@@ -144,6 +146,9 @@ int SocketBuf::flush() {
     }
     return -1;
   }
+  // Before doing anything else, seekg clears eofbit.	(since C++11)
+  // https://en.cppreference.com/w/cpp/io/basic_istream/seekg
+  wss.clear(std::ios::eofbit);  // clear eofbit before seekg
   wss.seekg(ret - wss.gcount(), std::ios::cur);
   return ret;
 }
