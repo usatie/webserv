@@ -747,7 +747,6 @@ int Connection::handle_cgi_parse() {  // throwable
 
 int Connection::response() throw() {
   if (client_socket->isSendBufEmpty()) {
-    client_socket->clear_sendbuf();  // So that we can free memory
     status = CLEAR;
     return 1;
   }

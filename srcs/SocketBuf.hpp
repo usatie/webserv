@@ -16,6 +16,8 @@ class SocketBuf {
         : rss(rss), wss(wss) {}
     ~StreamCleaner() {
       if (rss.bad() || wss.bad()) return;
+      if (rss.eof()) rss.str("");
+      if (wss.eof()) wss.str("");
       rss.clear();
       wss.clear();
     }
