@@ -9,8 +9,10 @@
 #include <iostream>
 #include <string>
 
-#define MAXLINE 1024
 #include <fcntl.h>
+
+#define FILL_BUF_SIZE (1024 * 1024)
+#define SEND_BUF_SIZE (1024 * 1024)
 
 int SocketBuf::send_file(const std::string& filepath) throw() {
   StreamCleaner _(rss, wss);
@@ -102,7 +104,6 @@ ssize_t SocketBuf::read(char* buf, size_t size) throw() {
   return rss.gcount();
 }
 
-#define SEND_BUF_SIZE (1024 * 1024)
 int SocketBuf::flush() {
   StreamCleaner _(rss, wss);
   if (bad()) {
@@ -120,17 +121,15 @@ int SocketBuf::flush() {
     Log::cerror() << "wss.tellg() failed\n";
     return -1;
   }
-  std::vector<char> buf(SEND_BUF_SIZE);  // throwable
-  wss.read(&buf[0], SEND_BUF_SIZE);
+  static char buf[SEND_BUF_SIZE];
+  wss.read(buf, SEND_BUF_SIZE);
   // TODO: buf may contain unnecessary leading data, we need to remove them
 
 #ifdef LINUX
-  ssize_t ret = ::send(socket->get_fd(), &buf[0], wss.gcount(), 0);
+  ssize_t ret = ::send(socket->get_fd(), static_cast<void*>(buf), wss.gcount(), 0);
 #else
-  ssize_t ret = ::send(socket->get_fd(), &buf[0], wss.gcount(), SO_NOSIGPIPE);
+  ssize_t ret = ::send(socket->get_fd(), static_cast<void*>(buf), wss.gcount(), SO_NOSIGPIPE);
 #endif
-  Log::cdebug() << "gcount: " << wss.gcount() << ", ret: " << ret
-                << ", buf: " << std::string(&buf[0], wss.gcount()) << "\n";
   if (ret < 0) {
     Log::cerror() << "send() failed, errno: " << errno
                   << ", error: " << strerror(errno) << "\n";
@@ -148,15 +147,17 @@ int SocketBuf::flush() {
   wss.seekg(ret - wss.gcount(), std::ios::cur);
   return ret;
 }
+
+
 int SocketBuf::fill() {  // throwable
   StreamCleaner _(rss, wss);
   if (bad()) {
     return -1;
   }
-  static char buf[MAXLINE] = {0};
+  static char buf[FILL_BUF_SIZE] = {0};
   static const int flags = 0;
   ssize_t ret =
-      ::recv(socket->get_fd(), static_cast<void*>(buf), MAXLINE, flags);
+      ::recv(socket->get_fd(), static_cast<void*>(buf), FILL_BUF_SIZE, flags);
   if (ret < 0) {
     Log::cerror() << "recv() failed, errno: " << errno
                   << ", error: " << strerror(errno) << "\n";
