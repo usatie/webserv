@@ -123,13 +123,8 @@ int Connection::clear() {
   cgi_socket = util::shared_ptr<SocketBuf>();
   header.clear();
   status = REQ_START_LINE;
-  if (body) {
-    delete[] body;
-  }
-  body = NULL;
-  body_size = 0;
+  body.clear();
   content_length = 0;
-  chunked_body.clear();
   chunk.clear();
   chunk_size = 0;
   cgi_pid = 0;
@@ -297,11 +292,7 @@ int Connection::parse_body_chunked() {  // throwable
     // So, copy chunked_body to body
     if (chunk_size == 0) {
       // TODO: Improve this inefficiency
-      content_length = chunked_body.size();
-      body_size = content_length;
-      body = new char[content_length];
-      memcpy(body, chunked_body.c_str(), content_length);
-      chunked_body.clear();
+      content_length = body.size();
       chunk_size = 0;
       status = REQ_BODY_CHUNK_TRAILER_SECTION;
       return 1;
@@ -338,7 +329,7 @@ int Connection::parse_body_chunk_data() {  // throwable
     // Remove CRLF
     chunk.erase(chunk.size() - 2);
     // Append a chunk to chunked_body
-    chunked_body.append(chunk);
+    body.append(chunk);
     chunk.clear();
     status = REQ_BODY_CHUNKED;
     return 1;
@@ -356,28 +347,27 @@ int Connection::parse_body_chunk_trailer_section() {  // throwable
 
 int Connection::parse_body_content_length() {  // throwable
   Log::debug("parse_body_content_length");
-  if (body == NULL) {
+  if (body.empty()) {
     if (header.fields.find("Content-Length") == header.fields.end()) {
       status = HANDLE;
       return 1;
     }
     // TODO: Handle invalid Content-Length
     content_length = atoi(header.fields["Content-Length"].c_str());
-    body = new char[content_length];
+    body.reserve(content_length);
   }
-  assert(body != NULL);  // body is guaranteed to be non null
-  ssize_t ret =
-      client_socket->read(body + body_size, content_length - body_size);
+  std::vector<char> buf(content_length - body.size());
+  ssize_t ret = client_socket->read(&buf[0], buf.size());  // throwable
   if (ret < 0) {
     return 0;
   } else if (ret == 0) {
     return 0;
+  }
+  body.append(&buf[0], ret);
+  if (body.size() == content_length) {
+    status = HANDLE;
+    return 1;
   } else {
-    body_size += ret;
-    if (body_size == content_length) {
-      status = HANDLE;
-      return 1;
-    }
     return 0;
   }
 }

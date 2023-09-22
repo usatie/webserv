@@ -49,11 +49,9 @@ class Connection {
   util::shared_ptr<SocketBuf> cgi_socket;
   Header header;
   Status status;
-  char *body;
-  size_t body_size;
+  std::string body;
   size_t content_length;
-  std::string chunked_body;  // concatenated chunked body
-  std::string chunk;         // single chunk
+  std::string chunk;  // single chunk
   size_t chunk_size;
   pid_t cgi_pid;
   const config::Config &cf;
@@ -73,17 +71,14 @@ class Connection {
         cgi_socket(NULL),
         header(),
         status(REQ_START_LINE),
-        body(NULL),
-        body_size(0),
+        body(),
         content_length(0),
         cgi_pid(-1),
         cf(cf),
         srv_cf(NULL),
         loc_cf(NULL),
         io_status(NO_IO) {}
-  ~Connection() throw() {
-    if (body != NULL) delete[] body;
-  }
+  ~Connection() throw() {}
   Connection(const Connection &other) throw();  // Do not implement this
   Connection &operator=(
       const Connection &other) throw();  // Do not implement this
