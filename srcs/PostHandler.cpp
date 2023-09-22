@@ -49,10 +49,8 @@ static int internal_handle(Connection& conn, ConfigItem* cf) {  // throwable
     Log::fatal("file open failed");
     return ERR_500;
   }
-  ofs.write(
-      conn.body,
-      conn.content_length);  // does not throw ref:
-                             // https://en.cppreference.com/w/cpp/io/basic_ostream/write
+  // https://en.cppreference.com/w/cpp/io/basic_ostream/write
+  ofs.write(conn.body.c_str(), conn.body.size());  // does not throw
   if (ofs.bad()) {
     Log::fatal("ofs.write failed");
     // Close file and remove file

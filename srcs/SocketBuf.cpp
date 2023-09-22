@@ -1,5 +1,6 @@
 #include "SocketBuf.hpp"
 
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -9,8 +10,8 @@
 #include <iostream>
 #include <string>
 
-#define MAXLINE 1024
-#include <fcntl.h>
+#define FILL_BUF_SIZE (1024 * 1024)
+#define SEND_BUF_SIZE (1024 * 1024)
 
 int SocketBuf::send_file(const std::string& filepath) throw() {
   StreamCleaner _(rss, wss);
@@ -48,6 +49,7 @@ int SocketBuf::readline(std::string& line) {
   // 2. EOF before LF (i.e. no LF found)
   if (rss.eof()) {
     Log::debug("no LF found");
+    rss.clear(std::ios::eofbit);             // clear eofbit before seekg
     rss.seekg(-line.size(), std::ios::cur);  // rewind
     line.clear();
     return -1;
@@ -72,6 +74,7 @@ int SocketBuf::read_telnet_line(std::string& line) {  // throwable
   // 2. EOF before LF (i.e. no LF found)
   if (rss.eof()) {
     Log::debug("no LF found");
+    rss.clear(std::ios::eofbit);             // clear eofbit before seekg
     rss.seekg(-line.size(), std::ios::cur);  // rewind
     line.clear();
     return -1;
@@ -101,12 +104,15 @@ ssize_t SocketBuf::read(char* buf, size_t size) throw() {
   if (rss.bad()) return -1;
   return rss.gcount();
 }
+
 int SocketBuf::flush() {
   StreamCleaner _(rss, wss);
   if (bad()) {
     return -1;
   }
   if (isSendBufEmpty()) {
+    Log::cerror()
+        << "Something's wrong: send buffer is empty and flush() is called.\n";
     return 0;
   }
   Log::cdebug() << "wss.tellg(): " << wss.tellg() << "\n";
@@ -116,42 +122,59 @@ int SocketBuf::flush() {
     Log::cerror() << "wss.tellg() failed\n";
     return -1;
   }
-  std::string buf(wss.str());  // throwable
-  // TODO: buf may contain unnecessary leading data, we need to remove them
+  static char buf[SEND_BUF_SIZE];
+  wss.read(buf, SEND_BUF_SIZE);
+  Log::cdebug() << "sent buf: "
+                << std::string(buf, std::min(100, (int)wss.gcount())) << "\n";
 
 #ifdef LINUX
-  ssize_t ret = ::send(socket->get_fd(), &buf.c_str()[wss.tellg()],
-                       buf.size() - wss.tellg(), 0);
+  ssize_t ret =
+      ::send(socket->get_fd(), static_cast<void*>(buf), wss.gcount(), 0);
 #else
-  ssize_t ret = ::send(socket->get_fd(), &buf.c_str()[wss.tellg()],
-                       buf.size() - wss.tellg(), SO_NOSIGPIPE);
+  ssize_t ret = ::send(socket->get_fd(), static_cast<void*>(buf), wss.gcount(),
+                       SO_NOSIGPIPE);
 #endif
   if (ret < 0) {
     Log::cerror() << "send() failed, errno: " << errno
                   << ", error: " << strerror(errno) << "\n";
     // TODO: handle EINTR
     // ETIMEDOUT, EPIPE in any case means the connection is closed
-    socket->beClosed();
+    if (errno == EPIPE) {
+      // TODO: failure of send does not mean the connection is closed,
+      // we need to handle it
+      isBrokenPipe = true;
+    } else {
+      socket->beClosed();
+    }
     return -1;
   }
-  wss.seekg(ret, std::ios::cur);
+  // Before doing anything else, seekg clears eofbit.	(since C++11)
+  // https://en.cppreference.com/w/cpp/io/basic_istream/seekg
+  wss.clear(std::ios::eofbit);  // clear eofbit before seekg
+  wss.seekg(ret - wss.gcount(), std::ios::cur);
   return ret;
 }
+
 int SocketBuf::fill() {  // throwable
   StreamCleaner _(rss, wss);
   if (bad()) {
     return -1;
   }
-  static char buf[MAXLINE] = {0};
+  static char buf[FILL_BUF_SIZE] = {0};
   static const int flags = 0;
   ssize_t ret =
-      ::recv(socket->get_fd(), static_cast<void*>(buf), MAXLINE, flags);
+      ::recv(socket->get_fd(), static_cast<void*>(buf), FILL_BUF_SIZE, flags);
   if (ret < 0) {
-    Log::error("recv() failed");
+    Log::cerror() << "recv() failed, errno: " << errno
+                  << ", error: " << strerror(errno) << "\n";
     return -1;
   }
   if (ret == 0) {
-    socket->beClosed();
+    Log::cdebug() << "received EOF" << std::endl;
+    // Just save the EOF flag and do not close the socket in order to send
+    // the remaining data.
+    hasReceivedEof = true;
+    return 0;
   }
   // Fill ret bytes buf into rss
   std::string s(buf, ret);  // throwable

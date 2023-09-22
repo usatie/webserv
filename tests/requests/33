@@ -1,0 +1,15 @@
+GET /cgi/echo.py HTTP/1.1
+Transfer-Encoding: chunked
+
+3
+Can
+4
+ you
+5
+ echo
+5
+ this
+a
+ response?
+0
+

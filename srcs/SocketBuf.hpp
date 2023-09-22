@@ -16,6 +16,14 @@ class SocketBuf {
         : rss(rss), wss(wss) {}
     ~StreamCleaner() {
       if (rss.bad() || wss.bad()) return;
+      if (rss.eof()) {
+        Log::debug("rss.eof(), so clear rss");
+        rss.str("");
+      }
+      if (wss.eof()) {
+        Log::debug("wss.eof(), so clear wss");
+        wss.str("");
+      }
       rss.clear();
       wss.clear();
     }
@@ -32,17 +40,27 @@ class SocketBuf {
   SocketBuf(SocketBuf& other) throw();  // Do not implement this
 
  public:
+  bool hasReceivedEof;
+  bool isBrokenPipe;
   // Constructor/Destructor
   // Constructor for TCP socket
   explicit SocketBuf(util::shared_ptr<Socket> socket)
-      : socket(socket), rss(), wss() {
+      : socket(socket),
+        rss(),
+        wss(),
+        hasReceivedEof(false),
+        isBrokenPipe(false) {
     if (socket->set_nonblock() < 0) {
       throw std::runtime_error("socket->set_nonblock() failed");
     }
   }
   // Constructor for unix domain socket
   explicit SocketBuf(int fd)
-      : socket(util::shared_ptr<Socket>(new Socket(fd))), rss(), wss() {
+      : socket(util::shared_ptr<Socket>(new Socket(fd))),
+        rss(),
+        wss(),
+        hasReceivedEof(false),
+        isBrokenPipe(false) {
     if (socket->set_nonblock() < 0) {
       throw std::runtime_error("socket->set_nonblock() failed");
     }
@@ -52,9 +70,12 @@ class SocketBuf {
   // Accessors
   int get_fd() const throw() { return socket->get_fd(); }
   bool isClosed() const throw() { return socket->isClosed(); }
-  // tellg() updates the internal state of the stream, so it is not const
+  //  tellg() updates the internal state of the stream, so it is not const
   bool isSendBufEmpty() throw() {
     return (wss.str().size() - wss.tellg()) == 0;
+  }
+  bool isRecvBufEmpty() throw() {
+    return (rss.str().size() - rss.tellg()) == 0;
   }
   bool bad() const throw() { return rss.bad() || wss.bad(); }
 

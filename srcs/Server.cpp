@@ -9,6 +9,14 @@
 #include "Config.hpp"
 #include "Connection.hpp"
 
+struct AddrInfo {
+  struct addrinfo* rp;
+  AddrInfo() : rp(NULL) {}
+  ~AddrInfo() {
+    if (rp) freeaddrinfo(rp);
+  }
+};
+
 std::ostream& operator<<(std::ostream& os, const struct addrinfo* rp);
 
 Server::~Server() throw() {}
@@ -57,13 +65,13 @@ int Server::getaddrinfo(const config::Listen& l, struct addrinfo** result) {
 }
 
 int Server::listen(const config::Listen& l) {
-  struct addrinfo* result;
-  if (getaddrinfo(l, &result) < 0) {  // throwable
+  struct AddrInfo info;
+  if (getaddrinfo(l, &info.rp) < 0) {  // throwable
     return -1;
   }
   /* Walk through returned list until we find an address structure
    * that can be used to successfully connect a socket */
-  for (struct addrinfo* rp = result; rp != NULL; rp = rp->ai_next) {
+  for (struct addrinfo* rp = info.rp; rp != NULL; rp = rp->ai_next) {
     Log::cdebug() << "listen : " << l << std::endl;
     Log::cdebug() << "ip: " << rp << std::endl;
     int sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -113,7 +121,6 @@ int Server::listen(const config::Listen& l) {
     listen_socks.push_back(sock);  // throwable
     break;  // Success, one socket per one listen directive
   }
-  freeaddrinfo(result);
   return 0;
 }
 
@@ -177,27 +184,24 @@ void Server::accept(util::shared_ptr<Socket> sock) throw() {
 void Server::update_fdset(util::shared_ptr<Connection> conn) throw() {
   FD_CLR(conn->get_fd(), &readfds);
   FD_CLR(conn->get_fd(), &writefds);
+  if (!conn->client_socket->hasReceivedEof) {
+    Log::cdebug() << "update_fdset: client_socket->hasReceivedEof == false"
+                  << std::endl;
+    FD_SET(conn->get_fd(), &readfds);
+  }
+  if (!conn->client_socket->isSendBufEmpty() &&
+      !conn->client_socket->isBrokenPipe)
+    FD_SET(conn->get_fd(), &writefds);
+  maxfd = std::max(conn->get_fd(), maxfd);
   if (conn->get_cgifd() != -1) {
     FD_CLR(conn->get_cgifd(), &readfds);
     FD_CLR(conn->get_cgifd(), &writefds);
-  }
-  switch (conn->getIOStatus()) {
-    case Connection::CLIENT_RECV:
-      FD_SET(conn->get_fd(), &readfds);
-      break;
-    case Connection::CLIENT_SEND:
-      FD_SET(conn->get_fd(), &writefds);
-      break;
-    case Connection::CGI_SEND:
+    if (!conn->cgi_socket->isSendBufEmpty() &&
+        !conn->cgi_socket->isBrokenPipe)  // no data to send
       FD_SET(conn->get_cgifd(), &writefds);
-      maxfd = std::max(conn->get_cgifd(), maxfd);
-      break;
-    case Connection::CGI_RECV:
+    if (!conn->cgi_socket->hasReceivedEof)  // no data to receive
       FD_SET(conn->get_cgifd(), &readfds);
-      maxfd = std::max(conn->get_cgifd(), maxfd);
-      break;
-    default:
-      break;
+    maxfd = std::max(conn->get_cgifd(), maxfd);
   }
 }
 int Server::wait() throw() {
@@ -205,7 +209,7 @@ int Server::wait() throw() {
   ready_wfds = this->writefds;
   int result = ::select(maxfd + 1, &ready_rfds, &ready_wfds, NULL, NULL);
   if (result < 0) {
-    Log::error("select error");
+    Log::cerror() << "select error: " << strerror(errno) << std::endl;
     return -1;
   }
   if (result == 0) {
@@ -216,18 +220,34 @@ int Server::wait() throw() {
   return 0;
 }
 bool Server::canResume(util::shared_ptr<Connection> conn) const throw() {
-  switch (conn->getIOStatus()) {
-    case Connection::CLIENT_RECV:
-      return FD_ISSET(conn->get_fd(), &ready_rfds);
-    case Connection::CLIENT_SEND:
-      return FD_ISSET(conn->get_fd(), &ready_wfds);
-    case Connection::CGI_SEND:
-      return FD_ISSET(conn->get_cgifd(), &ready_wfds);
-    case Connection::CGI_RECV:
-      return FD_ISSET(conn->get_cgifd(), &ready_rfds);
-    default:
-      return false;
+  // 1. CLIENT_SEND
+  if (FD_ISSET(conn->get_fd(), &ready_wfds)) {
+    Log::cdebug() << "canResume: CLIENT_SEND" << std::endl;
+    conn->io_status = Connection::CLIENT_SEND;
+    return true;
   }
+  // 2. CGI_SEND
+  // 3. CGI_RECV
+  if (conn->get_cgifd() != -1) {
+    if (FD_ISSET(conn->get_cgifd(), &ready_wfds)) {
+      Log::cdebug() << "canResume: CGI_SEND" << std::endl;
+      conn->io_status = Connection::CGI_SEND;
+      return true;
+    } else if (FD_ISSET(conn->get_cgifd(), &ready_rfds)) {
+      Log::cdebug() << "canResume: CGI_RECV" << std::endl;
+      conn->io_status = Connection::CGI_RECV;
+      return true;
+    }
+  }
+  // 4. CLIENT_RECV
+  if (FD_ISSET(conn->get_fd(), &ready_rfds)) {
+    Log::cdebug() << "canResume: CLIENT_RECV" << std::endl;
+    conn->io_status = Connection::CLIENT_RECV;
+    return true;
+  }
+  // 5. NO_IO
+  conn->io_status = Connection::NO_IO;
+  return false;
 }
 
 util::shared_ptr<Socket> Server::get_ready_listen_socket() throw() {
@@ -266,7 +286,16 @@ void Server::resume(util::shared_ptr<Connection> conn) throw() {
   }
   // If the request is done, clear it.
   if (conn->is_clear()) {
+    if (conn->client_socket->hasReceivedEof) {
+      Log::info("Client socket has received EOF");
+      remove_connection(conn);
+      return;
+    }
     Log::info("Request is done, clear connection");
+    if (conn->get_cgifd() != -1) {
+      FD_CLR(conn->get_cgifd(), &readfds);
+      FD_CLR(conn->get_cgifd(), &writefds);
+    }
     conn->clear();
   }
   // Update fdset

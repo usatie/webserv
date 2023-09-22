@@ -10,7 +10,6 @@
 #include <string>
 
 #include "Log.hpp"
-#define MAXLINE 1024
 #include <fcntl.h>
 
 #include <cstring>  // memcpy

@@ -9,40 +9,39 @@
 
 int Connection::resume() {  // throwable
   // 1. Socket I/O
-  IOStatus io_status = getIOStatus();
   switch (io_status) {
     case CLIENT_RECV:
       client_socket->fill();  // throwable
-      break;
-    case CLIENT_SEND:
-      client_socket->flush();  // throwable
-      break;
-    case CGI_RECV:
-      cgi_socket->fill();  // throwable
+      if (client_socket->isClosed()) {
+        Log::info("client_socket->closed");
+        status = DONE;
+        return -1;
+      }
       break;
     case CGI_SEND:
       cgi_socket->flush();  // throwable
+      if (cgi_socket->isClosed()) {
+        Log::info("cgi_socket->closed");
+        status = HANDLE_CGI_PARSE;
+      }
+      break;
+    case CGI_RECV:
+      cgi_socket->fill();  // throwable
+      if (cgi_socket->isClosed() || cgi_socket->hasReceivedEof) {
+        Log::info("cgi_socket->closed or hasReceivedEof");
+        status = HANDLE_CGI_PARSE;
+      }
+      break;
+    case CLIENT_SEND:
+      client_socket->flush();  // throwable
+      if (client_socket->isClosed()) {
+        Log::info("client_socket->closed");
+        status = DONE;
+        return -1;
+      }
       break;
     case NO_IO:
       break;
-  }
-  // After socket i/o, check if the socket is still open
-  if (io_status == CLIENT_RECV || io_status == CLIENT_SEND) {
-    if (client_socket->isClosed()) {
-      Log::info("client_socket->closed");
-      status = DONE;
-      return -1;
-    }
-  } else if (io_status == CGI_RECV || io_status == CGI_SEND) {
-    if (cgi_socket->isClosed()) {
-      Log::info("cgi_socket->closed");
-      status = HANDLE_CGI_PARSE;
-    }
-  }
-  if (io_status == CGI_SEND && cgi_socket->isSendBufEmpty()) {
-    // Send EOF to CGI Script process
-    Log::debug("send EOF to CGI Script process");
-    shutdown(cgi_socket->get_fd(), SHUT_WR);
   }
   bool cont = true;
   // If the socket is closed, we don't need to do anything
@@ -56,6 +55,18 @@ int Connection::resume() {  // throwable
         break;
       case REQ_BODY:
         cont = parse_body();  // throwable
+        break;
+      case REQ_BODY_CONTENT_LENGTH:
+        cont = parse_body_content_length();  // throwable
+        break;
+      case REQ_BODY_CHUNKED:
+        cont = parse_body_chunked();  // throwable
+        break;
+      case REQ_BODY_CHUNK_DATA:
+        cont = parse_body_chunk_data();  // throwable
+        break;
+      case REQ_BODY_CHUNK_TRAILER_SECTION:
+        cont = parse_body_chunk_trailer_section();  // throwable
         break;
       case HANDLE:
         cont = handle();  // throwable
@@ -87,6 +98,24 @@ int Connection::resume() {  // throwable
     status = DONE;
     return -1;
   }
+  if (cgi_socket != NULL) {
+    if (cgi_socket->bad()) {
+      Log::info("cgi_socket->bad()");
+      status = DONE;
+      return -1;
+    }
+  }
+  // If the client socket has received EOF, and both buffers are empty,
+  // we can close the connection.
+  if (client_socket->hasReceivedEof && client_socket->isSendBufEmpty() &&
+      client_socket->isRecvBufEmpty()) {
+    if (cgi_socket == NULL || cgi_socket->isClosed() ||
+        cgi_socket->hasReceivedEof) {
+      Log::info("client_socket->hasReceivedEof");
+      status = DONE;
+      return -1;
+    }
+  }
   return 0;
 }
 
@@ -94,38 +123,16 @@ int Connection::clear() {
   cgi_socket = util::shared_ptr<SocketBuf>();
   header.clear();
   status = REQ_START_LINE;
-  if (body) {
-    delete[] body;
-  }
-  body = NULL;
-  body_size = 0;
+  body.clear();
   content_length = 0;
+  chunk.clear();
+  chunk_size = 0;
   cgi_pid = 0;
   srv_cf = NULL;
   loc_cf = NULL;
   cgi_handler_cf = NULL;
   cgi_ext_cf = NULL;
   return 0;
-}
-
-Connection::IOStatus Connection::getIOStatus() const throw() {
-  switch (status) {
-    case REQ_START_LINE:
-    case REQ_HEADER_FIELDS:
-    case REQ_BODY:
-      return CLIENT_RECV;
-    case HANDLE_CGI_REQ:
-      return CGI_SEND;
-    case HANDLE_CGI_RES:
-      return CGI_RECV;
-    case RESPONSE:
-      return CLIENT_SEND;
-    case HANDLE:
-    case HANDLE_CGI_PARSE:
-    case DONE:
-    default:
-      return NO_IO;
-  }
 }
 
 // TODO: make this noexcept
@@ -135,6 +142,10 @@ int Connection::parse_start_line() {
   std::string line;
 
   if (client_socket->read_telnet_line(line) < 0) {  // throwable
+    return 0;
+  }
+  if (line.empty()) {
+    Log::cdebug() << "empty line" << std::endl;
     return 0;
   }
   Log::cdebug() << "start line: " << line << std::endl;
@@ -230,29 +241,133 @@ int Connection::parse_header_fields() {  // throwable
   return 0;
 }
 
+// https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
 int Connection::parse_body() {  // throwable
-  if (body == NULL) {
+  Log::debug("parse_body");
+  if (header.fields.find("Transfer-Encoding") != header.fields.end() &&
+      header.fields["Transfer-Encoding"].find("chunked") != std::string::npos) {
+    // TODO: Handle invalid Transfer-Encoding
+    if (header.fields.find("Content-Length") != header.fields.end()) {
+      Log::cinfo() << "Both Transfer-Encoding and Content-Length are "
+                      "specified"
+                   << std::endl;
+      ErrorHandler::handle(*this, 400);
+      status = RESPONSE;
+      return 1;
+    }
+    status = REQ_BODY_CHUNKED;
+    return 1;
+  }
+  status = REQ_BODY_CONTENT_LENGTH;
+  return 1;
+}
+
+// https://datatracker.ietf.org/doc/html/rfc9112#section-7.1
+//  chunked-body   = *chunk
+//                   last-chunk
+//                   trailer-section
+//                   CRLF
+//
+//  chunk          = chunk-size [ chunk-ext ] CRLF
+//                   chunk-data CRLF
+//  chunk-size     = 1*HEXDIG
+//  last-chunk     = 1*("0") [ chunk-ext ] CRLF
+//
+//  chunk-data     = 1*OCTET ; a sequence of chunk-size octets
+int Connection::parse_body_chunked() {  // throwable
+  Log::debug("parse_body_chunked");
+  std::string chunk_size_line;
+  while (client_socket->read_telnet_line(chunk_size_line) == 0) {  // throwable
+    std::stringstream ss(chunk_size_line);                         // throwable
+    ss >> std::hex >> chunk_size;                                  // no throw
+    if (ss.fail()) {
+      Log::cinfo() << "Invalid chunk size: " << chunk_size_line << std::endl;
+      ErrorHandler::handle(*this, 400);
+      status = RESPONSE;
+      return 1;
+    }
+    // TODO: Handle chunk-ext
+
+    // If chunk-size is zero, this is the last-chunk
+    // So, copy chunked_body to body
+    if (chunk_size == 0) {
+      // TODO: Improve this inefficiency
+      content_length = body.size();
+      chunk_size = 0;
+      status = REQ_BODY_CHUNK_TRAILER_SECTION;
+      return 1;
+    }
+    // If chunk-size is non-zero, chunk-data is expected
+    status = REQ_BODY_CHUNK_DATA;
+    return 1;
+  }
+  // There is still more to read later
+  return 0;
+}
+
+int Connection::parse_body_chunk_data() {  // throwable
+  Log::debug("parse_body_chunk_data");
+  Log::cdebug() << "chunk_size: " << chunk_size << std::endl;
+  // Add 2 bytes for CRLF
+  std::vector<char> buf(chunk_size + 2);  // throwable
+  ssize_t ret = client_socket->read(&buf[0], 2 + chunk_size - chunk.size());
+
+  if (ret < 0) {
+    return 0;
+  } else if (ret == 0) {
+    return 0;
+  }
+  chunk.append(&buf[0], ret);
+  if (chunk.size() == chunk_size + 2) {  // +2 for CRLF
+    // Check if the last two bytes are CRLF
+    if (chunk.substr(chunk.size() - 2) != CRLF) {  // throwable
+      Log::cinfo() << "Invalid chunk data: " << chunk << std::endl;
+      ErrorHandler::handle(*this, 400);
+      status = RESPONSE;
+      return 1;
+    }
+    // Remove CRLF
+    chunk.erase(chunk.size() - 2);
+    // Append a chunk to chunked_body
+    body.append(chunk);
+    chunk.clear();
+    status = REQ_BODY_CHUNKED;
+    return 1;
+  }
+  // There is more to read
+  return 0;
+}
+
+int Connection::parse_body_chunk_trailer_section() {  // throwable
+  Log::debug("parse_body_chunk_trailer_section");
+  // TODO: Implement [trailer-section]
+  status = HANDLE;
+  return 1;
+}
+
+int Connection::parse_body_content_length() {  // throwable
+  Log::debug("parse_body_content_length");
+  if (body.empty()) {
     if (header.fields.find("Content-Length") == header.fields.end()) {
       status = HANDLE;
       return 1;
     }
     // TODO: Handle invalid Content-Length
     content_length = atoi(header.fields["Content-Length"].c_str());
-    body = new char[content_length];
+    body.reserve(content_length);
   }
-  assert(body != NULL);  // body is guaranteed to be non null
-  ssize_t ret =
-      client_socket->read(body + body_size, content_length - body_size);
+  std::vector<char> buf(content_length - body.size());
+  ssize_t ret = client_socket->read(&buf[0], buf.size());  // throwable
   if (ret < 0) {
     return 0;
   } else if (ret == 0) {
     return 0;
+  }
+  body.append(&buf[0], ret);
+  if (body.size() == content_length) {
+    status = HANDLE;
+    return 1;
   } else {
-    body_size += ret;
-    if (body_size == content_length) {
-      status = HANDLE;
-      return 1;
-    }
     return 0;
   }
 }
