@@ -26,7 +26,7 @@ mkdir -p /tmp/www/pouic/toto \
 # 2. Tests
 # arg for save error count
 cnt=0
-for i in {1..33}; do
+for i in {1..34}; do
   echo -n "Test${i}   : " | tee -a error.log
   # skip test 12, 23, 29
   if [ $i -eq 12 ] || [ $i -eq 23 ] || [ $i -eq 29 ]; then
