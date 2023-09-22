@@ -33,10 +33,15 @@ class SocketBuf {
 
  public:
   bool hasReceivedEof;
+  bool isBrokenPipe;
   // Constructor/Destructor
   // Constructor for TCP socket
   explicit SocketBuf(util::shared_ptr<Socket> socket)
-      : socket(socket), rss(), wss(), hasReceivedEof(false) {
+      : socket(socket),
+        rss(),
+        wss(),
+        hasReceivedEof(false),
+        isBrokenPipe(false) {
     if (socket->set_nonblock() < 0) {
       throw std::runtime_error("socket->set_nonblock() failed");
     }
@@ -46,7 +51,8 @@ class SocketBuf {
       : socket(util::shared_ptr<Socket>(new Socket(fd))),
         rss(),
         wss(),
-        hasReceivedEof(false) {
+        hasReceivedEof(false),
+        isBrokenPipe(false) {
     if (socket->set_nonblock() < 0) {
       throw std::runtime_error("socket->set_nonblock() failed");
     }

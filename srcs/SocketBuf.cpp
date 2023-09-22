@@ -101,6 +101,8 @@ ssize_t SocketBuf::read(char* buf, size_t size) throw() {
   if (rss.bad()) return -1;
   return rss.gcount();
 }
+
+#define SEND_BUF_SIZE (1024 * 1024)
 int SocketBuf::flush() {
   StreamCleaner _(rss, wss);
   if (bad()) {
@@ -118,25 +120,32 @@ int SocketBuf::flush() {
     Log::cerror() << "wss.tellg() failed\n";
     return -1;
   }
-  std::string buf(wss.str());  // throwable
+  std::vector<char> buf(SEND_BUF_SIZE);  // throwable
+  wss.read(&buf[0], SEND_BUF_SIZE);
   // TODO: buf may contain unnecessary leading data, we need to remove them
 
 #ifdef LINUX
-  ssize_t ret = ::send(socket->get_fd(), &buf.c_str()[wss.tellg()],
-                       buf.size() - wss.tellg(), 0);
+  ssize_t ret = ::send(socket->get_fd(), &buf[0], wss.gcount(), 0);
 #else
-  ssize_t ret = ::send(socket->get_fd(), &buf.c_str()[wss.tellg()],
-                       buf.size() - wss.tellg(), SO_NOSIGPIPE);
+  ssize_t ret = ::send(socket->get_fd(), &buf[0], wss.gcount(), SO_NOSIGPIPE);
 #endif
+  Log::cdebug() << "gcount: " << wss.gcount() << ", ret: " << ret
+                << ", buf: " << std::string(&buf[0], wss.gcount()) << "\n";
   if (ret < 0) {
     Log::cerror() << "send() failed, errno: " << errno
                   << ", error: " << strerror(errno) << "\n";
     // TODO: handle EINTR
     // ETIMEDOUT, EPIPE in any case means the connection is closed
-    socket->beClosed();
+    if (errno == EPIPE) {
+      // TODO: failure of send does not mean the connection is closed,
+      // we need to handle it
+      isBrokenPipe = true;
+    } else {
+      socket->beClosed();
+    }
     return -1;
   }
-  wss.seekg(ret, std::ios::cur);
+  wss.seekg(ret - wss.gcount(), std::ios::cur);
   return ret;
 }
 int SocketBuf::fill() {  // throwable

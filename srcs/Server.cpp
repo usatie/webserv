@@ -12,7 +12,9 @@
 struct AddrInfo {
   struct addrinfo* rp;
   AddrInfo() : rp(NULL) {}
-  ~AddrInfo() { if (rp) freeaddrinfo(rp); }
+  ~AddrInfo() {
+    if (rp) freeaddrinfo(rp);
+  }
 };
 
 std::ostream& operator<<(std::ostream& os, const struct addrinfo* rp);
@@ -187,12 +189,15 @@ void Server::update_fdset(util::shared_ptr<Connection> conn) throw() {
                   << std::endl;
     FD_SET(conn->get_fd(), &readfds);
   }
-  if (!conn->client_socket->isSendBufEmpty()) FD_SET(conn->get_fd(), &writefds);
+  if (!conn->client_socket->isSendBufEmpty() &&
+      !conn->client_socket->isBrokenPipe)
+    FD_SET(conn->get_fd(), &writefds);
   maxfd = std::max(conn->get_fd(), maxfd);
   if (conn->get_cgifd() != -1) {
     FD_CLR(conn->get_cgifd(), &readfds);
     FD_CLR(conn->get_cgifd(), &writefds);
-    if (!conn->cgi_socket->isSendBufEmpty())  // no data to send
+    if (!conn->cgi_socket->isSendBufEmpty() &&
+        !conn->cgi_socket->isBrokenPipe)  // no data to send
       FD_SET(conn->get_cgifd(), &writefds);
     if (!conn->cgi_socket->hasReceivedEof)  // no data to receive
       FD_SET(conn->get_cgifd(), &readfds);
