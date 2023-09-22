@@ -9,6 +9,12 @@
 #include "Config.hpp"
 #include "Connection.hpp"
 
+struct AddrInfo {
+  struct addrinfo* rp;
+  AddrInfo() : rp(NULL) {}
+  ~AddrInfo() { if (rp) freeaddrinfo(rp); }
+};
+
 std::ostream& operator<<(std::ostream& os, const struct addrinfo* rp);
 
 Server::~Server() throw() {}
@@ -57,13 +63,13 @@ int Server::getaddrinfo(const config::Listen& l, struct addrinfo** result) {
 }
 
 int Server::listen(const config::Listen& l) {
-  struct addrinfo* result;
-  if (getaddrinfo(l, &result) < 0) {  // throwable
+  struct AddrInfo info;
+  if (getaddrinfo(l, &info.rp) < 0) {  // throwable
     return -1;
   }
   /* Walk through returned list until we find an address structure
    * that can be used to successfully connect a socket */
-  for (struct addrinfo* rp = result; rp != NULL; rp = rp->ai_next) {
+  for (struct addrinfo* rp = info.rp; rp != NULL; rp = rp->ai_next) {
     Log::cdebug() << "listen : " << l << std::endl;
     Log::cdebug() << "ip: " << rp << std::endl;
     int sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -113,7 +119,6 @@ int Server::listen(const config::Listen& l) {
     listen_socks.push_back(sock);  // throwable
     break;  // Success, one socket per one listen directive
   }
-  freeaddrinfo(result);
   return 0;
 }
 
