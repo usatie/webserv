@@ -286,11 +286,20 @@ void Server::resume(util::shared_ptr<Connection> conn) throw() {
   }
   // If the request is done, clear it.
   if (conn->is_clear()) {
-    if (conn->client_socket->hasReceivedEof) {
-      Log::info("Client socket has received EOF");
+    // If the client socket has received EOF, remove the connection.
+    if (conn->client_socket->hasReceivedEof &&
+        conn->client_socket->isSendBufEmpty()) {
+      Log::info("Client socket has received EOF, remove connection");
       remove_connection(conn);
       return;
     }
+    // If the client has requested to close the connection, remove it.
+    if (conn->header.fields["Connection"] == "close") {
+      Log::info("Connection: close, remove connection");
+      remove_connection(conn);
+      return;
+    }
+
     Log::info("Request is done, clear connection");
     if (conn->get_cgifd() != -1) {
       FD_CLR(conn->get_cgifd(), &readfds);
