@@ -137,15 +137,10 @@ int SocketBuf::flush() {
   if (ret < 0) {
     Log::cerror() << "send() failed, errno: " << errno
                   << ", error: " << strerror(errno) << "\n";
-    // TODO: handle EINTR
-    // ETIMEDOUT, EPIPE in any case means the connection is closed
-    if (errno == EPIPE) {
-      // TODO: failure of send does not mean the connection is closed,
-      // we need to handle it
-      isBrokenPipe = true;
-    } else {
-      socket->beClosed();
-    }
+    // EINTR will not happen because we use NONBLOCK socket
+    // EAGAIN will not happen because we use select() before send()
+    // So, this error is probably broken pipe
+    isBrokenPipe = true;
     return -1;
   }
   // Before doing anything else, seekg clears eofbit.	(since C++11)
