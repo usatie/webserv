@@ -47,12 +47,22 @@ int resolve_path(const config::Server* srv_cf, const config::Location* loc_cf,
   }
 
   // 1. If path is regular file, send it
-  if (stat(path.c_str(), &st) < 0 && errno != ENOENT) {
+  if (stat(path.c_str(), &st) < 0) {
     Log::cdebug() << "stat() failed: " << path << ", errno:" << strerror(errno)
                   << std::endl;
-    return ERR_500;
+    switch (errno) {
+      case EACCES:
+        return ERR_403;
+      case ENOTDIR:
+        return ERR_404;
+      case ENOENT:
+        break;  // continue to try index
+      default:
+        return ERR_500;
+    }
+  } else if (S_ISREG(st.st_mode)) {
+    return OK_FILE;
   }
-  if (S_ISREG(st.st_mode)) return OK_FILE;
   // 2. Else if fullpath is directory, try to append index.html
   const std::vector<std::string>& index =
       (!loc_cf) ? srv_cf->index : loc_cf->index;
@@ -82,7 +92,6 @@ int resolve_path(const config::Server* srv_cf, const config::Location* loc_cf,
       if (srv_cf->autoindex && S_ISDIR(st.st_mode)) return OK_DIR;
     }
   }
-  // TODO: 301 Moved Permanently
   // TODO: 403 Forbidden
   return ERR_404;
 }

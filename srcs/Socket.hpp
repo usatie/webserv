@@ -1,19 +1,17 @@
 #ifndef SOCKET_HPP
 #define SOCKET_HPP
 
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <cstring>  // memcpy
 #include <fstream>
 #include <iostream>
 #include <string>
 
 #include "Log.hpp"
-#include <fcntl.h>
-
-#include <cstring>  // memcpy
-
 #include "webserv.hpp"
 
 class Socket {

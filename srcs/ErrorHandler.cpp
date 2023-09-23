@@ -1,5 +1,7 @@
 #include "ErrorHandler.hpp"
 
+#include <sys/stat.h>
+
 #include <sstream>
 
 #include "Connection.hpp"

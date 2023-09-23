@@ -425,6 +425,11 @@ const config::Server *select_srv_cf(const config::Config &cf,
   if (conn.header.fields.find("Host") != conn.header.fields.end()) {
     host = conn.header.fields.find("Host")->second;
   }
+  // Remove port number
+  size_t pos = host.find(':');
+  if (pos != std::string::npos) {
+    host.erase(pos);
+  }
   // struct sockaddr_storage* saddr = &(*client_socket)->saddr;
   const config::Server *srv_cf = NULL;
   for (unsigned int i = 0; i < cf.http.servers.size(); i++) {
