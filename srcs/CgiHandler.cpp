@@ -6,24 +6,28 @@
 #include <sys/stat.h>  // stat
 #include <unistd.h>
 
+#include <cerrno>
 #include <cstdlib>  // exit
 
 int CgiHandler::handle(Connection& conn) {  // throwable
+  std::string script_path = conn.header.fullpath;
+  std::string dir_path = script_path.substr(0, script_path.find_last_of('/'));
+  std::string script_name = script_path.substr(script_path.find_last_of('/') + 1);
   // Check if 404
-  if (access(conn.header.fullpath.c_str(), F_OK) == -1) {
+  if (access(script_path.c_str(), F_OK) == -1) {
     ErrorHandler::handle(conn, 404);
     return -1;
   }
-  // Check if fullpath is valid and executable
+  // Check if script_path is valid and executable
   // If cgi_ext_cf is NULL, then it will not be execed, but will be interpreted
-  if (conn.cgi_ext_cf && access(conn.header.fullpath.c_str(), X_OK) == -1) {
+  if (conn.cgi_ext_cf && access(script_path.c_str(), X_OK) == -1) {
     ErrorHandler::handle(conn, 403);
     return -1;
   }
-  // Check if fullpath is a directory
+  // Check if script_path is a directory
   // Because, a directory returns true for X_OK
   struct stat statbuf;
-  if (stat(conn.header.fullpath.c_str(), &statbuf) == -1) {
+  if (stat(script_path.c_str(), &statbuf) == -1) {
     ErrorHandler::handle(conn, 500);
     return -1;
   }
@@ -82,6 +86,13 @@ int CgiHandler::handle(Connection& conn) {  // throwable
                          //(char*)server_port.c_str(),
                          (char*)server_protocol.c_str(),
                          (char*)server_software.c_str(), NULL};
+
+    // Change directory to script directory to execute script
+    if (chdir(dir_path.c_str()) == -1) {
+      Log::cfatal() << "chdir failed. (" << errno << ": " << strerror(errno)
+                    << ")" << std::endl;
+      std::exit(1);
+    }
     Log::cdebug() << "execve: " << conn.header.fullpath << std::endl;
     if (conn.cgi_ext_cf) {  // binary or script with shebang
       const char* const argv[] = {conn.header.fullpath.c_str(), NULL};
@@ -90,10 +101,10 @@ int CgiHandler::handle(Connection& conn) {  // throwable
       dup2(cgi_socket[1], STDIN_FILENO);
       // TODO: Create environment variables
       // TODO: Create appropriate argv
-      execve(conn.header.fullpath.c_str(), (char**)argv, env);
+      execve(script_name.c_str(), (char**)argv, env);
     } else {  // script without shebang
       const char* const argv[] = {conn.cgi_handler_cf->interpreter_path.c_str(),
-                                  conn.header.fullpath.c_str(), NULL};
+                                  script_name.c_str(), NULL};
       close(cgi_socket[0]);
       dup2(cgi_socket[1], STDOUT_FILENO);
       dup2(cgi_socket[1], STDIN_FILENO);
