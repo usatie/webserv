@@ -1,5 +1,5 @@
 #include <dirent.h>
-#include <sys/stat.h> // stat
+#include <sys/stat.h>  // stat
 
 #include <iomanip>
 

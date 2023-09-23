@@ -56,7 +56,7 @@ int resolve_path(const config::Server* srv_cf, const config::Location* loc_cf,
       case ENOTDIR:
         return ERR_404;
       case ENOENT:
-        break; // continue to try index
+        break;  // continue to try index
       default:
         return ERR_500;
     }
