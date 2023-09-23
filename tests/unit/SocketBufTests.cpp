@@ -107,8 +107,22 @@ void send_and_fill(int client_fd, SocketBuf &serv_sock, const std::string &msg) 
   send(client_fd, msg.c_str(), msg.size(), 0);
   fd_set readfds;
   FD_ZERO(&readfds);
-  FD_SET(serv_sock.get_fd(), &readfds);
-  select(serv_sock.get_fd() + 1, &readfds, NULL, NULL, NULL);
+  while (FD_ISSET(serv_sock.get_fd(), &readfds) == false) {
+    FD_SET(serv_sock.get_fd(), &readfds);
+    select(serv_sock.get_fd() + 1, &readfds, NULL, NULL, NULL);
+  }
+  serv_sock.fill();
+}
+
+void select_and_fill(SocketBuf &serv_sock) {
+  fd_set readfds;
+  FD_ZERO(&readfds);
+  while (FD_ISSET(serv_sock.get_fd(), &readfds) == false) {
+    FD_SET(serv_sock.get_fd(), &readfds);
+    Log::debug("select");
+    int ret = select(serv_sock.get_fd() + 1, &readfds, NULL, NULL, NULL);
+    Log::cdebug() << "select ret = " << ret << std::endl;
+  }
   serv_sock.fill();
 }
 
@@ -118,8 +132,6 @@ int test_socketbuf() {
   int srv_conn_fd = accept(listen_fd, NULL, NULL); // Server conn fd
   SocketBuf serv_sock(srv_conn_fd); // Server conn fd wrapper
   std::string line;
-  Log::cfatal() << listen_fd << std::endl;
-  Log::cfatal() << client_fd << std::endl;
 
   // 1. Empty Buffer
   title("Empty Buffer");
@@ -175,7 +187,7 @@ int test_socketbuf() {
   shutdown(client_fd, SHUT_WR);
   T(serv_sock, "hello", 0, false, false, false);
   T(serv_sock, "", -1, false, false, false);
-  serv_sock.fill(); // Notify socket that the peer has closed the connection
+  select_and_fill(serv_sock); // Notify socket that the peer has closed the connection
   T(serv_sock, "", -1, false, false, true);
   return err;
 }
