@@ -1,8 +1,6 @@
 #ifndef POST_HANDLER_HPP
 #define POST_HANDLER_HPP
 
-#include <sys/stat.h>
-
 #include <fstream>
 #include <iostream>
 #include <sstream>

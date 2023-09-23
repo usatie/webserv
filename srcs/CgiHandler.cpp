@@ -3,6 +3,7 @@
 #include "Connection.hpp"
 #include "ErrorHandler.hpp"
 // fork
+#include <sys/stat.h>  // stat
 #include <unistd.h>
 
 #include <cstdlib>  // exit

@@ -1,5 +1,7 @@
 #include "PostHandler.hpp"
 
+#include <sys/stat.h>  // mkdir
+
 #include <cerrno>
 #include <ctime>
 
