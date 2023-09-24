@@ -219,7 +219,9 @@ int Server::wait() throw() {
   ready_rfds = this->readfds;
   ready_wfds = this->writefds;
   // timeout 1s
-  struct timeval timeout = {.tv_sec = 1, .tv_usec = 0};
+  struct timeval timeout;
+  timeout.tv_sec = 1;
+  timeout.tv_usec = 0;
   int result = ::select(maxfd + 1, &ready_rfds, &ready_wfds, NULL, &timeout);
   if (result < 0) {
     Log::cerror() << "select error: " << strerror(errno) << std::endl;
