@@ -25,6 +25,7 @@ class Server {
   fd_set readfds, writefds;
   fd_set ready_rfds, ready_wfds;
   int maxfd;
+  time_t last_timeout_check;
 
  private:
   Server() throw();  // Do not implement
@@ -49,9 +50,10 @@ class Server {
                   struct addrinfo** result);  // throwable
   int listen(const config::Listen& l);        // throwable
 
-  void remove_connection(util::shared_ptr<Connection> connection) throw();
+  ConnIterator remove_connection(
+      util::shared_ptr<Connection> connection) throw();
 
-  void remove_all_connections() throw();
+  void remove_timeout_connections() throw();
 
   void accept(util::shared_ptr<Socket> sock) throw();
 

@@ -137,10 +137,11 @@ void Server::startup() {
   }
 }
 
-void Server::remove_connection(
+Server::ConnIterator Server::remove_connection(
     util::shared_ptr<Connection> connection) throw() {
-  connections.erase(std::find(connections.begin(), connections.end(),
-                              connection));  // no throw
+  ConnIterator it =
+      connections.erase(std::find(connections.begin(), connections.end(),
+                                  connection));  // no throw
   FD_CLR(connection->get_fd(), &readfds);
   FD_CLR(connection->get_fd(), &writefds);
   if (connection->get_cgifd() != -1) {
@@ -157,15 +158,26 @@ void Server::remove_connection(
       maxfd = std::max(maxfd, (*it)->get_fd());
     }
   }
+  return it;
 }
-void Server::remove_all_connections() throw() {
-  connections.clear();
-  FD_ZERO(&readfds);
-  FD_ZERO(&writefds);
-  maxfd = -1;
-  for (SockIterator it = listen_socks.begin(); it != listen_socks.end(); ++it) {
-    FD_SET((*it)->get_fd(), &readfds);
-    maxfd = std::max(maxfd, (*it)->get_fd());
+void Server::remove_timeout_connections() throw() {
+  last_timeout_check = time(NULL);
+  for (ConnIterator it = connections.begin(); it != connections.end();) {
+    if ((*it)->is_cgi_timeout()) {
+      Log::cinfo() << "CGI timeout: connfd(" << (*it)->get_fd() << ")"
+                   << " port("
+                   << (*it)->client_socket->socket->get_client_port() << ")"
+                   << std::endl;
+      (*it)->handle_cgi_timeout();
+    } else if ((*it)->is_timeout()) {
+      Log::cinfo() << "Connection timeout: connfd(" << (*it)->get_fd() << ")"
+                   << " port("
+                   << (*it)->client_socket->socket->get_client_port() << ")"
+                   << std::endl;
+      it = remove_connection(*it);  // always returns the next iterator
+    } else {
+      ++it;
+    }
   }
 }
 
@@ -207,14 +219,17 @@ void Server::update_fdset(util::shared_ptr<Connection> conn) throw() {
 int Server::wait() throw() {
   ready_rfds = this->readfds;
   ready_wfds = this->writefds;
-  int result = ::select(maxfd + 1, &ready_rfds, &ready_wfds, NULL, NULL);
+  // timeout 1s
+  struct timeval timeout;
+  timeout.tv_sec = 1;
+  timeout.tv_usec = 0;
+  int result = ::select(maxfd + 1, &ready_rfds, &ready_wfds, NULL, &timeout);
   if (result < 0) {
     Log::cerror() << "select error: " << strerror(errno) << std::endl;
     return -1;
   }
-  if (result == 0) {
-    Log::info("select timeout");
-    remove_all_connections();
+  if (result == 0 || (time(NULL) - last_timeout_check) > std::min(TIMEOUT_SEC, CGI_TIMEOUT_SEC)) {
+    remove_timeout_connections();
     return -1;
   }
   return 0;

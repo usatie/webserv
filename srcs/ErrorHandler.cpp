@@ -28,6 +28,8 @@ const char* status_line(int status_code) throw() {
       return "HTTP/1.1 413 Request Entity Too Large";
     case 500:
       return "HTTP/1.1 500 Internal Server Error";
+    case 504:
+      return "HTTP/1.1 504 Gateway Timeout";
     default:
       Log::cfatal() << "Unknown status code: " << status_code << std::endl;
       return "HTTP/1.1 500 Internal Server Error";
@@ -169,6 +171,14 @@ void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
                           << sizeof(http_error_500_page) - 1 << CRLF;
       *conn.client_socket << CRLF;  // end of header
       *conn.client_socket << http_error_500_page;
+      break;
+    case 504:
+      *conn.client_socket << "HTTP/1.1 504 Gateway Timeout" << CRLF;
+      *conn.client_socket << "Content-Type: text/html" << CRLF;
+      *conn.client_socket << "Content-Length: "
+                          << sizeof(http_error_504_page) - 1 << CRLF;
+      *conn.client_socket << CRLF;  // end of header
+      *conn.client_socket << http_error_504_page;
       break;
     default:
       Log::cerror() << "Unknown status code: " << status_code << std::endl;

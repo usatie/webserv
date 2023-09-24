@@ -12,7 +12,8 @@
 int CgiHandler::handle(Connection& conn) {  // throwable
   std::string script_path = conn.header.fullpath;
   std::string dir_path = script_path.substr(0, script_path.find_last_of('/'));
-  std::string script_name = script_path.substr(script_path.find_last_of('/') + 1);
+  std::string script_name =
+      script_path.substr(script_path.find_last_of('/') + 1);
   // Check if 404
   if (access(script_path.c_str(), F_OK) == -1) {
     ErrorHandler::handle(conn, 404);

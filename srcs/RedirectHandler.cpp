@@ -7,5 +7,6 @@ void RedirectHandler::handle(const Connection& conn, int status_code,
   *conn.client_socket << "HTTP/1.1 " << status_code << " Moved Permanently"
                       << CRLF;
   *conn.client_socket << "Location: " << location << CRLF;
+  *conn.client_socket << "Content-Length: 0" << CRLF;
   *conn.client_socket << CRLF;
 }

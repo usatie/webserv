@@ -1,0 +1,11 @@
+HTTP/1.1 504 Gateway Timeout
+Content-Type: text/html
+Content-Length: 166
+
+<html>
+<head><title>504 Gateway Timeout</title></head>
+<body>
+<center><h1>504 Gateway Timeout</h1></center>
+<hr><center>webserv/0.0.1</center>
+</body>
+</html>

@@ -26,7 +26,7 @@ mkdir -p /tmp/www/pouic/toto \
 # 2. Tests
 # arg for save error count
 cnt=0
-for i in {1..36}; do
+for i in {1..38}; do
   echo -n "Test${i}   : " | tee -a error.log
   # skip test 12, 23, 29
   if [ $i -eq 12 ] || [ $i -eq 23 ] || [ $i -eq 29 ]; then
@@ -67,6 +67,16 @@ function python_test() {
 }
 
 python_test
+
+# 2.5. Check if there are zombie cgi processes
+echo -n "Zombie CGI : "
+ps aux | grep "cgi-bin" | grep -v grep >out
+if ps | grep defunct | grep -qv grep; then
+	print_ng
+	let cnt++
+else
+	print_ok
+fi
 
 # 3. Clean up
 rm -f out *.tmp error.log-e
