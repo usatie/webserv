@@ -162,7 +162,13 @@ Server::ConnIterator Server::remove_connection(
 }
 void Server::remove_timeout_connections() throw() {
   for (ConnIterator it = connections.begin(); it != connections.end();) {
-    if ((*it)->is_timeout()) {
+    if ((*it)->is_cgi_timeout()) {
+      Log::cinfo() << "CGI timeout: connfd(" << (*it)->get_fd() << ")"
+                   << " port("
+                   << (*it)->client_socket->socket->get_client_port() << ")"
+                   << std::endl;
+      (*it)->handle_cgi_timeout();
+    } else if ((*it)->is_timeout()) {
       Log::cinfo() << "Connection timeout: connfd(" << (*it)->get_fd() << ")"
                    << " port("
                    << (*it)->client_socket->socket->get_client_port() << ")"

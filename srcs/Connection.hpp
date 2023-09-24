@@ -17,6 +17,7 @@
 #include "webserv.hpp"
 
 #define TIMEOUT_SEC 10
+#define CGI_TIMEOUT_SEC 3
 
 class Connection {
  public:
@@ -62,6 +63,7 @@ class Connection {
   const config::CgiHandler *cgi_handler_cf;
   const config::CgiExtensions *cgi_ext_cf;
   time_t last_modified;
+  time_t cgi_started;
 
  public:
   IOStatus io_status;
@@ -97,6 +99,70 @@ class Connection {
   bool is_clear() const throw() { return status == CLEAR; }
   bool is_timeout() const throw() {
     return (time(NULL) - last_modified) > TIMEOUT_SEC;
+  }
+  bool is_cgi_timeout() const throw() {
+    switch (status) {
+      case HANDLE_CGI_REQ:
+      case HANDLE_CGI_RES:
+        break;
+      default:
+        return false;
+    }
+    return (time(NULL) - cgi_started) > CGI_TIMEOUT_SEC;
+  }
+
+  int kill_and_reap_cgi_process() throw() {
+    // Already handled
+    if (cgi_pid <= 0) {
+      return -1;
+    }
+
+    // Kill the cgi process
+    if (kill(cgi_pid, SIGKILL) < 0) {
+      Log::cerror() << "kill failed. (" << errno << ": " << strerror(errno)
+                    << ")" << std::endl;
+      return -1;
+    }
+
+    // Wait for CGI process to terminate
+    pid_t ret;
+    int exit_status;
+    Log::cdebug() << "waitpid(" << cgi_pid << ")" << std::endl;
+    while ((ret = waitpid(cgi_pid, &exit_status, WNOHANG)) <= 0) {
+      if (ret == 0) {
+        // If CGI process is still running, continue to waitpid
+        // This is possible because of the timelag between kill() and actual
+        // termination of CGI process
+        continue;
+      }
+      // If interrupted by signal, continue to waitpid again
+      if (errno == EINTR) continue;
+      // Other errors(ECHILD/EFAULT/EINVAL), return 500
+      // I don't think this will happen though.
+      Log::cfatal() << "waitpid failed. (" << errno << ": " << strerror(errno)
+                    << ")" << std::endl;
+      cgi_pid = -1;
+      return -1;
+    }
+    Log::cdebug() << "waitpid(" << cgi_pid << ") returns " << ret << std::endl;
+    cgi_pid = -1;
+    return exit_status;
+  }
+  void handle_cgi_timeout() throw() {
+    Log::info("CGI timeout");
+    // Already handled
+    if (cgi_pid == -1) {
+      return;
+    }
+    // kill cgi process
+    if (kill_and_reap_cgi_process() < 0) {
+      Log::cfatal() << "kill_and_reap_cgi_process failed" << std::endl;
+      ErrorHandler::handle(*this, 500);
+      status = RESPONSE;
+      return;
+    }
+    ErrorHandler::handle(*this, 504);
+    status = RESPONSE;
   }
 
   // Member functions

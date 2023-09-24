@@ -10,6 +10,11 @@
 int Connection::resume() {  // throwable
   Log::debug("Connection::resume()");
   last_modified = time(NULL);
+  // CGI timeout
+  if (is_cgi_timeout()) {
+    handle_cgi_timeout();
+    return -1;
+  }
   // 1. Socket I/O
   switch (io_status) {
     case CLIENT_RECV:
@@ -591,6 +596,7 @@ int Connection::handle() {  // throwable
   // if CGI
   if (cgi_ext_cf || cgi_handler_cf) {
     Log::cdebug() << "CGI request" << std::endl;
+    cgi_started = time(NULL);
     if (CgiHandler::handle(*this) < 0)
       status = RESPONSE;
     else
@@ -627,35 +633,10 @@ int Connection::handle_cgi_req() throw() {
 }
 
 int Connection::handle_cgi_res() throw() {
+  Log::debug("handle_cgi_res");
   // 1. If CGI process is still running, return 0
   // Question: If CGI process exit, isClosed will be set to true?
   if (!cgi_socket->isClosed()) return 0;
-
-  // 2. If CGI process is not running, handle CGI response
-  // To remove zombie process, wait or kill CGI process
-  pid_t ret;
-  int status;
-  while ((ret = waitpid(cgi_pid, &status, WNOHANG)) < 0) {
-    // If interrupted by signal, continue to waitpid again
-    if (errno == EINTR) continue;
-    // If other errors(ECHILD/EFAULT/EINVAL), kill CGI process and return 500
-    // (I don't think this will happen though.)
-    Log::cfatal() << "waitpid error" << std::endl;
-    kill(cgi_pid, SIGKILL);
-    ErrorHandler::handle(*this, 500);
-    status = RESPONSE;
-    return 1;
-  }
-
-  // 3. ret == 0 means CGI is still running
-  // (I don't think this will happen though.)
-  if (ret == 0) {
-    Log::cfatal() << "CGI still running" << std::endl;
-    kill(cgi_pid, SIGKILL);
-    ErrorHandler::handle(*this, 500);
-    status = RESPONSE;
-    return 1;
-  }
   status = HANDLE_CGI_PARSE;
   return 1;
 }
@@ -702,6 +683,24 @@ int Connection::handle_cgi_res() throw() {
 // extension-code = 3digit
 // reason-phrase  = *TEXT
 int Connection::handle_cgi_parse() {  // throwable
+  Log::debug("handle_cgi_parse");
+  // CGI Process is already terminated
+  if (cgi_pid < 0) {
+    return 1;
+  }
+
+  // Kill CGI process
+  int exit_status = kill_and_reap_cgi_process();
+
+  // CGI Script Error
+  if (exit_status != 0) {
+    Log::cdebug() << "CGI process terminated with status: " << status
+                  << std::endl;
+    ErrorHandler::handle(*this, 500);
+    status = RESPONSE;
+    return 1;
+  }
+
   // TODO: parse
   std::string line;
   // Read header fields
