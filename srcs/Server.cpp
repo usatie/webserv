@@ -161,6 +161,7 @@ Server::ConnIterator Server::remove_connection(
   return it;
 }
 void Server::remove_timeout_connections() throw() {
+  last_timeout_check = time(NULL);
   for (ConnIterator it = connections.begin(); it != connections.end();) {
     if ((*it)->is_cgi_timeout()) {
       Log::cinfo() << "CGI timeout: connfd(" << (*it)->get_fd() << ")"
@@ -227,7 +228,7 @@ int Server::wait() throw() {
     Log::cerror() << "select error: " << strerror(errno) << std::endl;
     return -1;
   }
-  if (result == 0) {
+  if (result == 0 || (time(NULL) - last_timeout_check) > std::min(TIMEOUT_SEC, CGI_TIMEOUT_SEC)) {
     remove_timeout_connections();
     return -1;
   }

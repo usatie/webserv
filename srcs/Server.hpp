@@ -25,6 +25,7 @@ class Server {
   fd_set readfds, writefds;
   fd_set ready_rfds, ready_wfds;
   int maxfd;
+  time_t last_timeout_check;
 
  private:
   Server() throw();  // Do not implement
