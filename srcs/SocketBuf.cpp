@@ -10,8 +10,38 @@
 #include <iostream>
 #include <string>
 
+#include "StreamCleaner.hpp"
+
 #define FILL_BUF_SIZE (1024 * 1024)
 #define SEND_BUF_SIZE (1024 * 1024)
+
+// Constructor for TCP socket
+SocketBuf::SocketBuf(util::shared_ptr<Socket> socket)
+    : socket(socket), rss(), wss(), hasReceivedEof(false), isBrokenPipe(false) {
+  if (socket->set_nonblock() < 0) {
+    throw std::runtime_error("socket->set_nonblock() failed");
+  }
+}
+
+// Constructor for unix domain socket
+SocketBuf::SocketBuf(int fd)
+    : socket(util::shared_ptr<Socket>(new Socket(fd))),
+      rss(),
+      wss(),
+      hasReceivedEof(false),
+      isBrokenPipe(false) {
+  if (socket->set_nonblock() < 0) {
+    throw std::runtime_error("socket->set_nonblock() failed");
+  }
+}
+
+size_t SocketBuf::getReadBufSize() throw() {
+  StreamCleaner _(rss, wss);
+  if (bad()) {
+    return 0;
+  }
+  return rss.str().size() - rss.tellg();
+}
 
 int SocketBuf::send_file(const std::string& filepath) throw() {
   StreamCleaner _(rss, wss);

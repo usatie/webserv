@@ -4,34 +4,15 @@
 #include <sstream>
 
 #include "Socket.hpp"
+#include "StreamCleaner.hpp"
 #include "webserv.hpp"
 
 class SocketBuf {
-  class StreamCleaner {
-   private:
-    std::stringstream &rss, &wss;
-
-   public:
-    StreamCleaner(std::stringstream& rss, std::stringstream& wss)
-        : rss(rss), wss(wss) {}
-    ~StreamCleaner() {
-      if (rss.bad() || wss.bad()) return;
-      if (rss.eof()) {
-        Log::debug("rss.eof(), so clear rss");
-        rss.str("");
-      }
-      if (wss.eof()) {
-        Log::debug("wss.eof(), so clear wss");
-        wss.str("");
-      }
-      rss.clear();
-      wss.clear();
-    }
-  };
   // Member data
  public:
- private:
   util::shared_ptr<Socket> socket;
+
+ private:
   std::stringstream rss, wss;
 
   SocketBuf() throw();  // Do not implement this
@@ -44,27 +25,9 @@ class SocketBuf {
   bool isBrokenPipe;
   // Constructor/Destructor
   // Constructor for TCP socket
-  explicit SocketBuf(util::shared_ptr<Socket> socket)
-      : socket(socket),
-        rss(),
-        wss(),
-        hasReceivedEof(false),
-        isBrokenPipe(false) {
-    if (socket->set_nonblock() < 0) {
-      throw std::runtime_error("socket->set_nonblock() failed");
-    }
-  }
+  explicit SocketBuf(util::shared_ptr<Socket> socket);
   // Constructor for unix domain socket
-  explicit SocketBuf(int fd)
-      : socket(util::shared_ptr<Socket>(new Socket(fd))),
-        rss(),
-        wss(),
-        hasReceivedEof(false),
-        isBrokenPipe(false) {
-    if (socket->set_nonblock() < 0) {
-      throw std::runtime_error("socket->set_nonblock() failed");
-    }
-  }
+  explicit SocketBuf(int fd);
   ~SocketBuf() throw() {}
 
   // Accessors
@@ -108,13 +71,7 @@ class SocketBuf {
 
   SocketBuf& write(const char* buf, size_t size) throw();
 
-  size_t getReadBufSize() throw() {
-    StreamCleaner _(rss, wss);
-    if (bad()) {
-      return 0;
-    }
-    return rss.str().size() - rss.tellg();
-  }
+  size_t getReadBufSize() throw();
 
   // Operators
   // member of pointer operators
