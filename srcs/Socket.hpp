@@ -68,6 +68,8 @@ class Socket {
   int get_fd() const throw() { return fd; }
   bool isClosed() const throw() { return closed; }
   void beClosed() throw() { closed = true; }
+  int get_server_port() throw();
+  int get_client_port() throw();
 
   // Member functions
   int reuseaddr() throw() {
@@ -137,36 +139,7 @@ class Socket {
   // However, it has a basic guarantee that it will not leak fd
   //  std::runtime_error if accept() failed
   //  std::bad_alloc if new Socket() failed
-  util::shared_ptr<Socket> accept() {  // throwable
-    struct sockaddr_storage caddr;
-    socklen_t caddrlen = sizeof(caddr);
-    int connfd = ::accept(fd, (struct sockaddr*)&caddr, &caddrlen);
-    static unsigned int cnt = 0;
-    cnt++;
-    Log::cinfo() << cnt << "th connection accepted: "
-                 << "connfd(" << connfd << "), port("
-                 << ntohs(((struct sockaddr_in*)&caddr)->sin_port) << ")"
-                 << std::endl;
-    if (connfd < 0) {
-      Log::error("accept() failed");
-      throw std::runtime_error("accept() failed");
-    }
-    // If allocation failed, must close connfd
-    util::shared_ptr<Socket> connsock;
-    try {
-      connsock = util::shared_ptr<Socket>(
-          new Socket(connfd, (struct sockaddr*)&saddr, (struct sockaddr*)&caddr,
-                     saddrlen, caddrlen));
-      // connsock->set_nolinger(0);
-      return connsock;
-    } catch (std::exception& e) {
-      Log::error("new Socket() failed");
-      if (::close(connfd) < 0) {
-        Log::error("close() failed");
-      }
-      throw e;
-    }
-  }
+  util::shared_ptr<Socket> accept();
 };
 
 #endif

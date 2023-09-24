@@ -8,6 +8,8 @@
 #include "DeleteHandler.hpp"
 
 int Connection::resume() {  // throwable
+  Log::debug("Connection::resume()");
+  last_modified = time(NULL);
   // 1. Socket I/O
   switch (io_status) {
     case CLIENT_RECV:

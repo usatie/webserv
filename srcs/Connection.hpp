@@ -16,6 +16,8 @@
 #include "SocketBuf.hpp"
 #include "webserv.hpp"
 
+#define TIMEOUT_SEC 10
+
 class Connection {
  public:
   // Class private enum
@@ -59,6 +61,7 @@ class Connection {
   const config::Location *loc_cf;
   const config::CgiHandler *cgi_handler_cf;
   const config::CgiExtensions *cgi_ext_cf;
+  time_t last_modified;
 
  public:
   IOStatus io_status;
@@ -77,6 +80,7 @@ class Connection {
         cf(cf),
         srv_cf(NULL),
         loc_cf(NULL),
+        last_modified(time(NULL)),
         io_status(NO_IO) {}
   ~Connection() throw() {}
   Connection(const Connection &other) throw();  // Do not implement this
@@ -91,6 +95,9 @@ class Connection {
   }
   bool is_remove() const throw() { return status == DONE; }
   bool is_clear() const throw() { return status == CLEAR; }
+  bool is_timeout() const throw() {
+    return (time(NULL) - last_modified) > TIMEOUT_SEC;
+  }
 
   // Member functions
   // Returns negative value when an exception is thrown from STL containers
