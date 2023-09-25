@@ -116,7 +116,7 @@ int Server::listen(const config::Listen& l, SockVector& serv_socks) {
     {
       // Here we use const_cast to modify the const object.
       config::Listen& ll = const_cast<config::Listen&>(l);
-      memcpy(&ll.addr, rp->ai_addr, rp->ai_addr->sa_len);
+      memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
     }
 
     // To check if the address is already listened by other server
