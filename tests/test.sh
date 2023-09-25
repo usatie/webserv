@@ -13,6 +13,9 @@ function print_ng() {
 # 0. Compile html/cgi-bin/
 make -C tests/html/cgi-bin
 
+# 0. Kill all webserv processes
+pkill webserv
+
 # 1. Initialize
 # disown for not make the shell script failure when the server is pkilled
 ./webserv tests/test.conf & disown
@@ -26,7 +29,7 @@ mkdir -p /tmp/www/pouic/toto \
 # 2. Tests
 # arg for save error count
 cnt=0
-for i in {1..38}; do
+for i in {1..44}; do
   echo -n "Test${i}   : " | tee -a error.log
   # skip test 12, 23, 29
   if [ $i -eq 12 ] || [ $i -eq 23 ] || [ $i -eq 29 ]; then

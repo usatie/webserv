@@ -49,8 +49,12 @@ int Server::getaddrinfo(const config::Listen& l, struct addrinfo** result) {
   //      "[::1]"                                   -> AF_INET6
   //      "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -> AF_INET6
 
-  hints.ai_family = AF_UNSPEC; /* Allows IPv4 or IPv6 */
-  if (l.address == "*") {
+  // If the address is bracketed, it is IPv6
+  if (l.address.size() > 0 && l.address[0] == '[' && l.address[l.address.size() - 1] == ']') {
+    hints.ai_family = AF_INET6; /* Allows IPv6 only */
+  } else {
+    // Currently only IPv4 is supported for hostnames
+    // TODO: IPv6 support if address is bracketed
     hints.ai_family = AF_INET; /* Allows IPv4 only */
   }
   hints.ai_flags = AI_PASSIVE; /* Wildcard IP address */
@@ -77,6 +81,20 @@ static bool already_listened(
   return false;
 }
 
+bool is_wildcard(const struct sockaddr* addr) {
+  if (addr->sa_family == AF_INET) {
+    const struct sockaddr_in* addr4 =
+        reinterpret_cast<const struct sockaddr_in*>(addr);
+    return addr4->sin_addr.s_addr == INADDR_ANY;
+  } else if (addr->sa_family == AF_INET6) {
+    const struct sockaddr_in6* addr6 =
+        reinterpret_cast<const struct sockaddr_in6*>(addr);
+    return IN6_IS_ADDR_UNSPECIFIED(&addr6->sin6_addr);
+  } else {
+    return false;
+  }
+}
+
 int Server::listen(const config::Listen& l,
                    std::vector<util::shared_ptr<Socket> >& serv_socks) {
   struct AddrInfo info;
@@ -88,10 +106,12 @@ int Server::listen(const config::Listen& l,
   for (struct addrinfo* rp = info.rp; rp != NULL; rp = rp->ai_next) {
     Log::cdebug() << "listen : " << l << std::endl;
     Log::cdebug() << "ip: " << rp << std::endl;
+    // Already listend (exact match)
     if (already_listened(serv_socks, rp)) {
       Log::cfatal() << "Duplicate listen directive in a server." << std::endl;
       return -1;
     }
+    // Already listened (exact match)
     if (already_listened(listen_socks, rp)) {
       Log::cdebug() << "Already listend by other server." << std::endl;
       {
@@ -101,6 +121,55 @@ int Server::listen(const config::Listen& l,
       }
       return 0;
     }
+    // Wildcard -> override the address of the other server
+    if (is_wildcard(rp->ai_addr)) {
+      for (SockIterator it = listen_socks.begin(); it != listen_socks.end();) {
+        if (util::inet::eq_addr46(
+                &(*it)->saddr,
+                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
+                true)) {
+          it = listen_socks.erase(it);
+        } else {
+          ++it;
+        }
+      }
+      for (SockIterator it = serv_socks.begin(); it != serv_socks.end();) {
+        if (util::inet::eq_addr46(
+                &(*it)->saddr,
+                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
+                true)) {
+          it = serv_socks.erase(it);
+        } else {
+          ++it;
+        }
+      }
+    } else { // Specific Address -> if already listened by other server, skip
+      for (SockIterator it = listen_socks.begin(); it != listen_socks.end(); ++it) {
+        if (util::inet::eq_addr46(
+                &(*it)->saddr,
+                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
+                true)) {
+          Log::cdebug() << "Already listend by other server." << std::endl;
+          config::Listen& ll = const_cast<config::Listen&>(l);
+          memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
+          ll.addrlen = rp->ai_addrlen;
+          return 0;
+        }
+      }
+      for (SockIterator it = serv_socks.begin(); it != serv_socks.end(); ++it) {
+        if (util::inet::eq_addr46(
+                &(*it)->saddr,
+                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
+                true)) {
+          Log::cdebug() << "Already listend by other server." << std::endl;
+          config::Listen& ll = const_cast<config::Listen&>(l);
+          memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
+          ll.addrlen = rp->ai_addrlen;
+          return 0;
+        }
+      }
+    }
+    
     int sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if (sfd == -1) {
       Log::cfatal() << "socket() failed. (" << errno << ": " << strerror(errno)
