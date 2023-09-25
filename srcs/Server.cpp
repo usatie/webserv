@@ -228,7 +228,8 @@ int Server::wait() throw() {
     Log::cerror() << "select error: " << strerror(errno) << std::endl;
     return -1;
   }
-  if (result == 0 || (time(NULL) - last_timeout_check) > std::min(TIMEOUT_SEC, CGI_TIMEOUT_SEC)) {
+  if (result == 0 || (time(NULL) - last_timeout_check) >
+                         std::min(TIMEOUT_SEC, CGI_TIMEOUT_SEC)) {
     remove_timeout_connections();
     return -1;
   }

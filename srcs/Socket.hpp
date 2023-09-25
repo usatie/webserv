@@ -70,6 +70,8 @@ class Socket {
   void beClosed() throw() { closed = true; }
   int get_server_port() throw();
   int get_client_port() throw();
+  std::string get_server_ip_address();  // throwable
+  std::string get_client_ip_address();  // throwable
 
   // Member functions
   int reuseaddr() throw() {

@@ -5,11 +5,12 @@
 #include <string>
 #include <vector>
 
+struct sockaddr_storage;
 namespace util {
 template <typename U>
 class Deleter {
  public:
-  void operator()(U* ptr) { delete ptr; }
+  void operator()(U* ptr) const { delete ptr; }
 };
 
 template <typename T, class D = Deleter<T> >
@@ -33,7 +34,8 @@ class shared_ptr {
   explicit shared_ptr(T* ptr) : ptr(ptr), ref_count(new int), d(Deleter<T>()) {
     *ref_count = 1;
   }
-  shared_ptr(const shared_ptr<T>& other)
+  shared_ptr(const shared_ptr<T, D>& other)
+      // cppcheck-suppress copyCtorPointerCopying
       : ptr(other.ptr), ref_count(other.ref_count), d(other.d) {
     if (ref_count != NULL) {
       (*ref_count)++;
@@ -52,6 +54,7 @@ class shared_ptr {
     }
     ptr = other.ptr;
     ref_count = other.ref_count;
+    d = other.d;
     if (ref_count != NULL) {
       (*ref_count)++;
     }
@@ -60,16 +63,16 @@ class shared_ptr {
   T* operator->() const { return ptr; }
   T& operator*() const { return *ptr; }
   bool operator==(const shared_ptr<T> other) const { return ptr == other.ptr; }
-  bool operator==(T* other) const { return ptr == other; }
+  bool operator==(const T* other) const { return ptr == other; }
   bool operator!=(const shared_ptr<T> other) const { return ptr != other.ptr; }
-  bool operator!=(T* other) const { return ptr != other; }
+  bool operator!=(const T* other) const { return ptr != other; }
 };
 
 namespace string {
 bool ends_with(const std::string& str, const std::string& suffix);
 }
 namespace path {
-std::string get_extension(const std::string& str);
+std::string get_extension(const std::string& filepath);
 }
 
 namespace vector {
@@ -82,6 +85,9 @@ namespace http {
 bool is_tchar(const char c);
 bool is_token(const std::string& str);
 }  // namespace http
+namespace inet {
+bool eq_addr46(const sockaddr_storage* a, const sockaddr_storage* b);
+}  // namespace inet
 }  // namespace util
 
 #endif
