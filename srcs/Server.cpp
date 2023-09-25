@@ -4,7 +4,6 @@
 #include <netdb.h>
 
 #include <cerrno>
-#include <cstring>  // memset, strerror
 
 #include "Config.hpp"
 #include "Connection.hpp"

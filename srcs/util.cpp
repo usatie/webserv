@@ -1,6 +1,8 @@
 #include "util.hpp"
 
-#include <arpa/inet.h>
+#include <arpa/inet.h>  // struct sockaddr_in, struct sockaddr_in6
+
+#include <cstring>  // memcmp
 
 bool util::string::ends_with(const std::string &str,
                              const std::string &suffix) {
