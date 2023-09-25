@@ -74,69 +74,12 @@ class Socket {
   std::string get_client_ip_address();  // throwable
 
   // Member functions
-  int reuseaddr() throw() {
-    int optval = 1;
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
-      Log::error("setsockopt() failed");
-      return -1;
-    }
-    return 0;
-  }
-
-  // Set IPv6 only
-  int ipv6only() throw() {
-    int optval = 1;
-    if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &optval, sizeof(optval)) <
-        0) {
-      Log::error("setsockopt() failed");
-      return -1;
-    }
-    return 0;
-  }
-
-  int bind(struct sockaddr* addr, socklen_t addrlen) throw() {
-    if (::bind(fd, addr, addrlen) < 0) {
-      Log::info("bind() failed");
-      return -1;
-    }
-    memcpy(&this->saddr, addr, addrlen);
-    this->saddrlen = addrlen;
-    return 0;
-  }
-
-  int listen(int backlog) throw() {
-    if (::listen(fd, backlog) < 0) {
-      Log::error("listen() failed");
-      return -1;
-    }
-    return 0;
-  }
-
-  int set_nonblock() throw() {
-    int flags = fcntl(fd, F_GETFL, 0);
-    if (flags < 0) {
-      Log::error("fcntl() failed");
-      return -1;
-    }
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-      Log::error("fcntl() failed");
-      return -1;
-    }
-    return 0;
-  }
-
-  // This
-  int set_nolinger(int linger) throw() {
-    struct linger l;
-    l.l_onoff = 1;
-    l.l_linger = linger;
-    if (setsockopt(fd, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) < 0) {
-      Log::error("setsockopt() failed");
-      return -1;
-    }
-    return 0;
-  }
-
+  int reuseaddr() throw();
+  int ipv6only() throw();
+  int bind(struct sockaddr* addr, socklen_t addrlen) throw();
+  int listen(int backlog) throw();
+  int set_nonblock() throw();
+  int set_nolinger(int linger) throw();
   // This is a kind of constructor, so it is THROWABLE
   // However, it has a basic guarantee that it will not leak fd
   //  std::runtime_error if accept() failed

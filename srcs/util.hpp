@@ -86,7 +86,8 @@ bool is_tchar(const char c);
 bool is_token(const std::string& str);
 }  // namespace http
 namespace inet {
-bool eq_addr46(const sockaddr_storage* a, const sockaddr_storage* b, bool allow_wildcard);
+bool eq_addr46(const sockaddr_storage* a, const sockaddr_storage* b,
+               bool allow_wildcard);
 }  // namespace inet
 }  // namespace util
 

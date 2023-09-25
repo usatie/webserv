@@ -69,7 +69,8 @@ static bool already_listened(
   for (unsigned int i = 0; i < socks.size(); ++i) {
     if (util::inet::eq_addr46(
             &socks[i]->saddr,
-            reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr), false)) {
+            reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
+            false)) {
       return true;
     }
   }
@@ -77,7 +78,7 @@ static bool already_listened(
 }
 
 int Server::listen(const config::Listen& l,
-                   std::vector<util::shared_ptr<Socket> >& socks) {
+                   std::vector<util::shared_ptr<Socket> >& serv_socks) {
   struct AddrInfo info;
   if (getaddrinfo(l, &info.rp) < 0) {  // throwable
     return -1;
@@ -87,7 +88,7 @@ int Server::listen(const config::Listen& l,
   for (struct addrinfo* rp = info.rp; rp != NULL; rp = rp->ai_next) {
     Log::cdebug() << "listen : " << l << std::endl;
     Log::cdebug() << "ip: " << rp << std::endl;
-    if (already_listened(socks, rp)) {
+    if (already_listened(serv_socks, rp)) {
       Log::cfatal() << "Duplicate listen directive in a server." << std::endl;
       return -1;
     }
@@ -108,14 +109,10 @@ int Server::listen(const config::Listen& l,
     }
     util::shared_ptr<Socket> sock(new Socket(sfd));  // throwable
     if (sock->reuseaddr() < 0) {
-      Log::cfatal() << "sock.set_reuseaddr() failed. (" << errno << ": "
-                    << strerror(errno) << ")" << std::endl;
       return -1;
     }
     if (rp->ai_family == AF_INET6) {
       if (sock->ipv6only() < 0) {
-        Log::cfatal() << "sock.set_ipv6only() failed. (" << errno << ": "
-                      << strerror(errno) << ")" << std::endl;
         return -1;
       }
     }
@@ -126,13 +123,9 @@ int Server::listen(const config::Listen& l,
       return -1;
     }
     if (sock->listen(BACKLOG) < 0) {
-      Log::cfatal() << "sock.listen() failed. (" << errno << ": "
-                    << strerror(errno) << ")" << std::endl;
       return -1;
     }
     if (sock->set_nonblock() < 0) {
-      Log::cfatal() << "sock.set_nonblock() failed. (" << errno << ": "
-                    << strerror(errno) << ")" << std::endl;
       return -1;
     }
     // Save the listening ip address to config::Listen
@@ -142,12 +135,14 @@ int Server::listen(const config::Listen& l,
       memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
       ll.addrlen = rp->ai_addrlen;
     }
+    // Save the listening socket
     FD_SET(sock->get_fd(), &readfds);
     maxfd = std::max(maxfd, sock->get_fd());
-    socks.push_back(sock);  // throwable
-    break;                  // Success, one socket per one listen directive
+    serv_socks.push_back(sock);  // throwable
+    return 0;                    // Success, one socket per one listen directive
   }
-  return 0;
+  Log::cfatal() << "Could not bind to any address." << std::endl;
+  return -1;
 }
 
 void Server::startup() {
