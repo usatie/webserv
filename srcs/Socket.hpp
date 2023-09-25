@@ -42,7 +42,7 @@ class Socket {
     }
   }
   // Constructor for TCP connection socket
-  Socket(int fd, struct sockaddr* saddr, struct sockaddr* caddr,
+  Socket(int fd, const struct sockaddr* saddr, const struct sockaddr* caddr,
          socklen_t saddrlen, socklen_t caddrlen)
       : fd(fd),
         closed(false),
@@ -68,8 +68,8 @@ class Socket {
   int get_fd() const throw() { return fd; }
   bool isClosed() const throw() { return closed; }
   void beClosed() throw() { closed = true; }
-  int get_server_port() throw();
-  int get_client_port() throw();
+  int get_server_port() const throw();
+  int get_client_port() const throw();
   std::string get_server_ip_address();  // throwable
   std::string get_client_ip_address();  // throwable
 
