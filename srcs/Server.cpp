@@ -73,20 +73,7 @@ static int getaddrinfo(const config::Listen& l, struct addrinfo** result) {
   return 0;
 }
 
-static bool already_listened(const Server::SockVector& socks,
-                             const struct addrinfo* rp) {
-  for (unsigned int i = 0; i < socks.size(); ++i) {
-    if (util::inet::eq_addr46(
-            &socks[i]->saddr,
-            reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
-            false)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool is_wildcard(const struct sockaddr* addr) {
+static bool is_wildcard(const struct sockaddr* addr) {
   if (addr->sa_family == AF_INET) {
     const struct sockaddr_in* addr4 =
         reinterpret_cast<const struct sockaddr_in*>(addr);
@@ -100,6 +87,21 @@ bool is_wildcard(const struct sockaddr* addr) {
   }
 }
 
+// Define a predicate functor to use with std::remove_if
+struct AddrComparePredicate {
+  const struct sockaddr* rp_ai_addr;
+  bool allow_wildcard;
+
+  AddrComparePredicate(const struct sockaddr* rp_addr, bool allow_wildcard)
+      : rp_ai_addr(rp_addr), allow_wildcard(allow_wildcard) {}
+
+  bool operator()(Server::Sock sock) const {
+    return util::inet::eq_addr46(
+        &sock->saddr,
+        reinterpret_cast<const struct sockaddr_storage*>(rp_ai_addr), true);
+  }
+};
+
 int Server::listen(const config::Listen& l, SockVector& serv_socks) {
   struct AddrInfo info;
   if (getaddrinfo(l, &info.rp) < 0) {  // throwable
@@ -110,68 +112,49 @@ int Server::listen(const config::Listen& l, SockVector& serv_socks) {
   for (struct addrinfo* rp = info.rp; rp != NULL; rp = rp->ai_next) {
     Log::cdebug() << "listen : " << l << std::endl;
     Log::cdebug() << "ip: " << rp << std::endl;
-    // Already listend (exact match)
-    if (already_listened(serv_socks, rp)) {
+    // Save the listening ip address to config::Listen
+    {
+      // Here we use const_cast to modify the const object.
+      config::Listen& ll = const_cast<config::Listen&>(l);
+      memcpy(&ll.addr, rp->ai_addr, rp->ai_addr->sa_len);
+    }
+
+    // To check if the address is already listened by other server
+    AddrComparePredicate pred(rp->ai_addr, false);
+
+    // 1. Already listend (exact match) by the server
+    if (std::find_if(serv_socks.begin(), serv_socks.end(), pred) !=
+        serv_socks.end()) {
       Log::cfatal() << "Duplicate listen directive in a server." << std::endl;
       return -1;
     }
-    // Already listened (exact match)
-    if (already_listened(listen_socks, rp)) {
+
+    // 2. Already listened (exact match) by other server
+    if (std::find_if(listen_socks.begin(), listen_socks.end(), pred) !=
+        listen_socks.end()) {
       Log::cdebug() << "Already listend by other server." << std::endl;
-      {
-        config::Listen& ll = const_cast<config::Listen&>(l);
-        memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
-        ll.addrlen = rp->ai_addrlen;
-      }
       return 0;
     }
-    // Wildcard -> override the address of the other server
+
+    // 3. Already listend (wild card match)
+    pred.allow_wildcard = true;
+    // 3-1. Wildcard -> override the address of the other server
     if (is_wildcard(rp->ai_addr)) {
-      for (SockIterator it = listen_socks.begin(); it != listen_socks.end();) {
-        if (util::inet::eq_addr46(
-                &(*it)->saddr,
-                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
-                true)) {
-          it = listen_socks.erase(it);
-        } else {
-          ++it;
-        }
-      }
-      for (SockIterator it = serv_socks.begin(); it != serv_socks.end();) {
-        if (util::inet::eq_addr46(
-                &(*it)->saddr,
-                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
-                true)) {
-          it = serv_socks.erase(it);
-        } else {
-          ++it;
-        }
-      }
-    } else {  // Specific Address -> if already listened by other server, skip
-      for (SockIterator it = listen_socks.begin(); it != listen_socks.end();
-           ++it) {
-        if (util::inet::eq_addr46(
-                &(*it)->saddr,
-                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
-                true)) {
-          Log::cdebug() << "Already listend by other server." << std::endl;
-          config::Listen& ll = const_cast<config::Listen&>(l);
-          memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
-          ll.addrlen = rp->ai_addrlen;
-          return 0;
-        }
-      }
-      for (SockIterator it = serv_socks.begin(); it != serv_socks.end(); ++it) {
-        if (util::inet::eq_addr46(
-                &(*it)->saddr,
-                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
-                true)) {
-          Log::cdebug() << "Already listend by other server." << std::endl;
-          config::Listen& ll = const_cast<config::Listen&>(l);
-          memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
-          ll.addrlen = rp->ai_addrlen;
-          return 0;
-        }
+      serv_socks.erase(
+          std::remove_if(serv_socks.begin(), serv_socks.end(), pred),
+          serv_socks.end());
+      listen_socks.erase(
+          std::remove_if(listen_socks.begin(), listen_socks.end(), pred),
+          listen_socks.end());
+    } else {  // 3-2. Specific Address -> if already listened by other server,
+              // skip
+      SockIterator it;
+      if ((it = std::find_if(serv_socks.begin(), serv_socks.end(), pred)) !=
+              serv_socks.end() ||
+          (it = std::find_if(listen_socks.begin(), listen_socks.end(), pred)) !=
+              listen_socks.end()) {
+        Log::cdebug() << "Already listend by other server." << std::endl;
+        return 0;
       }
     }
 
@@ -202,16 +185,6 @@ int Server::listen(const config::Listen& l, SockVector& serv_socks) {
     if (sock->set_nonblock() < 0) {
       return -1;
     }
-    // Save the listening ip address to config::Listen
-    // Here we use const_cast to modify the const object.
-    {
-      config::Listen& ll = const_cast<config::Listen&>(l);
-      memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
-      ll.addrlen = rp->ai_addrlen;
-    }
-    // Save the listening socket
-    FD_SET(sock->get_fd(), &readfds);
-    maxfd = std::max(maxfd, sock->get_fd());
     serv_socks.push_back(sock);  // throwable
     return 0;                    // Success, one socket per one listen directive
   }
@@ -230,7 +203,12 @@ void Server::startup() {
         std::exit(EXIT_FAILURE);
       }
     }
-    listen_socks.insert(listen_socks.end(), socks.begin(), socks.end());
+    for (SockIterator it = socks.begin(); it != socks.end(); ++it) {
+      int fd = (*it)->get_fd();
+      FD_SET(fd, &readfds);
+      maxfd = std::max(maxfd, fd);
+      listen_socks.push_back(*it);
+    }
   }
 }
 
