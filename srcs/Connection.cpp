@@ -405,7 +405,7 @@ const config::Server *select_srv_cf(const config::Config &cf,
       // 1. Filter by port
       // 2. Filter by address
       // These can be done by eq_addr46 and eq_addr6
-      if (util::inet::eq_addr46(&listen.addr, saddr) == false) {
+      if (util::inet::eq_addr46(&listen.addr, saddr, true) == false) {
         continue;
       }
       // This server is default server

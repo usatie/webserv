@@ -63,7 +63,21 @@ int Server::getaddrinfo(const config::Listen& l, struct addrinfo** result) {
   return 0;
 }
 
-int Server::listen(const config::Listen& l) {
+static bool already_listened(
+    const std::vector<util::shared_ptr<Socket> >& socks,
+    const struct addrinfo* rp) {
+  for (unsigned int i = 0; i < socks.size(); ++i) {
+    if (util::inet::eq_addr46(
+            &socks[i]->saddr,
+            reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr), false)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+int Server::listen(const config::Listen& l,
+                   std::vector<util::shared_ptr<Socket> >& socks) {
   struct AddrInfo info;
   if (getaddrinfo(l, &info.rp) < 0) {  // throwable
     return -1;
@@ -73,6 +87,19 @@ int Server::listen(const config::Listen& l) {
   for (struct addrinfo* rp = info.rp; rp != NULL; rp = rp->ai_next) {
     Log::cdebug() << "listen : " << l << std::endl;
     Log::cdebug() << "ip: " << rp << std::endl;
+    if (already_listened(socks, rp)) {
+      Log::cfatal() << "Duplicate listen directive in a server." << std::endl;
+      return -1;
+    }
+    if (already_listened(listen_socks, rp)) {
+      Log::cdebug() << "Already listend by other server." << std::endl;
+      {
+        config::Listen& ll = const_cast<config::Listen&>(l);
+        memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
+        ll.addrlen = rp->ai_addrlen;
+      }
+      return 0;
+    }
     int sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if (sfd == -1) {
       Log::cfatal() << "socket() failed. (" << errno << ": " << strerror(errno)
@@ -117,8 +144,8 @@ int Server::listen(const config::Listen& l) {
     }
     FD_SET(sock->get_fd(), &readfds);
     maxfd = std::max(maxfd, sock->get_fd());
-    listen_socks.push_back(sock);  // throwable
-    break;  // Success, one socket per one listen directive
+    socks.push_back(sock);  // throwable
+    break;                  // Success, one socket per one listen directive
   }
   return 0;
 }
@@ -127,12 +154,14 @@ void Server::startup() {
   for (unsigned int i = 0; i < cf.http.servers.size(); ++i) {
     Log::cdebug() << "i: " << i << std::endl;
     const config::Server& server = cf.http.servers[i];
+    std::vector<util::shared_ptr<Socket> > socks;
     for (unsigned int j = 0; j < server.listens.size(); ++j) {
       Log::cdebug() << "j: " << j << std::endl;
-      if (listen(server.listens[j]) < 0) {  // throwable
+      if (listen(server.listens[j], socks) < 0) {  // throwable
         std::exit(EXIT_FAILURE);
       }
     }
+    listen_socks.insert(listen_socks.end(), socks.begin(), socks.end());
   }
 }
 

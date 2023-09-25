@@ -48,7 +48,8 @@ class Server {
   // Member functions
   int getaddrinfo(const config::Listen& l,
                   struct addrinfo** result);  // throwable
-  int listen(const config::Listen& l);        // throwable
+  int listen(const config::Listen& l,
+             std::vector<util::shared_ptr<Socket> >& socks);  // throwable
 
   ConnIterator remove_connection(
       util::shared_ptr<Connection> connection) throw();
