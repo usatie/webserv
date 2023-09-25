@@ -4,6 +4,7 @@
 #include <netdb.h>
 
 #include <cerrno>
+#include <numeric>  // accumulate
 
 #include "Config.hpp"
 #include "Connection.hpp"
@@ -21,12 +22,16 @@ std::ostream& operator<<(std::ostream& os, const struct addrinfo* rp);
 Server::~Server() throw() {}
 
 Server::Server(const config::Config& cf) throw()
-    : maxfd(-1), listen_socks(), connections(), cf(cf) {
+    : maxfd(-1),
+      last_timeout_check(time(NULL)),
+      listen_socks(),
+      connections(),
+      cf(cf) {
   FD_ZERO(&readfds);
   FD_ZERO(&writefds);
 }
 
-int Server::getaddrinfo(const config::Listen& l, struct addrinfo** result) {
+static int getaddrinfo(const config::Listen& l, struct addrinfo** result) {
   const char* host = (l.address == "*") ? NULL : l.address.c_str();
   std::stringstream ss;
   ss << l.port;
@@ -50,7 +55,8 @@ int Server::getaddrinfo(const config::Listen& l, struct addrinfo** result) {
   //      "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -> AF_INET6
 
   // If the address is bracketed, it is IPv6
-  if (l.address.size() > 0 && l.address[0] == '[' && l.address[l.address.size() - 1] == ']') {
+  if (l.address.size() > 0 && l.address[0] == '[' &&
+      l.address[l.address.size() - 1] == ']') {
     hints.ai_family = AF_INET6; /* Allows IPv6 only */
   } else {
     // Currently only IPv4 is supported for hostnames
@@ -67,9 +73,8 @@ int Server::getaddrinfo(const config::Listen& l, struct addrinfo** result) {
   return 0;
 }
 
-static bool already_listened(
-    const std::vector<util::shared_ptr<Socket> >& socks,
-    const struct addrinfo* rp) {
+static bool already_listened(const Server::SockVector& socks,
+                             const struct addrinfo* rp) {
   for (unsigned int i = 0; i < socks.size(); ++i) {
     if (util::inet::eq_addr46(
             &socks[i]->saddr,
@@ -95,8 +100,7 @@ bool is_wildcard(const struct sockaddr* addr) {
   }
 }
 
-int Server::listen(const config::Listen& l,
-                   std::vector<util::shared_ptr<Socket> >& serv_socks) {
+int Server::listen(const config::Listen& l, SockVector& serv_socks) {
   struct AddrInfo info;
   if (getaddrinfo(l, &info.rp) < 0) {  // throwable
     return -1;
@@ -143,8 +147,9 @@ int Server::listen(const config::Listen& l,
           ++it;
         }
       }
-    } else { // Specific Address -> if already listened by other server, skip
-      for (SockIterator it = listen_socks.begin(); it != listen_socks.end(); ++it) {
+    } else {  // Specific Address -> if already listened by other server, skip
+      for (SockIterator it = listen_socks.begin(); it != listen_socks.end();
+           ++it) {
         if (util::inet::eq_addr46(
                 &(*it)->saddr,
                 reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
@@ -169,14 +174,14 @@ int Server::listen(const config::Listen& l,
         }
       }
     }
-    
+
     int sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if (sfd == -1) {
       Log::cfatal() << "socket() failed. (" << errno << ": " << strerror(errno)
                     << ")" << std::endl;
       return -1;
     }
-    util::shared_ptr<Socket> sock(new Socket(sfd));  // throwable
+    Sock sock(new Socket(sfd));  // throwable
     if (sock->reuseaddr() < 0) {
       return -1;
     }
@@ -218,7 +223,7 @@ void Server::startup() {
   for (unsigned int i = 0; i < cf.http.servers.size(); ++i) {
     Log::cdebug() << "i: " << i << std::endl;
     const config::Server& server = cf.http.servers[i];
-    std::vector<util::shared_ptr<Socket> > socks;
+    SockVector socks;
     for (unsigned int j = 0; j < server.listens.size(); ++j) {
       Log::cdebug() << "j: " << j << std::endl;
       if (listen(server.listens[j], socks) < 0) {  // throwable
@@ -229,28 +234,30 @@ void Server::startup() {
   }
 }
 
-Server::ConnIterator Server::remove_connection(
-    util::shared_ptr<Connection> connection) throw() {
-  ConnIterator it =
+static int op_conn(int fd, const Server::Conn conn) {
+  return std::max(fd, conn->get_fd());
+}
+
+static int op_sock(int fd, const Server::Sock sock) {
+  return std::max(fd, sock->get_fd());
+}
+
+Server::ConnIterator Server::remove_connection(Conn conn) throw() {
+  ConnIterator next_it =
       connections.erase(std::find(connections.begin(), connections.end(),
-                                  connection));  // no throw
-  FD_CLR(connection->get_fd(), &readfds);
-  FD_CLR(connection->get_fd(), &writefds);
-  if (connection->get_cgifd() != -1) {
-    FD_CLR(connection->get_cgifd(), &readfds);
-    FD_CLR(connection->get_cgifd(), &writefds);
+                                  conn));  // no throw
+  FD_CLR(conn->get_fd(), &readfds);
+  FD_CLR(conn->get_fd(), &writefds);
+  if (conn->get_cgifd() != -1) {
+    FD_CLR(conn->get_cgifd(), &readfds);
+    FD_CLR(conn->get_cgifd(), &writefds);
   }
-  if (connection->get_fd() == maxfd || connection->get_cgifd() == maxfd) {
-    maxfd = -1;
-    for (SockIterator it = listen_socks.begin(); it != listen_socks.end();
-         ++it) {
-      maxfd = std::max(maxfd, (*it)->get_fd());
-    }
-    for (ConnIterator it = connections.begin(); it != connections.end(); ++it) {
-      maxfd = std::max(maxfd, (*it)->get_fd());
-    }
+  if (maxfd == std::max(conn->get_fd(), conn->get_cgifd())) {
+    maxfd = std::max(
+        std::accumulate(connections.begin(), connections.end(), -1, op_conn),
+        std::accumulate(listen_socks.begin(), listen_socks.end(), -1, op_sock));
   }
-  return it;
+  return next_it;
 }
 void Server::remove_timeout_connections() throw() {
   last_timeout_check = time(NULL);
@@ -273,11 +280,10 @@ void Server::remove_timeout_connections() throw() {
   }
 }
 
-void Server::accept(util::shared_ptr<Socket> sock) throw() {
+void Server::accept(Sock sock) throw() {
   try {
-    util::shared_ptr<Connection> conn(
-        new Connection(sock->accept(), cf));  // throwable
-    connections.push_back(conn);              // throwable
+    Conn conn(new Connection(sock->accept(), cf));  // throwable
+    connections.push_back(conn);                    // throwable
     FD_SET(conn->get_fd(), &readfds);
     maxfd = std::max(conn->get_fd(), maxfd);
   } catch (std::exception& e) {
@@ -285,7 +291,7 @@ void Server::accept(util::shared_ptr<Socket> sock) throw() {
   }
 }
 
-void Server::update_fdset(util::shared_ptr<Connection> conn) throw() {
+void Server::update_fdset(Conn conn) throw() {
   FD_CLR(conn->get_fd(), &readfds);
   FD_CLR(conn->get_fd(), &writefds);
   if (!conn->client_socket->hasReceivedEof) {
@@ -327,7 +333,7 @@ int Server::wait() throw() {
   }
   return 0;
 }
-bool Server::canResume(util::shared_ptr<Connection> conn) const throw() {
+bool Server::canResume(Conn conn) const throw() {
   // 1. CLIENT_SEND
   if (FD_ISSET(conn->get_fd(), &ready_wfds)) {
     Log::cdebug() << "canResume: CLIENT_SEND" << std::endl;
@@ -358,27 +364,27 @@ bool Server::canResume(util::shared_ptr<Connection> conn) const throw() {
   return false;
 }
 
-util::shared_ptr<Socket> Server::get_ready_listen_socket() throw() {
+Server::Sock Server::get_ready_listen_socket() throw() {
   for (SockIterator it = listen_socks.begin(); it != listen_socks.end(); ++it) {
     if (FD_ISSET((*it)->get_fd(), &ready_rfds)) {
       return *it;
     }
   }
-  return util::shared_ptr<Socket>();
+  return Sock();
 }
 
 // Logically it is not const because it returns a non-const pointer.
-util::shared_ptr<Connection> Server::get_ready_connection() throw() {
+Server::Conn Server::get_ready_connection() throw() {
   // TODO: equally distribute the processing time to each connection
   for (ConnIterator it = connections.begin(); it != connections.end(); ++it) {
     if (canResume(*it)) {
       return *it;
     }
   }
-  return util::shared_ptr<Connection>();
+  return Conn();
 }
 
-void Server::resume(util::shared_ptr<Connection> conn) throw() {
+void Server::resume(Conn conn) throw() {
   try {
     conn->resume();  // throwable
   } catch (std::exception& e) {
@@ -424,8 +430,8 @@ void Server::run() throw() {
     if (wait() < 0) {
       continue;
     }
-    util::shared_ptr<Connection> conn;  // no throw
-    util::shared_ptr<Socket> sock;      // no throw
+    Conn conn;  // no throw
+    Sock sock;  // no throw
     if ((sock = get_ready_listen_socket()) != NULL) {
       accept(sock);  // no throw
     } else if ((conn = get_ready_connection()) != NULL) {
@@ -439,10 +445,12 @@ std::ostream& operator<<(std::ostream& os, const struct addrinfo* rp) {
   char buf[INET6_ADDRSTRLEN];
   void* addr;
   if (rp->ai_family == AF_INET) {
-    struct sockaddr_in* ipv4 = (struct sockaddr_in*)rp->ai_addr;
+    struct sockaddr_in* ipv4 =
+        reinterpret_cast<struct sockaddr_in*>(rp->ai_addr);
     addr = &(ipv4->sin_addr);
   } else if (rp->ai_family == AF_INET6) {
-    struct sockaddr_in6* ipv6 = (struct sockaddr_in6*)rp->ai_addr;
+    struct sockaddr_in6* ipv6 =
+        reinterpret_cast<struct sockaddr_in6*>(rp->ai_addr);
     addr = &(ipv6->sin6_addr);
   } else {
     os << "unknown address family: ";
