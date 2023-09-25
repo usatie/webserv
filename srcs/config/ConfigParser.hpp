@@ -70,7 +70,7 @@ struct Command {
     CMD_SERVER
   };
 
-  Command(enum Type type) : type(type), next(NULL), block(NULL) {
+  explicit Command(enum Type type) : type(type), next(NULL), block(NULL) {
     switch (type) {
       case CMD_DUMMY:
         name = "dummy";
@@ -216,7 +216,7 @@ struct Module {
   Module();  // Do not implement this
 };
 
-Module *parse(Token *token);
+Module *parse(Token *tok);
 void print_mod(Module *mod);
 
 #endif

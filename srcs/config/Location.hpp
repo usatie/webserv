@@ -33,7 +33,8 @@ class Location {
   CgiExtensions cgi_extensions;
   std::vector<CgiHandler> cgi_handlers;
   std::vector<Location> locations;
-  Location(Command *cmd);
+
+  explicit Location(Command *loc);
 };
 }  // namespace config
 

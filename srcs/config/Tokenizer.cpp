@@ -118,8 +118,8 @@ Token *tokenize(const std::string &s) {
     }
   }
   if (cur)
-    cur = cur->next = new Token(Token::TK_EOF, "");
+    cur->next = new Token(Token::TK_EOF, "");
   else
-    head = cur = new Token(Token::TK_EOF, "");
+    head = new Token(Token::TK_EOF, "");
   return head;
 }

@@ -23,7 +23,9 @@ Command *alias(Token **rest, Token *tok, int context);
 Command *server(Token **rest, Token *tok, int context);
 
 // Utility
-bool is_equal(Token *tok, const std::string &str) { return tok->str == str; }
+bool is_equal(const Token *tok, const std::string &str) {
+  return tok->str == str;
+}
 
 bool consume(Token **rest, Token *tok, const std::string &str) {
   if (is_equal(tok, str)) {
@@ -33,7 +35,7 @@ bool consume(Token **rest, Token *tok, const std::string &str) {
   return false;
 }
 
-Token *skip(Token *tok, const std::string &str) {
+Token *skip(const Token *tok, const std::string &str) {
   if (!is_equal(tok, str)) {
     Log::cfatal() << "unexpected token: " << tok->str << std::endl;
     throw std::runtime_error("unexpected token");
@@ -41,7 +43,7 @@ Token *skip(Token *tok, const std::string &str) {
   return tok->next;
 }
 
-Token *skip_kind(Token *tok, Token::Type kind) {
+Token *skip_kind(const Token *tok, Token::Type kind) {
   if (tok->type != kind) {
     Log::cfatal() << "unexpected kind: " << tok->str << std::endl;
     throw std::runtime_error("unexpected kind");
