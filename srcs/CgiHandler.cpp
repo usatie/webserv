@@ -70,23 +70,23 @@ int CgiHandler::handle(Connection& conn) {  // throwable
     // std::string server_port = "SERVER_PORT=";
     std::string server_protocol = "SERVER_PROTOCOL=HTTP/1.1";
     std::string server_software = "SERVER_SOFTWARE=webserv/0.0.1";
-    char* const env[] = {//(char*)auth_type.c_str(),
-                         (char*)content_length.c_str(),
-                         //(char*)content_type.c_str(),
-                         //(char*)gateway_interface.c_str(),
-                         (char*)path_info.c_str(),
-                         //(char*)path_translated.c_str(),
-                         //(char*)query_string.c_str(),
-                         //(char*)remote_addr.c_str(),
-                         //(char*)remote_host.c_str(),
-                         //(char*)remote_ident.c_str(),
-                         //(char*)remote_user.c_str(),
-                         (char*)request_method.c_str(),
-                         //(char*)script_name.c_str(),
-                         //(char*)server_name.c_str(),
-                         //(char*)server_port.c_str(),
-                         (char*)server_protocol.c_str(),
-                         (char*)server_software.c_str(), NULL};
+    const char* const env[] = {// auth_type.c_str(),
+                               content_length.c_str(),
+                               // content_type.c_str(),
+                               // gateway_interface.c_str(),
+                               path_info.c_str(),
+                               // path_translated.c_str(),
+                               // query_string.c_str(),
+                               // remote_addr.c_str(),
+                               // remote_host.c_str(),
+                               // remote_ident.c_str(),
+                               // remote_user.c_str(),
+                               request_method.c_str(),
+                               // script_name.c_str(),
+                               // server_name.c_str(),
+                               // server_port.c_str(),
+                               server_protocol.c_str(), server_software.c_str(),
+                               NULL};
 
     // Change directory to script directory to execute script
     if (chdir(dir_path.c_str()) == -1) {
@@ -102,7 +102,8 @@ int CgiHandler::handle(Connection& conn) {  // throwable
       dup2(cgi_socket[1], STDIN_FILENO);
       // TODO: Create environment variables
       // TODO: Create appropriate argv
-      execve(script_name.c_str(), (char**)argv, env);
+      execve(script_name.c_str(), const_cast<char* const*>(argv),
+             const_cast<char* const*>(env));
     } else {  // script without shebang
       const char* const argv[] = {conn.cgi_handler_cf->interpreter_path.c_str(),
                                   script_name.c_str(), NULL};
@@ -111,7 +112,8 @@ int CgiHandler::handle(Connection& conn) {  // throwable
       dup2(cgi_socket[1], STDIN_FILENO);
       // TODO: Create environment variables
       // TODO: Create appropriate argv
-      execve(conn.cgi_handler_cf->interpreter_path.c_str(), (char**)argv, env);
+      execve(conn.cgi_handler_cf->interpreter_path.c_str(),
+             const_cast<char* const*>(argv), const_cast<char* const*>(env));
     }
     // This log would be printed to std::err and visible to the server process.
     Log::cfatal() << "execve error" << std::endl;
