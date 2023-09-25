@@ -306,60 +306,11 @@ int Server::wait() throw() {
   }
   if (result == 0 || (time(NULL) - last_timeout_check) >
                          std::min(TIMEOUT_SEC, CGI_TIMEOUT_SEC)) {
+    Log::cdebug() << "remove timeout connections" << std::endl;
     remove_timeout_connections();
     return -1;
   }
   return 0;
-}
-bool Server::canResume(Conn conn) const throw() {
-  // 1. CLIENT_SEND
-  if (FD_ISSET(conn->get_fd(), &ready_wfds)) {
-    Log::cdebug() << "canResume: CLIENT_SEND" << std::endl;
-    conn->io_status = Connection::CLIENT_SEND;
-    return true;
-  }
-  // 2. CGI_SEND
-  // 3. CGI_RECV
-  if (conn->get_cgifd() != -1) {
-    if (FD_ISSET(conn->get_cgifd(), &ready_wfds)) {
-      Log::cdebug() << "canResume: CGI_SEND" << std::endl;
-      conn->io_status = Connection::CGI_SEND;
-      return true;
-    } else if (FD_ISSET(conn->get_cgifd(), &ready_rfds)) {
-      Log::cdebug() << "canResume: CGI_RECV" << std::endl;
-      conn->io_status = Connection::CGI_RECV;
-      return true;
-    }
-  }
-  // 4. CLIENT_RECV
-  if (FD_ISSET(conn->get_fd(), &ready_rfds)) {
-    Log::cdebug() << "canResume: CLIENT_RECV" << std::endl;
-    conn->io_status = Connection::CLIENT_RECV;
-    return true;
-  }
-  // 5. NO_IO
-  conn->io_status = Connection::NO_IO;
-  return false;
-}
-
-Server::Sock Server::get_ready_listen_socket() throw() {
-  for (SockIterator it = listen_socks.begin(); it != listen_socks.end(); ++it) {
-    if (FD_ISSET((*it)->get_fd(), &ready_rfds)) {
-      return *it;
-    }
-  }
-  return Sock();
-}
-
-// Logically it is not const because it returns a non-const pointer.
-Server::Conn Server::get_ready_connection() throw() {
-  // TODO: equally distribute the processing time to each connection
-  for (ConnIterator it = connections.begin(); it != connections.end(); ++it) {
-    if (canResume(*it)) {
-      return *it;
-    }
-  }
-  return Conn();
 }
 
 void Server::resume(Conn conn) throw() {
@@ -403,17 +354,73 @@ void Server::resume(Conn conn) throw() {
   update_fdset(conn);
 }
 
+// Define a predicate functor to check if a socket is ready to accept.
+struct AcceptReadyPredicate {
+  const fd_set* rfds;
+  explicit AcceptReadyPredicate(const fd_set* rfds) : rfds(rfds) {}
+  bool operator()(Server::Sock sock) const throw() {
+    return FD_ISSET(sock->get_fd(), rfds);
+  }
+};
+
+// Define a predicate functor to check if a connection is ready to resume.
+struct ResumeReadyPredicate {
+  const fd_set* rfds;
+  const fd_set* wfds;
+  ResumeReadyPredicate(const fd_set* rfds, const fd_set* wfds)
+      : rfds(rfds), wfds(wfds) {}
+  bool operator()(Server::Conn conn) const throw() {
+    int fd = conn->get_fd(), cgifd = conn->get_cgifd();
+    // 1. CLIENT_SEND
+    if (FD_ISSET(fd, wfds)) {
+      Log::cdebug() << "ResumeReadyPredicate: CLIENT_SEND" << std::endl;
+      conn->io_status = Connection::CLIENT_SEND;
+      return true;
+    }
+    // 2. CGI_SEND
+    // 3. CGI_RECV
+    if (cgifd != -1) {
+      if (FD_ISSET(cgifd, wfds)) {
+        Log::cdebug() << "ResumeReadyPredicate: CGI_SEND" << std::endl;
+        conn->io_status = Connection::CGI_SEND;
+        return true;
+      } else if (FD_ISSET(cgifd, rfds)) {
+        Log::cdebug() << "ResumeReadyPredicate: CGI_RECV" << std::endl;
+        conn->io_status = Connection::CGI_RECV;
+        return true;
+      }
+    }
+    // 4. CLIENT_RECV
+    if (FD_ISSET(fd, rfds)) {
+      Log::cdebug() << "ResumeReadyPredicate: CLIENT_RECV" << std::endl;
+      conn->io_status = Connection::CLIENT_RECV;
+      return true;
+    }
+    // 5. NO_IO
+    Log::cdebug() << "ResumeReadyPredicate: NO_IO" << std::endl;
+    conn->io_status = Connection::NO_IO;
+    return false;
+  }
+};
+
 void Server::run() throw() {
   while (1) {
     if (wait() < 0) {
       continue;
     }
-    Conn conn;  // no throw
-    Sock sock;  // no throw
-    if ((sock = get_ready_listen_socket()) != NULL) {
-      accept(sock);  // no throw
-    } else if ((conn = get_ready_connection()) != NULL) {
-      resume(conn);  // no throw
+    SockIterator sock_it;
+    AcceptReadyPredicate apred(&ready_rfds);
+    if ((sock_it = std::find_if(listen_socks.begin(), listen_socks.end(),
+                                apred)) != listen_socks.end()) {
+      accept(*sock_it);  // no throw
+      continue;
+    }
+    ConnIterator conn_it;
+    ResumeReadyPredicate rpred(&ready_rfds, &ready_wfds);
+    if ((conn_it = std::find_if(connections.begin(), connections.end(),
+                                rpred)) != connections.end()) {
+      resume(*conn_it);  // no throw
+      continue;
     }
   }
 }
