@@ -1,0 +1,22 @@
+name: Pull Request CI (Ubuntu)
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: apt install
+      run: |
+        sudo apt update -y
+        sudo apt install siege -y
+    - name: make bench
+      run: |
+        echo "# Benchmark Tests :stopwatch:" >> $GITHUB_STEP_SUMMARY
+        set -o pipefail
+        make bench | tee -a $GITHUB_STEP_SUMMARY

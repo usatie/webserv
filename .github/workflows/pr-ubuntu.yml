@@ -1,4 +1,4 @@
-name: C++ CI (Ubuntu)
+name: Pull Request CI (Ubuntu)
 
 on:
   push:
@@ -19,10 +19,6 @@ jobs:
         pip3 install --upgrade setuptools
         pip3 install --upgrade wheel
         pip3 install -r tests/requirements.txt
-    - name: apt install
-      run: |
-        sudo apt update -y
-        sudo apt install siege -y
     - name: make
       run: make
     - name: make unit
@@ -38,8 +34,3 @@ jobs:
         echo "# Integration Tests :scientist:" >> $GITHUB_STEP_SUMMARY
         set -o pipefail
         make -s test | tee -a $GITHUB_STEP_SUMMARY
-    - name: make bench
-      run: |
-        echo "# Benchmark Tests :stopwatch:" >> $GITHUB_STEP_SUMMARY
-        set -o pipefail
-        make bench | tee -a $GITHUB_STEP_SUMMARY
