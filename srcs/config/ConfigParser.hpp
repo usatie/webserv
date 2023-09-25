@@ -70,61 +70,7 @@ struct Command {
     CMD_SERVER
   };
 
-  explicit Command(enum Type type) : type(type), next(NULL), block(NULL) {
-    switch (type) {
-      case CMD_DUMMY:
-        name = "dummy";
-        break;
-      case CMD_LISTEN:
-        name = "listen";
-        break;
-      case CMD_SERVER_NAME:
-        name = "server_name";
-        break;
-      case CMD_ROOT:
-        name = "root";
-        break;
-      case CMD_INDEX:
-        name = "index";
-        break;
-      case CMD_ERROR_PAGE:
-        name = "error_page";
-        break;
-      case CMD_AUTOINDEX:
-        name = "autoindex";
-        break;
-      case CMD_LIMIT_EXCEPT:
-        name = "limit_except";
-        break;
-      case CMD_UPLOAD_STORE:
-        name = "upload_store";
-        break;
-      case CMD_CLIENT_MAX_BODY_SIZE:
-        name = "client_max_body_size";
-        break;
-      case CMD_CGI_EXTENSION:
-        name = "cgi_extension";
-        break;
-      case CMD_CGI_HANDLER:
-        name = "cgi_handler";
-        break;
-      case CMD_RETURN:
-        name = "return";
-        break;
-      case CMD_LOCATION:
-        name = "location";
-        break;
-      case CMD_ALIAS:
-        name = "alias";
-        break;
-      case CMD_SERVER:
-        name = "server";
-        break;
-      default:
-        name = "unknown";
-        break;
-    }
-  }
+  explicit Command(enum Type type);
   ~Command() {
     if (next) {
       delete next;
