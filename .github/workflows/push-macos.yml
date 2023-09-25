@@ -1,0 +1,22 @@
+name: Pull Request CI (macOS)
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: brew install
+      run: |
+        brew update
+        brew install siege
+    - name: make bench
+      run: |
+        echo "# Benchmark Tests :stopwatch:" >> $GITHUB_STEP_SUMMARY
+        make -s bench 2>bench.log
+        tail -13 bench.log | tee -a $GITHUB_STEP_SUMMARY

@@ -379,48 +379,6 @@ int Connection::parse_body_content_length() {  // throwable
   }
 }
 
-bool eq_addr(const sockaddr_in *a, const sockaddr_in *b) {
-  // If port is different, return false
-  if (a->sin_port != b->sin_port) {
-    return false;
-  }
-  // If a or b is wildcard, return true
-  if (a->sin_addr.s_addr == INADDR_ANY || b->sin_addr.s_addr == INADDR_ANY) {
-    return true;
-  }
-  // Otherwise, compare address
-  // sin_addr.sin_addr is just a uint32_t, so we can compare it directly
-  return a->sin_addr.s_addr == b->sin_addr.s_addr;
-}
-
-bool eq_addr6(const sockaddr_in6 *a, const sockaddr_in6 *b) {
-  // If port is different, return false
-  if (a->sin6_port != b->sin6_port) {
-    return false;
-  }
-  // If a or b is wildcard, return true
-  if (IN6_IS_ADDR_UNSPECIFIED(&a->sin6_addr) ||
-      IN6_IS_ADDR_UNSPECIFIED(&b->sin6_addr)) {
-    return true;
-  }
-  // Otherwise, compare address
-  // sin6_addr.sin6_addr is just a uint8_t[16], so we can compare it by memcmp
-  return memcmp(&a->sin6_addr, &b->sin6_addr, sizeof(in6_addr)) == 0;
-}
-
-bool eq_addr46(const sockaddr_storage *a, const sockaddr_storage *b) {
-  if (a->ss_family != b->ss_family) {
-    return false;
-  }
-  if (a->ss_family == AF_INET) {
-    return eq_addr((const sockaddr_in *)a, (const sockaddr_in *)b);
-  } else if (a->ss_family == AF_INET6) {
-    return eq_addr6((const sockaddr_in6 *)a, (const sockaddr_in6 *)b);
-  } else {
-    return false;
-  }
-}
-
 // Find config for this request
 // 1. Find listen directive matching port
 // 2. Find listen directive matching ip address
@@ -447,7 +405,7 @@ const config::Server *select_srv_cf(const config::Config &cf,
       // 1. Filter by port
       // 2. Filter by address
       // These can be done by eq_addr46 and eq_addr6
-      if (eq_addr46(&listen.addr, saddr) == false) {
+      if (util::inet::eq_addr46(&listen.addr, saddr, true) == false) {
         continue;
       }
       // This server is default server

@@ -91,7 +91,7 @@ bench: $(NAME)
 .PHONY: format
 format:
 	clang-format -style=google $(SRCS) $(HEADERS) -i
-	cppcheck --enable=all --inconclusive --suppress=missingIncludeSystem srcs $(addprefix -I, $(INCLUDE_DIRS))
+	cppcheck --enable=all --inconclusive --inline-suppr --suppress=missingIncludeSystem srcs $(addprefix -I, $(INCLUDE_DIRS))
 
 .PHONY: nop-tester
 nop-tester: tester cgi_tester

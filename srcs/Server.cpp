@@ -4,7 +4,6 @@
 #include <netdb.h>
 
 #include <cerrno>
-#include <cstring>  // memset, strerror
 
 #include "Config.hpp"
 #include "Connection.hpp"
@@ -50,8 +49,12 @@ int Server::getaddrinfo(const config::Listen& l, struct addrinfo** result) {
   //      "[::1]"                                   -> AF_INET6
   //      "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -> AF_INET6
 
-  hints.ai_family = AF_UNSPEC; /* Allows IPv4 or IPv6 */
-  if (l.address == "*") {
+  // If the address is bracketed, it is IPv6
+  if (l.address.size() > 0 && l.address[0] == '[' && l.address[l.address.size() - 1] == ']') {
+    hints.ai_family = AF_INET6; /* Allows IPv6 only */
+  } else {
+    // Currently only IPv4 is supported for hostnames
+    // TODO: IPv6 support if address is bracketed
     hints.ai_family = AF_INET; /* Allows IPv4 only */
   }
   hints.ai_flags = AI_PASSIVE; /* Wildcard IP address */
@@ -64,7 +67,36 @@ int Server::getaddrinfo(const config::Listen& l, struct addrinfo** result) {
   return 0;
 }
 
-int Server::listen(const config::Listen& l) {
+static bool already_listened(
+    const std::vector<util::shared_ptr<Socket> >& socks,
+    const struct addrinfo* rp) {
+  for (unsigned int i = 0; i < socks.size(); ++i) {
+    if (util::inet::eq_addr46(
+            &socks[i]->saddr,
+            reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
+            false)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool is_wildcard(const struct sockaddr* addr) {
+  if (addr->sa_family == AF_INET) {
+    const struct sockaddr_in* addr4 =
+        reinterpret_cast<const struct sockaddr_in*>(addr);
+    return addr4->sin_addr.s_addr == INADDR_ANY;
+  } else if (addr->sa_family == AF_INET6) {
+    const struct sockaddr_in6* addr6 =
+        reinterpret_cast<const struct sockaddr_in6*>(addr);
+    return IN6_IS_ADDR_UNSPECIFIED(&addr6->sin6_addr);
+  } else {
+    return false;
+  }
+}
+
+int Server::listen(const config::Listen& l,
+                   std::vector<util::shared_ptr<Socket> >& serv_socks) {
   struct AddrInfo info;
   if (getaddrinfo(l, &info.rp) < 0) {  // throwable
     return -1;
@@ -74,6 +106,70 @@ int Server::listen(const config::Listen& l) {
   for (struct addrinfo* rp = info.rp; rp != NULL; rp = rp->ai_next) {
     Log::cdebug() << "listen : " << l << std::endl;
     Log::cdebug() << "ip: " << rp << std::endl;
+    // Already listend (exact match)
+    if (already_listened(serv_socks, rp)) {
+      Log::cfatal() << "Duplicate listen directive in a server." << std::endl;
+      return -1;
+    }
+    // Already listened (exact match)
+    if (already_listened(listen_socks, rp)) {
+      Log::cdebug() << "Already listend by other server." << std::endl;
+      {
+        config::Listen& ll = const_cast<config::Listen&>(l);
+        memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
+        ll.addrlen = rp->ai_addrlen;
+      }
+      return 0;
+    }
+    // Wildcard -> override the address of the other server
+    if (is_wildcard(rp->ai_addr)) {
+      for (SockIterator it = listen_socks.begin(); it != listen_socks.end();) {
+        if (util::inet::eq_addr46(
+                &(*it)->saddr,
+                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
+                true)) {
+          it = listen_socks.erase(it);
+        } else {
+          ++it;
+        }
+      }
+      for (SockIterator it = serv_socks.begin(); it != serv_socks.end();) {
+        if (util::inet::eq_addr46(
+                &(*it)->saddr,
+                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
+                true)) {
+          it = serv_socks.erase(it);
+        } else {
+          ++it;
+        }
+      }
+    } else { // Specific Address -> if already listened by other server, skip
+      for (SockIterator it = listen_socks.begin(); it != listen_socks.end(); ++it) {
+        if (util::inet::eq_addr46(
+                &(*it)->saddr,
+                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
+                true)) {
+          Log::cdebug() << "Already listend by other server." << std::endl;
+          config::Listen& ll = const_cast<config::Listen&>(l);
+          memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
+          ll.addrlen = rp->ai_addrlen;
+          return 0;
+        }
+      }
+      for (SockIterator it = serv_socks.begin(); it != serv_socks.end(); ++it) {
+        if (util::inet::eq_addr46(
+                &(*it)->saddr,
+                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
+                true)) {
+          Log::cdebug() << "Already listend by other server." << std::endl;
+          config::Listen& ll = const_cast<config::Listen&>(l);
+          memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
+          ll.addrlen = rp->ai_addrlen;
+          return 0;
+        }
+      }
+    }
+    
     int sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if (sfd == -1) {
       Log::cfatal() << "socket() failed. (" << errno << ": " << strerror(errno)
@@ -82,14 +178,10 @@ int Server::listen(const config::Listen& l) {
     }
     util::shared_ptr<Socket> sock(new Socket(sfd));  // throwable
     if (sock->reuseaddr() < 0) {
-      Log::cfatal() << "sock.set_reuseaddr() failed. (" << errno << ": "
-                    << strerror(errno) << ")" << std::endl;
       return -1;
     }
     if (rp->ai_family == AF_INET6) {
       if (sock->ipv6only() < 0) {
-        Log::cfatal() << "sock.set_ipv6only() failed. (" << errno << ": "
-                      << strerror(errno) << ")" << std::endl;
         return -1;
       }
     }
@@ -100,13 +192,9 @@ int Server::listen(const config::Listen& l) {
       return -1;
     }
     if (sock->listen(BACKLOG) < 0) {
-      Log::cfatal() << "sock.listen() failed. (" << errno << ": "
-                    << strerror(errno) << ")" << std::endl;
       return -1;
     }
     if (sock->set_nonblock() < 0) {
-      Log::cfatal() << "sock.set_nonblock() failed. (" << errno << ": "
-                    << strerror(errno) << ")" << std::endl;
       return -1;
     }
     // Save the listening ip address to config::Listen
@@ -116,24 +204,28 @@ int Server::listen(const config::Listen& l) {
       memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
       ll.addrlen = rp->ai_addrlen;
     }
+    // Save the listening socket
     FD_SET(sock->get_fd(), &readfds);
     maxfd = std::max(maxfd, sock->get_fd());
-    listen_socks.push_back(sock);  // throwable
-    break;  // Success, one socket per one listen directive
+    serv_socks.push_back(sock);  // throwable
+    return 0;                    // Success, one socket per one listen directive
   }
-  return 0;
+  Log::cfatal() << "Could not bind to any address." << std::endl;
+  return -1;
 }
 
 void Server::startup() {
   for (unsigned int i = 0; i < cf.http.servers.size(); ++i) {
     Log::cdebug() << "i: " << i << std::endl;
     const config::Server& server = cf.http.servers[i];
+    std::vector<util::shared_ptr<Socket> > socks;
     for (unsigned int j = 0; j < server.listens.size(); ++j) {
       Log::cdebug() << "j: " << j << std::endl;
-      if (listen(server.listens[j]) < 0) {  // throwable
+      if (listen(server.listens[j], socks) < 0) {  // throwable
         std::exit(EXIT_FAILURE);
       }
     }
+    listen_socks.insert(listen_socks.end(), socks.begin(), socks.end());
   }
 }
 
@@ -228,7 +320,8 @@ int Server::wait() throw() {
     Log::cerror() << "select error: " << strerror(errno) << std::endl;
     return -1;
   }
-  if (result == 0 || (time(NULL) - last_timeout_check) > std::min(TIMEOUT_SEC, CGI_TIMEOUT_SEC)) {
+  if (result == 0 || (time(NULL) - last_timeout_check) >
+                         std::min(TIMEOUT_SEC, CGI_TIMEOUT_SEC)) {
     remove_timeout_connections();
     return -1;
   }
