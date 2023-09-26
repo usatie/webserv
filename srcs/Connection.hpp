@@ -19,15 +19,14 @@
 #define TIMEOUT_SEC 10
 #define CGI_TIMEOUT_SEC 3
 
-#define CONN_CONTINUE 0
-#define CONN_REMOVE 1
-#define CONN_CLEAR 2
+#define CONN_WAIT 0
+#define CONN_CONTINUE 1
+#define CONN_REMOVE 2
+#define CONN_CLEAR 3
 
 class Connection {
  public:
   // Class private enum
-  typedef enum Status { PROCESSING, DONE, CLEAR } Status;
-
   typedef enum IOStatus {
     CLIENT_RECV,
     CLIENT_SEND,
@@ -40,9 +39,6 @@ class Connection {
   util::shared_ptr<SocketBuf> client_socket;
   util::shared_ptr<SocketBuf> cgi_socket;
   Header header;
-
- private:
-  Status status;
 
  public:
   std::string body;
@@ -70,7 +66,6 @@ class Connection {
       : client_socket(util::shared_ptr<SocketBuf>(new SocketBuf(sock))),
         cgi_socket(NULL),
         header(),
-        status(PROCESSING),
         body(),
         content_length(0),
         chunk(),

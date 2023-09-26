@@ -16,7 +16,6 @@ int Connection::resume() {  // throwable
       client_socket->fill();  // throwable
       if (client_socket->isClosed()) {
         Log::info("client_socket->closed");
-        status = DONE;
         return CONN_REMOVE;
       }
       break;
@@ -38,38 +37,24 @@ int Connection::resume() {  // throwable
       client_socket->flush();  // throwable
       if (client_socket->isClosed()) {
         Log::info("client_socket->closed");
-        status = DONE;
         return CONN_REMOVE;
       }
       break;
     case NO_IO:
       break;
   }
-  bool cont = true;
-  // If the socket is closed, we don't need to do anything
-  while (cont) {
-    switch (status) {
-      case PROCESSING:
-        cont = (this->*handler)();  // throwable
-        break;
-      case DONE:
-        cont = false;
-        break;
-      case CLEAR:
-        cont = false;
-        break;
-    }
+  int ret = CONN_CONTINUE;
+  while (ret == CONN_CONTINUE) {
+    ret = (this->*handler)();  // throwable
   }
   // Finally, check if there is any error while handling the request
   if (client_socket->bad()) {
     Log::info("client_socket->bad()");
-    status = DONE;
     return CONN_REMOVE;
   }
   if (cgi_socket != NULL) {
     if (cgi_socket->bad()) {
       Log::info("cgi_socket->bad()");
-      status = DONE;
       return CONN_REMOVE;
     }
   }
@@ -80,23 +65,15 @@ int Connection::resume() {  // throwable
     if (cgi_socket == NULL || cgi_socket->isClosed() ||
         cgi_socket->hasReceivedEof) {
       Log::info("client_socket->hasReceivedEof");
-      status = DONE;
       return CONN_REMOVE;
     }
   }
-  if (status == CLEAR) {
-    return CONN_CLEAR;
-  } else if (status == DONE) {
-    return CONN_REMOVE;
-  } else {
-    return CONN_CONTINUE;
-  }
+  return ret;
 }
 
 int Connection::clear() {
   cgi_socket = util::shared_ptr<SocketBuf>();
   header.clear();
-  status = PROCESSING;
   handler = &Connection::parse_start_line;
   body.clear();
   content_length = 0;
@@ -117,11 +94,11 @@ int Connection::parse_start_line() {
   std::string line;
 
   if (client_socket->read_telnet_line(line) < 0) {  // throwable
-    return 0;
+    return CONN_WAIT;
   }
   if (line.empty()) {
     Log::cdebug() << "empty line" << std::endl;
-    return 0;
+    return CONN_WAIT;
   }
   Log::cdebug() << "start line: " << line << std::endl;
   std::stringstream ss;
@@ -134,7 +111,7 @@ int Connection::parse_start_line() {
     Log::cinfo() << "Invalid path: " << header.path << std::endl;
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
-    return 1;
+    return CONN_CONTINUE;
   }
   // Get cwd
   char cwd[PATH_MAX];
@@ -142,7 +119,7 @@ int Connection::parse_start_line() {
     Log::cfatal() << "getcwd failed" << std::endl;
     ErrorHandler::handle(*this, 500);
     handler = &Connection::response;
-    return 1;
+    return CONN_CONTINUE;
   }
   // TODO: Defense Directory traversal attack
   // TODO: Handle absoluteURI
@@ -157,7 +134,7 @@ int Connection::parse_start_line() {
     Log::cfatal() << "ss bad bit is set" << line << std::endl;
     ErrorHandler::handle(*this, 500);
     handler = &Connection::response;
-    return 1;
+    return CONN_CONTINUE;
   }
   // ss.fail() : method or path or version is missing
   // !ss.eof()  : there are more than 3 tokens or extra white spaces
@@ -165,10 +142,10 @@ int Connection::parse_start_line() {
     Log::cinfo() << "Invalid start line: " << line << std::endl;
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
-    return 1;
+    return CONN_CONTINUE;
   }
   handler = &Connection::parse_header_fields;
-  return 1;
+  return CONN_CONTINUE;
 }
 
 int Connection::split_header_field(const std::string &line, std::string &key,
@@ -195,7 +172,7 @@ int Connection::parse_header_fields() {  // throwable
     // Empty line indicates the end of header fields
     if (line == "") {
       handler = &Connection::parse_body;
-      return 1;
+      return CONN_CONTINUE;
     }
     Log::cdebug() << "header line: " << line << std::endl;
     // Split line to key and value
@@ -203,17 +180,17 @@ int Connection::parse_header_fields() {  // throwable
     if (split_header_field(line, key, value) < 0) {  // throwable
       ErrorHandler::handle(*this, 500);
       handler = &Connection::response;
-      return 1;
+      return CONN_CONTINUE;
     }
     if (util::http::is_token(key) == false) {
       Log::cinfo() << "Header filed-name is not token: : " << key << std::endl;
       ErrorHandler::handle(*this, 400);
       handler = &Connection::response;
-      return 1;
+      return CONN_CONTINUE;
     }
     header.fields[key] = value;  // throwable
   }
-  return 0;
+  return CONN_WAIT;
 }
 
 // https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
@@ -228,13 +205,13 @@ int Connection::parse_body() {  // throwable
                    << std::endl;
       ErrorHandler::handle(*this, 400);
       handler = &Connection::response;
-      return 1;
+      return CONN_CONTINUE;
     }
     handler = &Connection::parse_body_chunked;
-    return 1;
+    return CONN_CONTINUE;
   }
   handler = &Connection::parse_body_content_length;
-  return 1;
+  return CONN_CONTINUE;
 }
 
 // https://datatracker.ietf.org/doc/html/rfc9112#section-7.1
@@ -259,7 +236,7 @@ int Connection::parse_body_chunked() {  // throwable
       Log::cinfo() << "Invalid chunk size: " << chunk_size_line << std::endl;
       ErrorHandler::handle(*this, 400);
       handler = &Connection::response;
-      return 1;
+      return CONN_CONTINUE;
     }
     // TODO: Handle chunk-ext
 
@@ -270,14 +247,14 @@ int Connection::parse_body_chunked() {  // throwable
       content_length = body.size();
       chunk_size = 0;
       handler = &Connection::parse_body_chunk_trailer_section;
-      return 1;
+      return CONN_CONTINUE;
     }
     // If chunk-size is non-zero, chunk-data is expected
     handler = &Connection::parse_body_chunk_data;
-    return 1;
+    return CONN_CONTINUE;
   }
   // There is still more to read later
-  return 0;
+  return CONN_WAIT;
 }
 
 int Connection::parse_body_chunk_data() {  // throwable
@@ -288,9 +265,9 @@ int Connection::parse_body_chunk_data() {  // throwable
   ssize_t ret = client_socket->read(&buf[0], 2 + chunk_size - chunk.size());
 
   if (ret < 0) {
-    return 0;
+    return CONN_WAIT;
   } else if (ret == 0) {
-    return 0;
+    return CONN_WAIT;
   }
   chunk.append(&buf[0], ret);
   if (chunk.size() == chunk_size + 2) {  // +2 for CRLF
@@ -299,7 +276,7 @@ int Connection::parse_body_chunk_data() {  // throwable
       Log::cinfo() << "Invalid chunk data: " << chunk << std::endl;
       ErrorHandler::handle(*this, 400);
       handler = &Connection::response;
-      return 1;
+      return CONN_CONTINUE;
     }
     // Remove CRLF
     chunk.erase(chunk.size() - 2);
@@ -307,17 +284,17 @@ int Connection::parse_body_chunk_data() {  // throwable
     body.append(chunk);
     chunk.clear();
     handler = &Connection::parse_body_chunked;
-    return 1;
+    return CONN_CONTINUE;
   }
   // There is more to read
-  return 0;
+  return CONN_WAIT;
 }
 
 int Connection::parse_body_chunk_trailer_section() {  // throwable
   Log::debug("parse_body_chunk_trailer_section");
   // TODO: Implement [trailer-section]
   handler = &Connection::handle;
-  return 1;
+  return CONN_CONTINUE;
 }
 
 int Connection::parse_body_content_length() {  // throwable
@@ -325,7 +302,7 @@ int Connection::parse_body_content_length() {  // throwable
   if (body.empty()) {
     if (header.fields.find("Content-Length") == header.fields.end()) {
       handler = &Connection::handle;
-      return 1;
+      return CONN_CONTINUE;
     }
     // TODO: Handle invalid Content-Length
     content_length = atoi(header.fields["Content-Length"].c_str());
@@ -334,16 +311,16 @@ int Connection::parse_body_content_length() {  // throwable
   std::vector<char> buf(content_length - body.size());
   ssize_t ret = client_socket->read(&buf[0], buf.size());  // throwable
   if (ret < 0) {
-    return 0;
+    return CONN_WAIT;
   } else if (ret == 0) {
-    return 0;
+    return CONN_WAIT;
   }
   body.append(&buf[0], ret);
   if (body.size() == content_length) {
     handler = &Connection::handle;
-    return 1;
+    return CONN_CONTINUE;
   } else {
-    return 0;
+    return CONN_WAIT;
   }
 }
 
@@ -488,7 +465,7 @@ int Connection::handle() {  // throwable
     RedirectHandler::handle(*this, loc_cf->returns[0].code,
                             loc_cf->returns[0].url);
     handler = &Connection::response;
-    return 1;
+    return CONN_CONTINUE;
   }
 
   // generate fullpath
@@ -515,7 +492,7 @@ int Connection::handle() {  // throwable
       Log::cinfo() << "Unsupported method: " << header.method << std::endl;
       ErrorHandler::handle(*this, 405);
       handler = &Connection::response;
-      return 1;
+      return CONN_CONTINUE;
     }
   }
 
@@ -529,7 +506,7 @@ int Connection::handle() {  // throwable
       handler = &Connection::handle_cgi_req;
     }
 
-    return 1;
+    return CONN_CONTINUE;
   }
   // If not CGI
   if (header.method == "GET") {
@@ -545,7 +522,7 @@ int Connection::handle() {  // throwable
     ErrorHandler::handle(*this, 405);  // throwable
   }
   handler = &Connection::response;
-  return 1;
+  return CONN_CONTINUE;
 }
 
 int Connection::handle_cgi_req() throw() {
@@ -555,9 +532,9 @@ int Connection::handle_cgi_req() throw() {
   if (cgi_socket->isSendBufEmpty()) {
     shutdown(cgi_socket->get_fd(), SHUT_WR);
     handler = &Connection::handle_cgi_res;
-    return 1;
+    return CONN_CONTINUE;
   }
-  return 0;
+  return CONN_WAIT;
 }
 
 int Connection::handle_cgi_res() throw() {
@@ -566,7 +543,7 @@ int Connection::handle_cgi_res() throw() {
   // Question: If CGI process exit, isClosed will be set to true?
   if (!cgi_socket->isClosed()) return 0;
   handler = &Connection::handle_cgi_parse;
-  return 1;
+  return CONN_CONTINUE;
 }
 
 // CGI Response syntax (https://datatracker.ietf.org/doc/html/rfc3875#section-6)
@@ -615,7 +592,7 @@ int Connection::handle_cgi_parse() {  // throwable
   // CGI Process is already terminated
   if (cgi_pid < 0) {
     handler = &Connection::response;
-    return 1;
+    return CONN_CONTINUE;
   }
 
   // Kill CGI process
@@ -627,7 +604,7 @@ int Connection::handle_cgi_parse() {  // throwable
                   << std::endl;
     ErrorHandler::handle(*this, 500);
     handler = &Connection::response;
-    return 1;
+    return CONN_CONTINUE;
   }
 
   // TODO: parse
@@ -677,24 +654,23 @@ int Connection::handle_cgi_parse() {  // throwable
     *client_socket << CRLF;  // End of header fields
   }
   handler = &Connection::response;
-  return 1;
+  return CONN_CONTINUE;
 }
 
 int Connection::response() throw() {
   if (client_socket->isSendBufEmpty()) {
     if (client_socket->hasReceivedEof && client_socket->isSendBufEmpty()) {
       Log::info("Client socket has received EOF, remove connection");
-      status = DONE;
+      return CONN_REMOVE;
     } else if (header.fields["Connection"] == "close") {
       Log::info("Connection: close, remove connection");
-      status = DONE;
+      return CONN_REMOVE;
     } else {
       Log::info("Request is done, clear connection");
-      status = CLEAR;
+      return CONN_CLEAR;
     }
-    return 1;
   }
-  return 0;
+  return CONN_WAIT;
 }
 
 bool Connection::is_timeout() const throw() {

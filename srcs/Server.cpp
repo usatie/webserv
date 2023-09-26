@@ -342,6 +342,7 @@ void Server::resume(Conn conn) throw() {
       conn->clear();
       break;
     case CONN_CONTINUE:
+    case CONN_WAIT:
       break;
   }
   // Update fdset
