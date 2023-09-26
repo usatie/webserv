@@ -261,8 +261,8 @@ void Server::remove_timeout_connections() throw() {
 
 void Server::accept(Sock sock) throw() {
   try {
-    Conn conn(new Connection(sock->accept(), cf));  // throwable
-    connections.push_back(conn);                    // throwable
+    Conn conn(new Connection(sock->accept(), this));  // throwable
+    connections.push_back(conn);                      // throwable
     FD_SET(conn->get_fd(), &readfds);
     maxfd = std::max(conn->get_fd(), maxfd);
   } catch (std::exception& e) {

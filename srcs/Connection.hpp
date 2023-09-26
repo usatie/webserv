@@ -24,6 +24,8 @@
 #define WSV_REMOVE -2
 #define WSV_CLEAR -3
 
+class Server;
+
 class Connection {
  public:
   // Class private enum
@@ -46,7 +48,6 @@ class Connection {
   std::string chunk;  // single chunk
   size_t chunk_size;
   pid_t cgi_pid;
-  const config::Config &cf;
   const config::Server *srv_cf;
   const config::Location *loc_cf;
   const config::CgiHandler *cgi_handler_cf;
@@ -55,6 +56,10 @@ class Connection {
   time_t cgi_started;
   // Function pointer to member function
   int (Connection::*handler)();
+  // Server
+  Server *server;  // This will never be a NULL so it can be reference.
+                   // But to avoid circular dependency with Server.hpp, we use
+                   // forward declaration and pointer.
 
  public:
   IOStatus io_status;
@@ -62,7 +67,7 @@ class Connection {
  public:
   // Constructor/Destructor
   Connection() throw();  // Do not implement this
-  Connection(util::shared_ptr<Socket> sock, const config::Config &cf)
+  Connection(util::shared_ptr<Socket> sock, Server *server)
       : client_socket(util::shared_ptr<SocketBuf>(new SocketBuf(sock))),
         cgi_socket(NULL),
         header(),
@@ -71,7 +76,6 @@ class Connection {
         chunk(),
         chunk_size(0),
         cgi_pid(-1),
-        cf(cf),
         srv_cf(NULL),
         loc_cf(NULL),
         cgi_handler_cf(NULL),
@@ -79,6 +83,7 @@ class Connection {
         last_modified(time(NULL)),
         cgi_started(0),  // What should be the initial value?
         handler(&Connection::parse_start_line),
+        server(server),
         io_status(NO_IO) {}
   ~Connection() throw() {}
   Connection(const Connection &other) throw();  // Do not implement this

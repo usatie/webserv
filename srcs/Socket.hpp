@@ -33,8 +33,7 @@ class Socket {
  public:
   // Constructor/Destructor
   // Constructor for listening socket and unix domain socket
-  explicit Socket(int fd)
-      : fd(fd), saddr(), caddr(), saddrlen(0), caddrlen(0) {
+  explicit Socket(int fd) : fd(fd), saddr(), caddr(), saddrlen(0), caddrlen(0) {
     if (fd < 0) {
       Log::error("Invalid socket fd to construct Socket");
       throw std::runtime_error("Invalid socket fd");
@@ -43,11 +42,7 @@ class Socket {
   // Constructor for TCP connection socket
   Socket(int fd, const struct sockaddr* saddr, const struct sockaddr* caddr,
          socklen_t saddrlen, socklen_t caddrlen)
-      : fd(fd),
-        saddr(),
-        caddr(),
-        saddrlen(saddrlen),
-        caddrlen(caddrlen) {
+      : fd(fd), saddr(), caddr(), saddrlen(saddrlen), caddrlen(caddrlen) {
     if (fd < 0) {
       Log::error("Invalid socket fd to construct Socket");
       throw std::runtime_error("Invalid socket fd");

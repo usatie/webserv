@@ -47,8 +47,11 @@ class Server {
   // Member data
   SockVector listen_socks;
   ConnVector connections;
+
+ public:
   const config::Config& cf;
 
+ private:
   // Member functions
   int listen(const config::Listen& l, SockVector& serv_socks);  // throwable
 

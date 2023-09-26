@@ -6,6 +6,7 @@
 #include <map>
 
 #include "DeleteHandler.hpp"
+#include "Server.hpp"
 
 int Connection::resume() {  // throwable
   Log::debug("Connection::resume()");
@@ -49,12 +50,11 @@ int Connection::resume() {  // throwable
   //  3. cgi socket will not produce any more data
   // we can close the connection.
   //
-  // Main scenario: After sending a response, the client close the connection. 
-  // In this case, the client socket will receive EOF and the client socket's 
+  // Main scenario: After sending a response, the client close the connection.
+  // In this case, the client socket will receive EOF and the client socket's
   // both buffers will be empty.
-  if (client_socket->hasReceivedEof
-      && client_socket->isSendBufEmpty() 
-      && client_socket->isRecvBufEmpty()) {
+  if (client_socket->hasReceivedEof && client_socket->isSendBufEmpty() &&
+      client_socket->isRecvBufEmpty()) {
     if (cgi_socket == NULL || cgi_socket->hasReceivedEof) {
       Log::info("client_socket->hasReceivedEof and all buffers are empty");
       return WSV_REMOVE;
@@ -445,7 +445,7 @@ const config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf,
 }
 
 int Connection::handle() {  // throwable
-  srv_cf = select_srv_cf(cf, *this);
+  srv_cf = select_srv_cf(server->cf, *this);
   loc_cf = select_loc_cf(srv_cf, header.path);
   cgi_handler_cf = loc_cf ? select_cgi_handler_cf(loc_cf, header.path)
                           : select_cgi_handler_cf(srv_cf, header.path);
