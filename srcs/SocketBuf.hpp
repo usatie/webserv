@@ -32,7 +32,6 @@ class SocketBuf {
 
   // Accessors
   int get_fd() const throw() { return socket->get_fd(); }
-  bool isClosed() const throw() { return socket->isClosed(); }
   //  tellg() updates the internal state of the stream, so it is not const
   bool isSendBufEmpty() throw() {
     return (wss.str().size() - wss.tellg()) == 0;

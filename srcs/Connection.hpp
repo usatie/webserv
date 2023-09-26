@@ -19,26 +19,16 @@
 #define TIMEOUT_SEC 10
 #define CGI_TIMEOUT_SEC 3
 
+#define WSV_WAIT 0
+#define WSV_AGAIN -1
+#define WSV_REMOVE -2
+#define WSV_CLEAR -3
+
+class Server;
+
 class Connection {
  public:
   // Class private enum
-  typedef enum Status {
-    REQ_START_LINE,                  // CLIENT_RECV
-    REQ_HEADER_FIELDS,               // CLIENT_RECV
-    REQ_BODY,                        //
-    REQ_BODY_CONTENT_LENGTH,         // CLIENT_RECV
-    REQ_BODY_CHUNKED,                // CLIENT_RECV
-    REQ_BODY_CHUNK_DATA,             // CLIENT_RECV
-    REQ_BODY_CHUNK_TRAILER_SECTION,  // CLIENT_RECV
-    HANDLE,                          //
-    HANDLE_CGI_REQ,                  // CGI_SEND
-    HANDLE_CGI_RES,                  // CGI_RECV
-    HANDLE_CGI_PARSE,                //
-    RESPONSE,                        // CLIENT_SEND
-    DONE,                            //
-    CLEAR                            //
-  } Status;
-
   typedef enum IOStatus {
     CLIENT_RECV,
     CLIENT_SEND,
@@ -51,19 +41,25 @@ class Connection {
   util::shared_ptr<SocketBuf> client_socket;
   util::shared_ptr<SocketBuf> cgi_socket;
   Header header;
-  Status status;
+
+ public:
   std::string body;
   size_t content_length;
   std::string chunk;  // single chunk
   size_t chunk_size;
   pid_t cgi_pid;
-  const config::Config &cf;
   const config::Server *srv_cf;
   const config::Location *loc_cf;
   const config::CgiHandler *cgi_handler_cf;
   const config::CgiExtensions *cgi_ext_cf;
   time_t last_modified;
   time_t cgi_started;
+  // Function pointer to member function
+  int (Connection::*handler)();
+  // Server
+  Server *server;  // This will never be a NULL so it can be reference.
+                   // But to avoid circular dependency with Server.hpp, we use
+                   // forward declaration and pointer.
 
  public:
   IOStatus io_status;
@@ -71,23 +67,23 @@ class Connection {
  public:
   // Constructor/Destructor
   Connection() throw();  // Do not implement this
-  Connection(util::shared_ptr<Socket> sock, const config::Config &cf)
+  Connection(util::shared_ptr<Socket> sock, Server *server)
       : client_socket(util::shared_ptr<SocketBuf>(new SocketBuf(sock))),
         cgi_socket(NULL),
         header(),
-        status(REQ_START_LINE),
         body(),
         content_length(0),
         chunk(),
         chunk_size(0),
         cgi_pid(-1),
-        cf(cf),
         srv_cf(NULL),
         loc_cf(NULL),
         cgi_handler_cf(NULL),
         cgi_ext_cf(NULL),
         last_modified(time(NULL)),
         cgi_started(0),  // What should be the initial value?
+        handler(&Connection::parse_start_line),
+        server(server),
         io_status(NO_IO) {}
   ~Connection() throw() {}
   Connection(const Connection &other) throw();  // Do not implement this
@@ -100,8 +96,6 @@ class Connection {
     if (cgi_socket == NULL) return -1;
     return cgi_socket->get_fd();
   }
-  bool is_remove() const throw() { return status == DONE; }
-  bool is_clear() const throw() { return status == CLEAR; }
   bool is_timeout() const throw();
   bool is_cgi_timeout() const throw();
   int kill_and_reap_cgi_process() throw();

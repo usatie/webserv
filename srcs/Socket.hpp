@@ -19,7 +19,6 @@ class Socket {
  public:
  private:
   int fd;
-  bool closed;
 
  public:
   // saddr is for listening socket
@@ -34,8 +33,7 @@ class Socket {
  public:
   // Constructor/Destructor
   // Constructor for listening socket and unix domain socket
-  explicit Socket(int fd)
-      : fd(fd), closed(false), saddr(), caddr(), saddrlen(0), caddrlen(0) {
+  explicit Socket(int fd) : fd(fd), saddr(), caddr(), saddrlen(0), caddrlen(0) {
     if (fd < 0) {
       Log::error("Invalid socket fd to construct Socket");
       throw std::runtime_error("Invalid socket fd");
@@ -44,12 +42,7 @@ class Socket {
   // Constructor for TCP connection socket
   Socket(int fd, const struct sockaddr* saddr, const struct sockaddr* caddr,
          socklen_t saddrlen, socklen_t caddrlen)
-      : fd(fd),
-        closed(false),
-        saddr(),
-        caddr(),
-        saddrlen(saddrlen),
-        caddrlen(caddrlen) {
+      : fd(fd), saddr(), caddr(), saddrlen(saddrlen), caddrlen(caddrlen) {
     if (fd < 0) {
       Log::error("Invalid socket fd to construct Socket");
       throw std::runtime_error("Invalid socket fd");
@@ -66,8 +59,6 @@ class Socket {
 
   // Accessors
   int get_fd() const throw() { return fd; }
-  bool isClosed() const throw() { return closed; }
-  void beClosed() throw() { closed = true; }
   int get_server_port() const throw();
   int get_client_port() const throw();
   std::string get_server_ip_address();  // throwable

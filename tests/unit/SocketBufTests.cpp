@@ -57,7 +57,7 @@ int client() {
   return client_fd;
 }
 
-void T(SocketBuf &sock, const std::string &expected_line, int expected_ret, bool expected_bad, bool expected_closed, bool expected_eof) {
+void T(SocketBuf &sock, const std::string &expected_line, int expected_ret, bool expected_bad, bool expected_brokenpipe, bool expected_eof) {
   static int cnt = 0;
   bool ok = true;
   std::string line;
@@ -82,11 +82,11 @@ void T(SocketBuf &sock, const std::string &expected_line, int expected_ret, bool
     std::cerr << "    Expected bad: " << expected_bad << std::endl;
     std::cerr << "    Actual bad  : " << sock.bad() << std::endl;
   }
-  if (sock.isClosed() != expected_closed) {
+  if (sock.isBrokenPipe != expected_brokenpipe) {
     if (ok) std::cout << NG << std::endl;
     ok = false;
-    std::cerr << "    Expected closed: " << expected_closed << std::endl;
-    std::cerr << "    Actual closed  : " << sock.isClosed() << std::endl;
+    std::cerr << "    Expected isBrokenPipe: " << expected_brokenpipe << std::endl;
+    std::cerr << "    Actual isBrokenPipe  : " << sock.isBrokenPipe << std::endl;
   }
   if (sock.hasReceivedEof != expected_eof) {
     if (ok) std::cout << NG << std::endl;
@@ -96,7 +96,7 @@ void T(SocketBuf &sock, const std::string &expected_line, int expected_ret, bool
   }
   if (ok) {
     std::cout << OK << " (\"" << expected_line << "\", "
-      << expected_ret << ", " << expected_bad << ", " << expected_closed << ", " << expected_eof
+      << expected_ret << ", " << expected_bad << ", " << expected_brokenpipe << ", " << expected_eof
       << ")" << std::endl;
   } else {
     err = -1;
@@ -115,12 +115,12 @@ void send_and_fill(int client_fd, SocketBuf &serv_sock, const std::string &msg) 
 }
 
 void select_and_fill(SocketBuf &serv_sock) {
-  fd_set readfds;
-  FD_ZERO(&readfds);
-  while (FD_ISSET(serv_sock.get_fd(), &readfds) == false) {
-    FD_SET(serv_sock.get_fd(), &readfds);
+  fd_set writefds;
+  FD_ZERO(&writefds);
+  while (FD_ISSET(serv_sock.get_fd(), &writefds) == false) {
+    FD_SET(serv_sock.get_fd(), &writefds);
     Log::debug("select");
-    int ret = select(serv_sock.get_fd() + 1, &readfds, NULL, NULL, NULL);
+    int ret = select(serv_sock.get_fd() + 1, &writefds, NULL, NULL, NULL);
     Log::cdebug() << "select ret = " << ret << std::endl;
   }
   serv_sock.fill();
@@ -187,7 +187,7 @@ int test_socketbuf() {
   shutdown(client_fd, SHUT_WR);
   T(serv_sock, "hello", 0, false, false, false);
   T(serv_sock, "", -1, false, false, false);
-  select_and_fill(serv_sock); // Notify socket that the peer has closed the connection
+  select_and_fill(serv_sock); // Notify socket that the peer has shut down the writing side of this socket
   T(serv_sock, "", -1, false, false, true);
   return err;
 }
