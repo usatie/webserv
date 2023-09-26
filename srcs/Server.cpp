@@ -318,32 +318,17 @@ void Server::resume(Conn conn) throw() {
     conn->resume();  // throwable
   } catch (std::exception& e) {
     // We don't send 500 error page to keep our life simple.
+    Log::cfatal() << "Server::resume() failed: " << e.what() << std::endl;
     remove_connection(conn);
     return;
   }
   // If the connection is aborted, remove it.
   if (conn->is_remove()) {
-    Log::info("connection aborted");
     remove_connection(conn);
     return;
   }
   // If the request is done, clear it.
   if (conn->is_clear()) {
-    // If the client socket has received EOF, remove the connection.
-    if (conn->client_socket->hasReceivedEof &&
-        conn->client_socket->isSendBufEmpty()) {
-      Log::info("Client socket has received EOF, remove connection");
-      remove_connection(conn);
-      return;
-    }
-    // If the client has requested to close the connection, remove it.
-    if (conn->header.fields["Connection"] == "close") {
-      Log::info("Connection: close, remove connection");
-      remove_connection(conn);
-      return;
-    }
-
-    Log::info("Request is done, clear connection");
     if (conn->get_cgifd() != -1) {
       FD_CLR(conn->get_cgifd(), &readfds);
       FD_CLR(conn->get_cgifd(), &writefds);

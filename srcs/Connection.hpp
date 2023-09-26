@@ -22,22 +22,7 @@
 class Connection {
  public:
   // Class private enum
-  typedef enum Status {
-    REQ_START_LINE,                  // CLIENT_RECV
-    REQ_HEADER_FIELDS,               // CLIENT_RECV
-    REQ_BODY,                        //
-    REQ_BODY_CONTENT_LENGTH,         // CLIENT_RECV
-    REQ_BODY_CHUNKED,                // CLIENT_RECV
-    REQ_BODY_CHUNK_DATA,             // CLIENT_RECV
-    REQ_BODY_CHUNK_TRAILER_SECTION,  // CLIENT_RECV
-    HANDLE,                          //
-    HANDLE_CGI_REQ,                  // CGI_SEND
-    HANDLE_CGI_RES,                  // CGI_RECV
-    HANDLE_CGI_PARSE,                //
-    RESPONSE,                        // CLIENT_SEND
-    DONE,                            //
-    CLEAR                            //
-  } Status;
+  typedef enum Status { PROCESSING, DONE, CLEAR } Status;
 
   typedef enum IOStatus {
     CLIENT_RECV,
@@ -51,7 +36,11 @@ class Connection {
   util::shared_ptr<SocketBuf> client_socket;
   util::shared_ptr<SocketBuf> cgi_socket;
   Header header;
+
+ private:
   Status status;
+
+ public:
   std::string body;
   size_t content_length;
   std::string chunk;  // single chunk
@@ -64,6 +53,8 @@ class Connection {
   const config::CgiExtensions *cgi_ext_cf;
   time_t last_modified;
   time_t cgi_started;
+  // Function pointer to member function
+  int (Connection::*handler)();
 
  public:
   IOStatus io_status;
@@ -75,7 +66,7 @@ class Connection {
       : client_socket(util::shared_ptr<SocketBuf>(new SocketBuf(sock))),
         cgi_socket(NULL),
         header(),
-        status(REQ_START_LINE),
+        status(PROCESSING),
         body(),
         content_length(0),
         chunk(),
@@ -88,6 +79,7 @@ class Connection {
         cgi_ext_cf(NULL),
         last_modified(time(NULL)),
         cgi_started(0),  // What should be the initial value?
+        handler(&Connection::parse_start_line),
         io_status(NO_IO) {}
   ~Connection() throw() {}
   Connection(const Connection &other) throw();  // Do not implement this

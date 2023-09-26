@@ -29,14 +29,14 @@ int Connection::resume() {  // throwable
       cgi_socket->flush();  // throwable
       if (cgi_socket->isClosed()) {
         Log::info("cgi_socket->closed");
-        status = HANDLE_CGI_PARSE;
+        handler = &Connection::handle_cgi_parse;
       }
       break;
     case CGI_RECV:
       cgi_socket->fill();  // throwable
       if (cgi_socket->isClosed() || cgi_socket->hasReceivedEof) {
         Log::info("cgi_socket->closed or hasReceivedEof");
-        status = HANDLE_CGI_PARSE;
+        handler = &Connection::handle_cgi_parse;
       }
       break;
     case CLIENT_SEND:
@@ -54,42 +54,8 @@ int Connection::resume() {  // throwable
   // If the socket is closed, we don't need to do anything
   while (cont) {
     switch (status) {
-      case REQ_START_LINE:
-        cont = parse_start_line();  // throwable
-        break;
-      case REQ_HEADER_FIELDS:
-        cont = parse_header_fields();  // throwable
-        break;
-      case REQ_BODY:
-        cont = parse_body();  // throwable
-        break;
-      case REQ_BODY_CONTENT_LENGTH:
-        cont = parse_body_content_length();  // throwable
-        break;
-      case REQ_BODY_CHUNKED:
-        cont = parse_body_chunked();  // throwable
-        break;
-      case REQ_BODY_CHUNK_DATA:
-        cont = parse_body_chunk_data();  // throwable
-        break;
-      case REQ_BODY_CHUNK_TRAILER_SECTION:
-        cont = parse_body_chunk_trailer_section();  // throwable
-        break;
-      case HANDLE:
-        cont = handle();  // throwable
-        break;
-      case HANDLE_CGI_REQ:
-        cont = handle_cgi_req();
-        break;
-      case HANDLE_CGI_RES:
-        cont = handle_cgi_res();
-        break;
-      case HANDLE_CGI_PARSE:
-        cont = handle_cgi_parse();  // throwable
-        status = RESPONSE;
-        break;
-      case RESPONSE:
-        cont = response();
+      case PROCESSING:
+        cont = (this->*handler)();  // throwable
         break;
       case DONE:
         cont = false;
@@ -129,7 +95,8 @@ int Connection::resume() {  // throwable
 int Connection::clear() {
   cgi_socket = util::shared_ptr<SocketBuf>();
   header.clear();
-  status = REQ_START_LINE;
+  status = PROCESSING;
+  handler = &Connection::parse_start_line;
   body.clear();
   content_length = 0;
   chunk.clear();
@@ -165,7 +132,7 @@ int Connection::parse_start_line() {
   if (header.path[0] != '/') {
     Log::cinfo() << "Invalid path: " << header.path << std::endl;
     ErrorHandler::handle(*this, 400);
-    status = RESPONSE;
+    handler = &Connection::response;
     return 1;
   }
   // Get cwd
@@ -173,7 +140,7 @@ int Connection::parse_start_line() {
   if (getcwd(cwd, PATH_MAX) == 0) {
     Log::cfatal() << "getcwd failed" << std::endl;
     ErrorHandler::handle(*this, 500);
-    status = RESPONSE;
+    handler = &Connection::response;
     return 1;
   }
   // TODO: Defense Directory traversal attack
@@ -188,7 +155,7 @@ int Connection::parse_start_line() {
   if (ss.bad()) {
     Log::cfatal() << "ss bad bit is set" << line << std::endl;
     ErrorHandler::handle(*this, 500);
-    status = RESPONSE;
+    handler = &Connection::response;
     return 1;
   }
   // ss.fail() : method or path or version is missing
@@ -196,10 +163,10 @@ int Connection::parse_start_line() {
   if (ss.fail() || !ss.eof()) {
     Log::cinfo() << "Invalid start line: " << line << std::endl;
     ErrorHandler::handle(*this, 400);
-    status = RESPONSE;
+    handler = &Connection::response;
     return 1;
   }
-  status = REQ_HEADER_FIELDS;
+  handler = &Connection::parse_header_fields;
   return 1;
 }
 
@@ -211,7 +178,7 @@ int Connection::split_header_field(const std::string &line, std::string &key,
     Log::cerror() << "std::getline(ss, key, ':') failed. line: " << line
                   << std::endl;
     ErrorHandler::handle(*this, 500);
-    status = RESPONSE;
+    handler = &Connection::response;
     return 1;
   }
   // 2. Remove leading space from value
@@ -226,7 +193,7 @@ int Connection::parse_header_fields() {  // throwable
   while (client_socket->read_telnet_line(line) == 0) {  // throwable
     // Empty line indicates the end of header fields
     if (line == "") {
-      status = REQ_BODY;
+      handler = &Connection::parse_body;
       return 1;
     }
     Log::cdebug() << "header line: " << line << std::endl;
@@ -234,13 +201,13 @@ int Connection::parse_header_fields() {  // throwable
     std::string key, value;
     if (split_header_field(line, key, value) < 0) {  // throwable
       ErrorHandler::handle(*this, 500);
-      status = RESPONSE;
+      handler = &Connection::response;
       return 1;
     }
     if (util::http::is_token(key) == false) {
       Log::cinfo() << "Header filed-name is not token: : " << key << std::endl;
       ErrorHandler::handle(*this, 400);
-      status = RESPONSE;
+      handler = &Connection::response;
       return 1;
     }
     header.fields[key] = value;  // throwable
@@ -259,13 +226,13 @@ int Connection::parse_body() {  // throwable
                       "specified"
                    << std::endl;
       ErrorHandler::handle(*this, 400);
-      status = RESPONSE;
+      handler = &Connection::response;
       return 1;
     }
-    status = REQ_BODY_CHUNKED;
+    handler = &Connection::parse_body_chunked;
     return 1;
   }
-  status = REQ_BODY_CONTENT_LENGTH;
+  handler = &Connection::parse_body_content_length;
   return 1;
 }
 
@@ -290,7 +257,7 @@ int Connection::parse_body_chunked() {  // throwable
     if (ss.fail()) {
       Log::cinfo() << "Invalid chunk size: " << chunk_size_line << std::endl;
       ErrorHandler::handle(*this, 400);
-      status = RESPONSE;
+      handler = &Connection::response;
       return 1;
     }
     // TODO: Handle chunk-ext
@@ -301,11 +268,11 @@ int Connection::parse_body_chunked() {  // throwable
       // TODO: Improve this inefficiency
       content_length = body.size();
       chunk_size = 0;
-      status = REQ_BODY_CHUNK_TRAILER_SECTION;
+      handler = &Connection::parse_body_chunk_trailer_section;
       return 1;
     }
     // If chunk-size is non-zero, chunk-data is expected
-    status = REQ_BODY_CHUNK_DATA;
+    handler = &Connection::parse_body_chunk_data;
     return 1;
   }
   // There is still more to read later
@@ -330,7 +297,7 @@ int Connection::parse_body_chunk_data() {  // throwable
     if (chunk.substr(chunk.size() - 2) != CRLF) {  // throwable
       Log::cinfo() << "Invalid chunk data: " << chunk << std::endl;
       ErrorHandler::handle(*this, 400);
-      status = RESPONSE;
+      handler = &Connection::response;
       return 1;
     }
     // Remove CRLF
@@ -338,7 +305,7 @@ int Connection::parse_body_chunk_data() {  // throwable
     // Append a chunk to chunked_body
     body.append(chunk);
     chunk.clear();
-    status = REQ_BODY_CHUNKED;
+    handler = &Connection::parse_body_chunked;
     return 1;
   }
   // There is more to read
@@ -348,7 +315,7 @@ int Connection::parse_body_chunk_data() {  // throwable
 int Connection::parse_body_chunk_trailer_section() {  // throwable
   Log::debug("parse_body_chunk_trailer_section");
   // TODO: Implement [trailer-section]
-  status = HANDLE;
+  handler = &Connection::handle;
   return 1;
 }
 
@@ -356,7 +323,7 @@ int Connection::parse_body_content_length() {  // throwable
   Log::debug("parse_body_content_length");
   if (body.empty()) {
     if (header.fields.find("Content-Length") == header.fields.end()) {
-      status = HANDLE;
+      handler = &Connection::handle;
       return 1;
     }
     // TODO: Handle invalid Content-Length
@@ -372,7 +339,7 @@ int Connection::parse_body_content_length() {  // throwable
   }
   body.append(&buf[0], ret);
   if (body.size() == content_length) {
-    status = HANDLE;
+    handler = &Connection::handle;
     return 1;
   } else {
     return 0;
@@ -519,7 +486,7 @@ int Connection::handle() {  // throwable
   if (loc_cf && loc_cf->returns.size() > 0) {
     RedirectHandler::handle(*this, loc_cf->returns[0].code,
                             loc_cf->returns[0].url);
-    status = RESPONSE;
+    handler = &Connection::response;
     return 1;
   }
 
@@ -546,7 +513,7 @@ int Connection::handle() {  // throwable
         false) {
       Log::cinfo() << "Unsupported method: " << header.method << std::endl;
       ErrorHandler::handle(*this, 405);
-      status = RESPONSE;
+      handler = &Connection::response;
       return 1;
     }
   }
@@ -555,10 +522,12 @@ int Connection::handle() {  // throwable
   if (cgi_ext_cf || cgi_handler_cf) {
     Log::cdebug() << "CGI request" << std::endl;
     cgi_started = time(NULL);
-    if (CgiHandler::handle(*this) < 0)
-      status = RESPONSE;
-    else
-      status = HANDLE_CGI_REQ;
+    if (CgiHandler::handle(*this) < 0) {
+      handler = &Connection::response;
+    } else {
+      handler = &Connection::handle_cgi_req;
+    }
+
     return 1;
   }
   // If not CGI
@@ -574,7 +543,7 @@ int Connection::handle() {  // throwable
     Log::cinfo() << "Unsupported method: " << header.method << std::endl;
     ErrorHandler::handle(*this, 405);  // throwable
   }
-  status = RESPONSE;
+  handler = &Connection::response;
   return 1;
 }
 
@@ -584,7 +553,7 @@ int Connection::handle_cgi_req() throw() {
                 << std::endl;
   if (cgi_socket->isSendBufEmpty()) {
     shutdown(cgi_socket->get_fd(), SHUT_WR);
-    status = HANDLE_CGI_RES;
+    handler = &Connection::handle_cgi_res;
     return 1;
   }
   return 0;
@@ -595,7 +564,7 @@ int Connection::handle_cgi_res() throw() {
   // 1. If CGI process is still running, return 0
   // Question: If CGI process exit, isClosed will be set to true?
   if (!cgi_socket->isClosed()) return 0;
-  status = HANDLE_CGI_PARSE;
+  handler = &Connection::handle_cgi_parse;
   return 1;
 }
 
@@ -644,6 +613,7 @@ int Connection::handle_cgi_parse() {  // throwable
   Log::debug("handle_cgi_parse");
   // CGI Process is already terminated
   if (cgi_pid < 0) {
+    handler = &Connection::response;
     return 1;
   }
 
@@ -652,10 +622,10 @@ int Connection::handle_cgi_parse() {  // throwable
 
   // CGI Script Error
   if (exit_status != 0) {
-    Log::cdebug() << "CGI process terminated with status: " << status
+    Log::cdebug() << "CGI process terminated with status: " << exit_status
                   << std::endl;
     ErrorHandler::handle(*this, 500);
-    status = RESPONSE;
+    handler = &Connection::response;
     return 1;
   }
 
@@ -667,14 +637,14 @@ int Connection::handle_cgi_parse() {  // throwable
     Log::cdebug() << "CGI line: " << line << std::endl;
     // Empty line indicates the end of header fields
     if (line == "" || line == "\r") {
-      status = RESPONSE;
+      handler = &Connection::response;
       break;
     }
     std::string key, value;
     if (split_header_field(line, key, value) < 0) {
       Log::cwarn() << "Invalid CGI header field: " << line << std::endl;
       ErrorHandler::handle(*this, 500);
-      status = RESPONSE;
+      handler = &Connection::response;
       break;
     }
     cgi_header_fields[key] = value;
@@ -705,13 +675,22 @@ int Connection::handle_cgi_parse() {  // throwable
     *client_socket << "Content-Length: 0" << CRLF;
     *client_socket << CRLF;  // End of header fields
   }
-  status = RESPONSE;
+  handler = &Connection::response;
   return 1;
 }
 
 int Connection::response() throw() {
   if (client_socket->isSendBufEmpty()) {
-    status = CLEAR;
+    if (client_socket->hasReceivedEof && client_socket->isSendBufEmpty()) {
+      Log::info("Client socket has received EOF, remove connection");
+      status = DONE;
+    } else if (header.fields["Connection"] == "close") {
+      Log::info("Connection: close, remove connection");
+      status = DONE;
+    } else {
+      Log::info("Request is done, clear connection");
+      status = CLEAR;
+    }
     return 1;
   }
   return 0;
@@ -722,12 +701,8 @@ bool Connection::is_timeout() const throw() {
 }
 
 bool Connection::is_cgi_timeout() const throw() {
-  switch (status) {
-    case HANDLE_CGI_REQ:
-    case HANDLE_CGI_RES:
-      break;
-    default:
-      return false;
+  if (cgi_pid <= 0) {
+    return false;
   }
   return (time(NULL) - cgi_started) > CGI_TIMEOUT_SEC;
 }
@@ -780,9 +755,9 @@ void Connection::handle_cgi_timeout() throw() {
   if (kill_and_reap_cgi_process() < 0) {
     Log::cfatal() << "kill_and_reap_cgi_process failed" << std::endl;
     ErrorHandler::handle(*this, 500);
-    status = RESPONSE;
+    handler = &Connection::response;
     return;
   }
   ErrorHandler::handle(*this, 504);
-  status = RESPONSE;
+  handler = &Connection::response;
 }
