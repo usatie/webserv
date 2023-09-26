@@ -1,4 +1,4 @@
-name: Pull Request CI (Ubuntu)
+name: Benchmark (Ubuntu)
 
 on:
   push:
@@ -18,5 +18,6 @@ jobs:
     - name: make bench
       run: |
         echo "# Benchmark Tests :stopwatch:" >> $GITHUB_STEP_SUMMARY
+        make
         set -o pipefail
         make bench | tee -a $GITHUB_STEP_SUMMARY
