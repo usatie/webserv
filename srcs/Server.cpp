@@ -331,18 +331,18 @@ void Server::resume(Conn conn) throw() {
   }
   // If the connection is aborted, remove it.
   switch (ret) {
-    case CONN_REMOVE:
+    case WSV_REMOVE:
       remove_connection(conn);
       return;
-    case CONN_CLEAR:
+    case WSV_CLEAR:
       if (conn->get_cgifd() != -1) {
         FD_CLR(conn->get_cgifd(), &readfds);
         FD_CLR(conn->get_cgifd(), &writefds);
       }
       conn->clear();
       break;
-    case CONN_CONTINUE:
-    case CONN_WAIT:
+    case WSV_AGAIN:
+    case WSV_WAIT:
       break;
   }
   // Update fdset

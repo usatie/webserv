@@ -19,10 +19,10 @@
 #define TIMEOUT_SEC 10
 #define CGI_TIMEOUT_SEC 3
 
-#define CONN_WAIT 0
-#define CONN_CONTINUE 1
-#define CONN_REMOVE 2
-#define CONN_CLEAR 3
+#define WSV_WAIT 0
+#define WSV_AGAIN -1
+#define WSV_REMOVE -2
+#define WSV_CLEAR -3
 
 class Connection {
  public:
