@@ -30,6 +30,7 @@ void Log::info(const char* format, ...) throw() {
   }
 }
 
+// cppcheck-suppress unusedFunction
 void Log::warn(const char* format, ...) throw() {
   if (log_level_ <= Log::Warn) {
     char buf[MAX_LOG_LENGTH];

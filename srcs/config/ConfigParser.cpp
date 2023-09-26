@@ -643,6 +643,8 @@ void print_cmd(Command *cmd, std::string ident) {
     print_cmd(c, ident);
   }
 }
+
+// cppcheck-suppress unusedFunction
 void print_mod(Module *mod) {
   std::cout << "Module: " << mod->name << std::endl;
   for (Command *cmd = mod->block; cmd; cmd = cmd->next) {
