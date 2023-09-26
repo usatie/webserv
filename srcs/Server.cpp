@@ -220,17 +220,27 @@ static int op_sock(int fd, const Server::Sock sock) {
   return std::max(fd, sock->get_fd());
 }
 
-Server::ConnIterator Server::remove_connection(Conn conn) throw() {
-  ConnIterator next_it =
-      connections.erase(std::find(connections.begin(), connections.end(),
-                                  conn));  // no throw
-  FD_CLR(conn->get_fd(), &readfds);
-  FD_CLR(conn->get_fd(), &writefds);
-  if (conn->get_cgifd() != -1) {
-    FD_CLR(conn->get_cgifd(), &readfds);
-    FD_CLR(conn->get_cgifd(), &writefds);
+void Server::clear_connection(ConnIterator conn_it) throw() {
+  int cgifd = (*conn_it)->get_cgifd();
+  if (cgifd != -1) {
+    FD_CLR(cgifd, &readfds);
+    FD_CLR(cgifd, &writefds);
   }
-  if (maxfd == std::max(conn->get_fd(), conn->get_cgifd())) {
+  (*conn_it)->clear();
+}
+
+Server::ConnIterator Server::remove_connection(ConnIterator conn_it) throw() {
+  int fd = (*conn_it)->get_fd();
+  int cgifd = (*conn_it)->get_cgifd();
+  // After erase, conn_it is invalidated and conn is deleted.
+  ConnIterator next_it = connections.erase(conn_it);  // no throw
+  FD_CLR(fd, &readfds);
+  FD_CLR(fd, &writefds);
+  if (cgifd != -1) {
+    FD_CLR(cgifd, &readfds);
+    FD_CLR(cgifd, &writefds);
+  }
+  if (maxfd == std::max(fd, cgifd)) {
     maxfd = std::max(
         std::accumulate(connections.begin(), connections.end(), -1, op_conn),
         std::accumulate(listen_socks.begin(), listen_socks.end(), -1, op_sock));
@@ -252,7 +262,7 @@ void Server::remove_timeout_connections() throw() {
                    << " port("
                    << (*it)->client_socket->socket->get_client_port() << ")"
                    << std::endl;
-      it = remove_connection(*it);  // always returns the next iterator
+      it = remove_connection(it);  // always returns the next iterator
     } else {
       ++it;
     }
@@ -319,34 +329,30 @@ int Server::wait() throw() {
   return 0;
 }
 
-void Server::resume(Conn conn) throw() {
+void Server::resume(ConnIterator conn_it) throw() {
   int ret;
   try {
-    ret = conn->resume();  // throwable
+    ret = (*conn_it)->resume();  // throwable
   } catch (std::exception& e) {
     // We don't send 500 error page to keep our life simple.
     Log::cfatal() << "Server::resume() failed: " << e.what() << std::endl;
-    remove_connection(conn);
+    remove_connection(conn_it);
     return;
   }
   // If the connection is aborted, remove it.
   switch (ret) {
     case WSV_REMOVE:
-      remove_connection(conn);
+      remove_connection(conn_it);
       return;
     case WSV_CLEAR:
-      if (conn->get_cgifd() != -1) {
-        FD_CLR(conn->get_cgifd(), &readfds);
-        FD_CLR(conn->get_cgifd(), &writefds);
-      }
-      conn->clear();
+      clear_connection(conn_it);
       break;
     case WSV_AGAIN:
     case WSV_WAIT:
       break;
   }
   // Update fdset
-  update_fdset(conn);
+  update_fdset(*conn_it);
 }
 
 // Define a predicate functor to check if a socket is ready to accept.
@@ -414,7 +420,7 @@ void Server::run() throw() {
     ResumeReadyPredicate rpred(&ready_rfds, &ready_wfds);
     if ((conn_it = std::find_if(connections.begin(), connections.end(),
                                 rpred)) != connections.end()) {
-      resume(*conn_it);  // no throw
+      resume(conn_it);  // no throw
       continue;
     }
   }

@@ -55,13 +55,14 @@ class Server {
   // Member functions
   int listen(const config::Listen& l, SockVector& serv_socks);  // throwable
 
-  ConnIterator remove_connection(Conn conn) throw();
+  ConnIterator remove_connection(ConnIterator conn_it) throw();
+  void clear_connection(ConnIterator conn_it) throw();
 
   void remove_timeout_connections() throw();
 
   void accept(Sock sock) throw();
 
-  void resume(Conn conn) throw();
+  void resume(ConnIterator conn_it) throw();
 
   void update_fdset(Conn conn) throw();
 
