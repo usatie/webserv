@@ -78,11 +78,16 @@ class Connection {
         status(REQ_START_LINE),
         body(),
         content_length(0),
+        chunk(),
+        chunk_size(0),
         cgi_pid(-1),
         cf(cf),
         srv_cf(NULL),
         loc_cf(NULL),
+        cgi_handler_cf(NULL),
+        cgi_ext_cf(NULL),
         last_modified(time(NULL)),
+        cgi_started(0),  // What should be the initial value?
         io_status(NO_IO) {}
   ~Connection() throw() {}
   Connection(const Connection &other) throw();  // Do not implement this

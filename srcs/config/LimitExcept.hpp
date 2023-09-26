@@ -9,7 +9,7 @@ class LimitExcept {
  public:
   std::vector<std::string> methods;
   bool configured;
-  LimitExcept(const std::vector<std::string> &methods)
+  explicit LimitExcept(const std::vector<std::string> &methods)
       : methods(methods), configured(true) {}
   LimitExcept() : methods(), configured(false) {}
 };

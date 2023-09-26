@@ -58,7 +58,7 @@ class config::Config {
   HTTP http;
 
   Config() {}
-  Config(Module *mod);
+  explicit Config(Module *mod);
 };
 
 template <typename T>

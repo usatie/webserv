@@ -4,6 +4,7 @@
 #include <netdb.h>
 
 #include <cerrno>
+#include <numeric>  // accumulate
 
 #include "Config.hpp"
 #include "Connection.hpp"
@@ -21,12 +22,16 @@ std::ostream& operator<<(std::ostream& os, const struct addrinfo* rp);
 Server::~Server() throw() {}
 
 Server::Server(const config::Config& cf) throw()
-    : maxfd(-1), listen_socks(), connections(), cf(cf) {
+    : maxfd(-1),
+      last_timeout_check(time(NULL)),
+      listen_socks(),
+      connections(),
+      cf(cf) {
   FD_ZERO(&readfds);
   FD_ZERO(&writefds);
 }
 
-int Server::getaddrinfo(const config::Listen& l, struct addrinfo** result) {
+static int getaddrinfo(const config::Listen& l, struct addrinfo** result) {
   const char* host = (l.address == "*") ? NULL : l.address.c_str();
   std::stringstream ss;
   ss << l.port;
@@ -50,7 +55,8 @@ int Server::getaddrinfo(const config::Listen& l, struct addrinfo** result) {
   //      "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -> AF_INET6
 
   // If the address is bracketed, it is IPv6
-  if (l.address.size() > 0 && l.address[0] == '[' && l.address[l.address.size() - 1] == ']') {
+  if (l.address.size() > 0 && l.address[0] == '[' &&
+      l.address[l.address.size() - 1] == ']') {
     hints.ai_family = AF_INET6; /* Allows IPv6 only */
   } else {
     // Currently only IPv4 is supported for hostnames
@@ -67,21 +73,7 @@ int Server::getaddrinfo(const config::Listen& l, struct addrinfo** result) {
   return 0;
 }
 
-static bool already_listened(
-    const std::vector<util::shared_ptr<Socket> >& socks,
-    const struct addrinfo* rp) {
-  for (unsigned int i = 0; i < socks.size(); ++i) {
-    if (util::inet::eq_addr46(
-            &socks[i]->saddr,
-            reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
-            false)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool is_wildcard(const struct sockaddr* addr) {
+static bool is_wildcard(const struct sockaddr* addr) {
   if (addr->sa_family == AF_INET) {
     const struct sockaddr_in* addr4 =
         reinterpret_cast<const struct sockaddr_in*>(addr);
@@ -95,8 +87,22 @@ bool is_wildcard(const struct sockaddr* addr) {
   }
 }
 
-int Server::listen(const config::Listen& l,
-                   std::vector<util::shared_ptr<Socket> >& serv_socks) {
+// Define a predicate functor to use with std::remove_if
+struct AddrComparePredicate {
+  const struct sockaddr* rp_ai_addr;
+  bool allow_wildcard;
+
+  AddrComparePredicate(const struct sockaddr* rp_addr, bool allow_wildcard)
+      : rp_ai_addr(rp_addr), allow_wildcard(allow_wildcard) {}
+
+  bool operator()(Server::Sock sock) const {
+    return util::inet::eq_addr46(
+        &sock->saddr,
+        reinterpret_cast<const struct sockaddr_storage*>(rp_ai_addr), true);
+  }
+};
+
+int Server::listen(const config::Listen& l, SockVector& serv_socks) {
   struct AddrInfo info;
   if (getaddrinfo(l, &info.rp) < 0) {  // throwable
     return -1;
@@ -106,77 +112,59 @@ int Server::listen(const config::Listen& l,
   for (struct addrinfo* rp = info.rp; rp != NULL; rp = rp->ai_next) {
     Log::cdebug() << "listen : " << l << std::endl;
     Log::cdebug() << "ip: " << rp << std::endl;
-    // Already listend (exact match)
-    if (already_listened(serv_socks, rp)) {
+    // Save the listening ip address to config::Listen
+    {
+      // Here we use const_cast to modify the const object.
+      config::Listen& ll = const_cast<config::Listen&>(l);
+      memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
+    }
+
+    // To check if the address is already listened by other server
+    AddrComparePredicate pred(rp->ai_addr, false);
+
+    // 1. Already listend (exact match) by the server
+    if (std::find_if(serv_socks.begin(), serv_socks.end(), pred) !=
+        serv_socks.end()) {
       Log::cfatal() << "Duplicate listen directive in a server." << std::endl;
       return -1;
     }
-    // Already listened (exact match)
-    if (already_listened(listen_socks, rp)) {
+
+    // 2. Already listened (exact match) by other server
+    if (std::find_if(listen_socks.begin(), listen_socks.end(), pred) !=
+        listen_socks.end()) {
       Log::cdebug() << "Already listend by other server." << std::endl;
-      {
-        config::Listen& ll = const_cast<config::Listen&>(l);
-        memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
-        ll.addrlen = rp->ai_addrlen;
-      }
       return 0;
     }
-    // Wildcard -> override the address of the other server
+
+    // 3. Already listend (wild card match)
+    pred.allow_wildcard = true;
+    // 3-1. Wildcard -> override the address of the other server
     if (is_wildcard(rp->ai_addr)) {
-      for (SockIterator it = listen_socks.begin(); it != listen_socks.end();) {
-        if (util::inet::eq_addr46(
-                &(*it)->saddr,
-                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
-                true)) {
-          it = listen_socks.erase(it);
-        } else {
-          ++it;
-        }
-      }
-      for (SockIterator it = serv_socks.begin(); it != serv_socks.end();) {
-        if (util::inet::eq_addr46(
-                &(*it)->saddr,
-                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
-                true)) {
-          it = serv_socks.erase(it);
-        } else {
-          ++it;
-        }
-      }
-    } else { // Specific Address -> if already listened by other server, skip
-      for (SockIterator it = listen_socks.begin(); it != listen_socks.end(); ++it) {
-        if (util::inet::eq_addr46(
-                &(*it)->saddr,
-                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
-                true)) {
-          Log::cdebug() << "Already listend by other server." << std::endl;
-          config::Listen& ll = const_cast<config::Listen&>(l);
-          memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
-          ll.addrlen = rp->ai_addrlen;
-          return 0;
-        }
-      }
-      for (SockIterator it = serv_socks.begin(); it != serv_socks.end(); ++it) {
-        if (util::inet::eq_addr46(
-                &(*it)->saddr,
-                reinterpret_cast<const struct sockaddr_storage*>(rp->ai_addr),
-                true)) {
-          Log::cdebug() << "Already listend by other server." << std::endl;
-          config::Listen& ll = const_cast<config::Listen&>(l);
-          memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
-          ll.addrlen = rp->ai_addrlen;
-          return 0;
-        }
+      serv_socks.erase(
+          std::remove_if(serv_socks.begin(), serv_socks.end(), pred),
+          serv_socks.end());
+      listen_socks.erase(
+          std::remove_if(listen_socks.begin(), listen_socks.end(), pred),
+          listen_socks.end());
+    } else {  // 3-2. Specific Address -> if already listened by other server,
+              // skip
+      SockIterator it;
+      if ((it = std::find_if(serv_socks.begin(), serv_socks.end(), pred)) !=
+              serv_socks.end() ||
+          (it = std::find_if(listen_socks.begin(), listen_socks.end(), pred)) !=
+              listen_socks.end()) {
+        Log::cdebug() << "Already listend by other server." << std::endl;
+        return 0;
       }
     }
-    
+
     int sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if (sfd == -1) {
       Log::cfatal() << "socket() failed. (" << errno << ": " << strerror(errno)
                     << ")" << std::endl;
       return -1;
     }
-    util::shared_ptr<Socket> sock(new Socket(sfd));  // throwable
+    Sock sock(new Socket(sfd));  // throwable
     if (sock->reuseaddr() < 0) {
       return -1;
     }
@@ -197,16 +185,6 @@ int Server::listen(const config::Listen& l,
     if (sock->set_nonblock() < 0) {
       return -1;
     }
-    // Save the listening ip address to config::Listen
-    // Here we use const_cast to modify the const object.
-    {
-      config::Listen& ll = const_cast<config::Listen&>(l);
-      memcpy(&ll.addr, rp->ai_addr, rp->ai_addrlen);
-      ll.addrlen = rp->ai_addrlen;
-    }
-    // Save the listening socket
-    FD_SET(sock->get_fd(), &readfds);
-    maxfd = std::max(maxfd, sock->get_fd());
     serv_socks.push_back(sock);  // throwable
     return 0;                    // Success, one socket per one listen directive
   }
@@ -218,39 +196,46 @@ void Server::startup() {
   for (unsigned int i = 0; i < cf.http.servers.size(); ++i) {
     Log::cdebug() << "i: " << i << std::endl;
     const config::Server& server = cf.http.servers[i];
-    std::vector<util::shared_ptr<Socket> > socks;
+    SockVector socks;
     for (unsigned int j = 0; j < server.listens.size(); ++j) {
       Log::cdebug() << "j: " << j << std::endl;
       if (listen(server.listens[j], socks) < 0) {  // throwable
         std::exit(EXIT_FAILURE);
       }
     }
-    listen_socks.insert(listen_socks.end(), socks.begin(), socks.end());
+    for (SockIterator it = socks.begin(); it != socks.end(); ++it) {
+      int fd = (*it)->get_fd();
+      FD_SET(fd, &readfds);
+      maxfd = std::max(maxfd, fd);
+      listen_socks.push_back(*it);
+    }
   }
 }
 
-Server::ConnIterator Server::remove_connection(
-    util::shared_ptr<Connection> connection) throw() {
-  ConnIterator it =
+static int op_conn(int fd, const Server::Conn conn) {
+  return std::max(fd, conn->get_fd());
+}
+
+static int op_sock(int fd, const Server::Sock sock) {
+  return std::max(fd, sock->get_fd());
+}
+
+Server::ConnIterator Server::remove_connection(Conn conn) throw() {
+  ConnIterator next_it =
       connections.erase(std::find(connections.begin(), connections.end(),
-                                  connection));  // no throw
-  FD_CLR(connection->get_fd(), &readfds);
-  FD_CLR(connection->get_fd(), &writefds);
-  if (connection->get_cgifd() != -1) {
-    FD_CLR(connection->get_cgifd(), &readfds);
-    FD_CLR(connection->get_cgifd(), &writefds);
+                                  conn));  // no throw
+  FD_CLR(conn->get_fd(), &readfds);
+  FD_CLR(conn->get_fd(), &writefds);
+  if (conn->get_cgifd() != -1) {
+    FD_CLR(conn->get_cgifd(), &readfds);
+    FD_CLR(conn->get_cgifd(), &writefds);
   }
-  if (connection->get_fd() == maxfd || connection->get_cgifd() == maxfd) {
-    maxfd = -1;
-    for (SockIterator it = listen_socks.begin(); it != listen_socks.end();
-         ++it) {
-      maxfd = std::max(maxfd, (*it)->get_fd());
-    }
-    for (ConnIterator it = connections.begin(); it != connections.end(); ++it) {
-      maxfd = std::max(maxfd, (*it)->get_fd());
-    }
+  if (maxfd == std::max(conn->get_fd(), conn->get_cgifd())) {
+    maxfd = std::max(
+        std::accumulate(connections.begin(), connections.end(), -1, op_conn),
+        std::accumulate(listen_socks.begin(), listen_socks.end(), -1, op_sock));
   }
-  return it;
+  return next_it;
 }
 void Server::remove_timeout_connections() throw() {
   last_timeout_check = time(NULL);
@@ -273,11 +258,10 @@ void Server::remove_timeout_connections() throw() {
   }
 }
 
-void Server::accept(util::shared_ptr<Socket> sock) throw() {
+void Server::accept(Sock sock) throw() {
   try {
-    util::shared_ptr<Connection> conn(
-        new Connection(sock->accept(), cf));  // throwable
-    connections.push_back(conn);              // throwable
+    Conn conn(new Connection(sock->accept(), cf));  // throwable
+    connections.push_back(conn);                    // throwable
     FD_SET(conn->get_fd(), &readfds);
     maxfd = std::max(conn->get_fd(), maxfd);
   } catch (std::exception& e) {
@@ -285,7 +269,7 @@ void Server::accept(util::shared_ptr<Socket> sock) throw() {
   }
 }
 
-void Server::update_fdset(util::shared_ptr<Connection> conn) throw() {
+void Server::update_fdset(Conn conn) throw() {
   FD_CLR(conn->get_fd(), &readfds);
   FD_CLR(conn->get_fd(), &writefds);
   if (!conn->client_socket->hasReceivedEof) {
@@ -322,63 +306,14 @@ int Server::wait() throw() {
   }
   if (result == 0 || (time(NULL) - last_timeout_check) >
                          std::min(TIMEOUT_SEC, CGI_TIMEOUT_SEC)) {
+    Log::cdebug() << "remove timeout connections" << std::endl;
     remove_timeout_connections();
     return -1;
   }
   return 0;
 }
-bool Server::canResume(util::shared_ptr<Connection> conn) const throw() {
-  // 1. CLIENT_SEND
-  if (FD_ISSET(conn->get_fd(), &ready_wfds)) {
-    Log::cdebug() << "canResume: CLIENT_SEND" << std::endl;
-    conn->io_status = Connection::CLIENT_SEND;
-    return true;
-  }
-  // 2. CGI_SEND
-  // 3. CGI_RECV
-  if (conn->get_cgifd() != -1) {
-    if (FD_ISSET(conn->get_cgifd(), &ready_wfds)) {
-      Log::cdebug() << "canResume: CGI_SEND" << std::endl;
-      conn->io_status = Connection::CGI_SEND;
-      return true;
-    } else if (FD_ISSET(conn->get_cgifd(), &ready_rfds)) {
-      Log::cdebug() << "canResume: CGI_RECV" << std::endl;
-      conn->io_status = Connection::CGI_RECV;
-      return true;
-    }
-  }
-  // 4. CLIENT_RECV
-  if (FD_ISSET(conn->get_fd(), &ready_rfds)) {
-    Log::cdebug() << "canResume: CLIENT_RECV" << std::endl;
-    conn->io_status = Connection::CLIENT_RECV;
-    return true;
-  }
-  // 5. NO_IO
-  conn->io_status = Connection::NO_IO;
-  return false;
-}
 
-util::shared_ptr<Socket> Server::get_ready_listen_socket() throw() {
-  for (SockIterator it = listen_socks.begin(); it != listen_socks.end(); ++it) {
-    if (FD_ISSET((*it)->get_fd(), &ready_rfds)) {
-      return *it;
-    }
-  }
-  return util::shared_ptr<Socket>();
-}
-
-// Logically it is not const because it returns a non-const pointer.
-util::shared_ptr<Connection> Server::get_ready_connection() throw() {
-  // TODO: equally distribute the processing time to each connection
-  for (ConnIterator it = connections.begin(); it != connections.end(); ++it) {
-    if (canResume(*it)) {
-      return *it;
-    }
-  }
-  return util::shared_ptr<Connection>();
-}
-
-void Server::resume(util::shared_ptr<Connection> conn) throw() {
+void Server::resume(Conn conn) throw() {
   try {
     conn->resume();  // throwable
   } catch (std::exception& e) {
@@ -419,17 +354,73 @@ void Server::resume(util::shared_ptr<Connection> conn) throw() {
   update_fdset(conn);
 }
 
+// Define a predicate functor to check if a socket is ready to accept.
+struct AcceptReadyPredicate {
+  const fd_set* rfds;
+  explicit AcceptReadyPredicate(const fd_set* rfds) : rfds(rfds) {}
+  bool operator()(Server::Sock sock) const throw() {
+    return FD_ISSET(sock->get_fd(), rfds);
+  }
+};
+
+// Define a predicate functor to check if a connection is ready to resume.
+struct ResumeReadyPredicate {
+  const fd_set* rfds;
+  const fd_set* wfds;
+  ResumeReadyPredicate(const fd_set* rfds, const fd_set* wfds)
+      : rfds(rfds), wfds(wfds) {}
+  bool operator()(Server::Conn conn) const throw() {
+    int fd = conn->get_fd(), cgifd = conn->get_cgifd();
+    // 1. CLIENT_SEND
+    if (FD_ISSET(fd, wfds)) {
+      Log::cdebug() << "ResumeReadyPredicate: CLIENT_SEND" << std::endl;
+      conn->io_status = Connection::CLIENT_SEND;
+      return true;
+    }
+    // 2. CGI_SEND
+    // 3. CGI_RECV
+    if (cgifd != -1) {
+      if (FD_ISSET(cgifd, wfds)) {
+        Log::cdebug() << "ResumeReadyPredicate: CGI_SEND" << std::endl;
+        conn->io_status = Connection::CGI_SEND;
+        return true;
+      } else if (FD_ISSET(cgifd, rfds)) {
+        Log::cdebug() << "ResumeReadyPredicate: CGI_RECV" << std::endl;
+        conn->io_status = Connection::CGI_RECV;
+        return true;
+      }
+    }
+    // 4. CLIENT_RECV
+    if (FD_ISSET(fd, rfds)) {
+      Log::cdebug() << "ResumeReadyPredicate: CLIENT_RECV" << std::endl;
+      conn->io_status = Connection::CLIENT_RECV;
+      return true;
+    }
+    // 5. NO_IO
+    Log::cdebug() << "ResumeReadyPredicate: NO_IO" << std::endl;
+    conn->io_status = Connection::NO_IO;
+    return false;
+  }
+};
+
 void Server::run() throw() {
   while (1) {
     if (wait() < 0) {
       continue;
     }
-    util::shared_ptr<Connection> conn;  // no throw
-    util::shared_ptr<Socket> sock;      // no throw
-    if ((sock = get_ready_listen_socket()) != NULL) {
-      accept(sock);  // no throw
-    } else if ((conn = get_ready_connection()) != NULL) {
-      resume(conn);  // no throw
+    SockIterator sock_it;
+    AcceptReadyPredicate apred(&ready_rfds);
+    if ((sock_it = std::find_if(listen_socks.begin(), listen_socks.end(),
+                                apred)) != listen_socks.end()) {
+      accept(*sock_it);  // no throw
+      continue;
+    }
+    ConnIterator conn_it;
+    ResumeReadyPredicate rpred(&ready_rfds, &ready_wfds);
+    if ((conn_it = std::find_if(connections.begin(), connections.end(),
+                                rpred)) != connections.end()) {
+      resume(*conn_it);  // no throw
+      continue;
     }
   }
 }
@@ -439,10 +430,12 @@ std::ostream& operator<<(std::ostream& os, const struct addrinfo* rp) {
   char buf[INET6_ADDRSTRLEN];
   void* addr;
   if (rp->ai_family == AF_INET) {
-    struct sockaddr_in* ipv4 = (struct sockaddr_in*)rp->ai_addr;
+    struct sockaddr_in* ipv4 =
+        reinterpret_cast<struct sockaddr_in*>(rp->ai_addr);
     addr = &(ipv4->sin_addr);
   } else if (rp->ai_family == AF_INET6) {
-    struct sockaddr_in6* ipv6 = (struct sockaddr_in6*)rp->ai_addr;
+    struct sockaddr_in6* ipv6 =
+        reinterpret_cast<struct sockaddr_in6*>(rp->ai_addr);
     addr = &(ipv6->sin6_addr);
   } else {
     os << "unknown address family: ";

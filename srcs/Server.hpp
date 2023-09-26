@@ -17,11 +17,15 @@ class Listen;
 }  // namespace config
 
 class Server {
- private:
-  typedef std::vector<util::shared_ptr<Connection> > ConnVector;
+ public:
+  typedef util::shared_ptr<Connection> Conn;
+  typedef util::shared_ptr<Socket> Sock;
+  typedef std::vector<Conn> ConnVector;
   typedef ConnVector::iterator ConnIterator;
-  typedef std::vector<util::shared_ptr<Socket> > SockVector;
+  typedef std::vector<Sock> SockVector;
   typedef SockVector::iterator SockIterator;
+
+ private:
   fd_set readfds, writefds;
   fd_set ready_rfds, ready_wfds;
   int maxfd;
@@ -32,7 +36,7 @@ class Server {
 
  public:
   // Constructor/Destructor
-  Server(const config::Config& cf) throw();
+  explicit Server(const config::Config& cf) throw();
   ~Server() throw();
 
   // Member functions
@@ -46,30 +50,26 @@ class Server {
   const config::Config& cf;
 
   // Member functions
-  int getaddrinfo(const config::Listen& l,
-                  struct addrinfo** result);  // throwable
-  int listen(const config::Listen& l,
-             std::vector<util::shared_ptr<Socket> >& socks);  // throwable
+  int listen(const config::Listen& l, SockVector& serv_socks);  // throwable
 
-  ConnIterator remove_connection(
-      util::shared_ptr<Connection> connection) throw();
+  ConnIterator remove_connection(Conn conn) throw();
 
   void remove_timeout_connections() throw();
 
-  void accept(util::shared_ptr<Socket> sock) throw();
+  void accept(Sock sock) throw();
 
-  void resume(util::shared_ptr<Connection> conn) throw();
+  void resume(Conn conn) throw();
 
-  void update_fdset(util::shared_ptr<Connection> conn) throw();
+  void update_fdset(Conn conn) throw();
 
   int wait() throw();
 
-  bool canResume(util::shared_ptr<Connection> conn) const throw();
+  bool canResume(Conn conn) const throw();
 
-  util::shared_ptr<Socket> get_ready_listen_socket() throw();
+  Sock get_ready_listen_socket() throw();
 
   // Logically it is not const because it returns a non-const pointer.
-  util::shared_ptr<Connection> get_ready_connection() throw();
+  Conn get_ready_connection() throw();
 };
 
 #endif

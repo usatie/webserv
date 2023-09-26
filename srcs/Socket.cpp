@@ -11,6 +11,7 @@ static int get_port(const struct sockaddr* addr) throw() {
   }
 }
 
+// cppcheck-suppress unusedFunction
 int Socket::get_server_port() const throw() {
   return get_port(reinterpret_cast<const struct sockaddr*>(&saddr));
 }
@@ -111,7 +112,7 @@ int Socket::set_nonblock() throw() {
   return 0;
 }
 
-// This
+// cppcheck-suppress unusedFunction
 int Socket::set_nolinger(int linger) throw() {
   struct linger l;
   l.l_onoff = 1;

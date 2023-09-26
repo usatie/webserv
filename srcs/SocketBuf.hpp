@@ -75,6 +75,7 @@ class SocketBuf {
 
   // Operators
   // member of pointer operators
+  // cppcheck-suppress functionConst ; Returns a pointer to a non-const object
   util::shared_ptr<Socket> operator->() throw() { return socket; }
   const util::shared_ptr<Socket> operator->() const throw() { return socket; }
   // indirection operators

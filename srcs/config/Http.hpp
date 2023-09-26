@@ -16,7 +16,7 @@ namespace config {
 class HTTP {
  public:
   HTTP() : configured(false) { servers.push_back(Server()); }
-  HTTP(Module *mod);
+  explicit HTTP(Module *mod);
   ~HTTP() {}
 
  public:

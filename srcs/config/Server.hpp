@@ -37,7 +37,7 @@ class Server {
     server_names.push_back("");
   }
 
-  Server(Command *cmd);
+  explicit Server(Command *srv);
 };
 }  // namespace config
 

@@ -19,7 +19,7 @@ void send_directory_listing(Connection& conn,
   ss << "<html>" << CRLF << "<head><title>Index of " << conn.header.path
      << "</title></head>" << CRLF << "<body>" << CRLF << "<h1>Index of "
      << conn.header.path << "</h1><hr><pre>";
-  struct dirent **dirlist, *dp;
+  struct dirent** dirlist;
   int r = scandir(path.c_str(), &dirlist, NULL, compar);
   if (r < 0) {
     Log::error("scandir() failed");
@@ -28,7 +28,7 @@ void send_directory_listing(Connection& conn,
   }
   ss << "<a href=\"../\">../</a>" << CRLF;
   for (int i = 0; i < r; ++i) {
-    dp = dirlist[i];
+    const struct dirent* dp = dirlist[i];
     struct stat st;
     if (stat((path + dp->d_name).c_str(), &st) < 0) {
       Log::error("stat() failed");
@@ -47,7 +47,7 @@ void send_directory_listing(Connection& conn,
     // Date time with space aligned
     ss << std::setw(68 - strlen(dp->d_name) - (S_ISDIR(st.st_mode) ? 1 : 0));
     char buf[256];
-    struct tm* tm = localtime(&st.st_mtime);
+    const struct tm* tm = localtime(&st.st_mtime);
     strftime(buf, sizeof(buf), "%d-%b-%Y %H:%M", tm);
     ss << buf;
 

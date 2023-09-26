@@ -22,8 +22,74 @@ Command *location(Token **rest, Token *tok, int context);
 Command *alias(Token **rest, Token *tok, int context);
 Command *server(Token **rest, Token *tok, int context);
 
+// Constructor
+Command::Command(enum Type type)
+    : type(type),
+      next(NULL),
+      port(0),
+      return_code(0),
+      autoindex(false),
+      client_max_body_size(0),
+      block(NULL) {
+  switch (type) {
+    case CMD_DUMMY:
+      name = "dummy";
+      break;
+    case CMD_LISTEN:
+      name = "listen";
+      break;
+    case CMD_SERVER_NAME:
+      name = "server_name";
+      break;
+    case CMD_ROOT:
+      name = "root";
+      break;
+    case CMD_INDEX:
+      name = "index";
+      break;
+    case CMD_ERROR_PAGE:
+      name = "error_page";
+      break;
+    case CMD_AUTOINDEX:
+      name = "autoindex";
+      break;
+    case CMD_LIMIT_EXCEPT:
+      name = "limit_except";
+      break;
+    case CMD_UPLOAD_STORE:
+      name = "upload_store";
+      break;
+    case CMD_CLIENT_MAX_BODY_SIZE:
+      name = "client_max_body_size";
+      break;
+    case CMD_CGI_EXTENSION:
+      name = "cgi_extension";
+      break;
+    case CMD_CGI_HANDLER:
+      name = "cgi_handler";
+      break;
+    case CMD_RETURN:
+      name = "return";
+      break;
+    case CMD_LOCATION:
+      name = "location";
+      break;
+    case CMD_ALIAS:
+      name = "alias";
+      break;
+    case CMD_SERVER:
+      name = "server";
+      break;
+    default:
+      name = "unknown";
+      break;
+  }
+}
+
 // Utility
-bool is_equal(Token *tok, const std::string &str) { return tok->str == str; }
+bool is_equal(const Token *tok, const std::string &str) {
+  return tok->str == str;
+}
 
 bool consume(Token **rest, Token *tok, const std::string &str) {
   if (is_equal(tok, str)) {
@@ -33,7 +99,7 @@ bool consume(Token **rest, Token *tok, const std::string &str) {
   return false;
 }
 
-Token *skip(Token *tok, const std::string &str) {
+Token *skip(const Token *tok, const std::string &str) {
   if (!is_equal(tok, str)) {
     Log::cfatal() << "unexpected token: " << tok->str << std::endl;
     throw std::runtime_error("unexpected token");
@@ -41,7 +107,7 @@ Token *skip(Token *tok, const std::string &str) {
   return tok->next;
 }
 
-Token *skip_kind(Token *tok, Token::Type kind) {
+Token *skip_kind(const Token *tok, Token::Type kind) {
   if (tok->type != kind) {
     Log::cfatal() << "unexpected kind: " << tok->str << std::endl;
     throw std::runtime_error("unexpected kind");
@@ -577,6 +643,8 @@ void print_cmd(Command *cmd, std::string ident) {
     print_cmd(c, ident);
   }
 }
+
+// cppcheck-suppress unusedFunction
 void print_mod(Module *mod) {
   std::cout << "Module: " << mod->name << std::endl;
   for (Command *cmd = mod->block; cmd; cmd = cmd->next) {
