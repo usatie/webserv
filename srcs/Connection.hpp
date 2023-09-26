@@ -19,6 +19,10 @@
 #define TIMEOUT_SEC 10
 #define CGI_TIMEOUT_SEC 3
 
+#define CONN_CONTINUE 0
+#define CONN_REMOVE 1
+#define CONN_CLEAR 2
+
 class Connection {
  public:
   // Class private enum
@@ -92,8 +96,6 @@ class Connection {
     if (cgi_socket == NULL) return -1;
     return cgi_socket->get_fd();
   }
-  bool is_remove() const throw() { return status == DONE; }
-  bool is_clear() const throw() { return status == CLEAR; }
   bool is_timeout() const throw();
   bool is_cgi_timeout() const throw();
   int kill_and_reap_cgi_process() throw();

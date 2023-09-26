@@ -246,6 +246,7 @@ void Server::remove_timeout_connections() throw() {
                    << (*it)->client_socket->socket->get_client_port() << ")"
                    << std::endl;
       (*it)->handle_cgi_timeout();
+      update_fdset(*it);
     } else if ((*it)->is_timeout()) {
       Log::cinfo() << "Connection timeout: connfd(" << (*it)->get_fd() << ")"
                    << " port("
@@ -278,12 +279,17 @@ void Server::update_fdset(Conn conn) throw() {
     FD_SET(conn->get_fd(), &readfds);
   }
   if (!conn->client_socket->isSendBufEmpty() &&
-      !conn->client_socket->isBrokenPipe)
+      !conn->client_socket->isBrokenPipe) {
+    Log::cdebug() << "Monitor client socket for write" << std::endl;
     FD_SET(conn->get_fd(), &writefds);
+  }
   maxfd = std::max(conn->get_fd(), maxfd);
   if (conn->get_cgifd() != -1) {
     FD_CLR(conn->get_cgifd(), &readfds);
     FD_CLR(conn->get_cgifd(), &writefds);
+    if (conn->cgi_pid == -1) {
+      return;
+    }
     if (!conn->cgi_socket->isSendBufEmpty() &&
         !conn->cgi_socket->isBrokenPipe)  // no data to send
       FD_SET(conn->get_cgifd(), &writefds);
@@ -314,8 +320,9 @@ int Server::wait() throw() {
 }
 
 void Server::resume(Conn conn) throw() {
+  int ret;
   try {
-    conn->resume();  // throwable
+    ret = conn->resume();  // throwable
   } catch (std::exception& e) {
     // We don't send 500 error page to keep our life simple.
     Log::cfatal() << "Server::resume() failed: " << e.what() << std::endl;
@@ -323,17 +330,19 @@ void Server::resume(Conn conn) throw() {
     return;
   }
   // If the connection is aborted, remove it.
-  if (conn->is_remove()) {
-    remove_connection(conn);
-    return;
-  }
-  // If the request is done, clear it.
-  if (conn->is_clear()) {
-    if (conn->get_cgifd() != -1) {
-      FD_CLR(conn->get_cgifd(), &readfds);
-      FD_CLR(conn->get_cgifd(), &writefds);
-    }
-    conn->clear();
+  switch (ret) {
+    case CONN_REMOVE:
+      remove_connection(conn);
+      return;
+    case CONN_CLEAR:
+      if (conn->get_cgifd() != -1) {
+        FD_CLR(conn->get_cgifd(), &readfds);
+        FD_CLR(conn->get_cgifd(), &writefds);
+      }
+      conn->clear();
+      break;
+    case CONN_CONTINUE:
+      break;
   }
   // Update fdset
   update_fdset(conn);
@@ -364,7 +373,7 @@ struct ResumeReadyPredicate {
     }
     // 2. CGI_SEND
     // 3. CGI_RECV
-    if (cgifd != -1) {
+    if (cgifd != -1 && conn->cgi_pid != -1) {
       if (FD_ISSET(cgifd, wfds)) {
         Log::cdebug() << "ResumeReadyPredicate: CGI_SEND" << std::endl;
         conn->io_status = Connection::CGI_SEND;

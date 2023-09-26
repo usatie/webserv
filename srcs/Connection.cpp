@@ -10,11 +10,6 @@
 int Connection::resume() {  // throwable
   Log::debug("Connection::resume()");
   last_modified = time(NULL);
-  // CGI timeout
-  if (is_cgi_timeout()) {
-    handle_cgi_timeout();
-    return -1;
-  }
   // 1. Socket I/O
   switch (io_status) {
     case CLIENT_RECV:
@@ -22,7 +17,7 @@ int Connection::resume() {  // throwable
       if (client_socket->isClosed()) {
         Log::info("client_socket->closed");
         status = DONE;
-        return -1;
+        return CONN_REMOVE;
       }
       break;
     case CGI_SEND:
@@ -44,7 +39,7 @@ int Connection::resume() {  // throwable
       if (client_socket->isClosed()) {
         Log::info("client_socket->closed");
         status = DONE;
-        return -1;
+        return CONN_REMOVE;
       }
       break;
     case NO_IO:
@@ -69,13 +64,13 @@ int Connection::resume() {  // throwable
   if (client_socket->bad()) {
     Log::info("client_socket->bad()");
     status = DONE;
-    return -1;
+    return CONN_REMOVE;
   }
   if (cgi_socket != NULL) {
     if (cgi_socket->bad()) {
       Log::info("cgi_socket->bad()");
       status = DONE;
-      return -1;
+      return CONN_REMOVE;
     }
   }
   // If the client socket has received EOF, and both buffers are empty,
@@ -86,10 +81,16 @@ int Connection::resume() {  // throwable
         cgi_socket->hasReceivedEof) {
       Log::info("client_socket->hasReceivedEof");
       status = DONE;
-      return -1;
+      return CONN_REMOVE;
     }
   }
-  return 0;
+  if (status == CLEAR) {
+    return CONN_CLEAR;
+  } else if (status == DONE) {
+    return CONN_REMOVE;
+  } else {
+    return CONN_CONTINUE;
+  }
 }
 
 int Connection::clear() {
@@ -719,6 +720,7 @@ int Connection::kill_and_reap_cgi_process() throw() {
                   << std::endl;
     return -1;
   }
+  cgi_pid = -1;
 
   // Wait for CGI process to terminate
   pid_t ret;
@@ -737,20 +739,15 @@ int Connection::kill_and_reap_cgi_process() throw() {
     // I don't think this will happen though.
     Log::cfatal() << "waitpid failed. (" << errno << ": " << strerror(errno)
                   << ")" << std::endl;
-    cgi_pid = -1;
     return -1;
   }
   Log::cdebug() << "waitpid(" << cgi_pid << ") returns " << ret << std::endl;
-  cgi_pid = -1;
   return exit_status;
 }
 
 void Connection::handle_cgi_timeout() throw() {
-  Log::info("CGI timeout");
-  // Already handled
-  if (cgi_pid == -1) {
-    return;
-  }
+  Log::info("handle_cgi_timeout");
+  assert(cgi_pid > 0);  // cgi_pid should be set before calling this function
   // kill cgi process
   if (kill_and_reap_cgi_process() < 0) {
     Log::cfatal() << "kill_and_reap_cgi_process failed" << std::endl;
