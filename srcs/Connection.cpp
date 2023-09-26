@@ -14,31 +14,15 @@ int Connection::resume() {  // throwable
   switch (io_status) {
     case CLIENT_RECV:
       client_socket->fill();  // throwable
-      if (client_socket->isClosed()) {
-        Log::info("client_socket->closed");
-        return WSV_REMOVE;
-      }
       break;
     case CGI_SEND:
       cgi_socket->flush();  // throwable
-      if (cgi_socket->isClosed()) {
-        Log::info("cgi_socket->closed");
-        handler = &Connection::handle_cgi_parse;
-      }
       break;
     case CGI_RECV:
       cgi_socket->fill();  // throwable
-      if (cgi_socket->isClosed() || cgi_socket->hasReceivedEof) {
-        Log::info("cgi_socket->closed or hasReceivedEof");
-        handler = &Connection::handle_cgi_parse;
-      }
       break;
     case CLIENT_SEND:
       client_socket->flush();  // throwable
-      if (client_socket->isClosed()) {
-        Log::info("client_socket->closed");
-        return WSV_REMOVE;
-      }
       break;
     case NO_IO:
       break;
@@ -71,8 +55,7 @@ int Connection::resume() {  // throwable
   if (client_socket->hasReceivedEof
       && client_socket->isSendBufEmpty() 
       && client_socket->isRecvBufEmpty()) {
-    if (cgi_socket == NULL || cgi_socket->isClosed() ||
-        cgi_socket->hasReceivedEof) {
+    if (cgi_socket == NULL || cgi_socket->hasReceivedEof) {
       Log::info("client_socket->hasReceivedEof and all buffers are empty");
       return WSV_REMOVE;
     }
@@ -548,11 +531,12 @@ int Connection::handle_cgi_req() throw() {
 
 int Connection::handle_cgi_res() throw() {
   Log::debug("handle_cgi_res");
-  // 1. If CGI process is still running, return 0
-  // Question: If CGI process exit, isClosed will be set to true?
-  if (!cgi_socket->isClosed()) return 0;
-  handler = &Connection::handle_cgi_parse;
-  return WSV_AGAIN;
+  if (cgi_socket->hasReceivedEof) {
+    Log::info("cgi_socket has received EOF");
+    handler = &Connection::handle_cgi_parse;
+    return WSV_AGAIN;
+  }
+  return WSV_WAIT;
 }
 
 // CGI Response syntax (https://datatracker.ietf.org/doc/html/rfc3875#section-6)
