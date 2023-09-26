@@ -56,15 +56,15 @@ for i in {1..44}; do
 done
 
 function python_test() {
-	echo -n "Python tests: " | tee -a error.log
+	echo "Python tests: "
 	err=0
 	python3 tests/python/test_server_response.py 2>>error.log || let err++
 	if [ $err -eq 0 ]; then
-		echo "OK"
+		print_ok
 		# Trim the last line of the error.log
 		sed -i -e '$ d' error.log
 	else
-		echo "NG"
+		print_ng
 		let cnt++
 	fi
 }

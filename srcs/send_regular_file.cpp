@@ -5,21 +5,21 @@ void send_regular_file(Connection& conn, const std::string& path,
   *conn.client_socket << "HTTP/1.1 200 OK" << CRLF;
   *conn.client_socket << "Server: " << WEBSERV_VER << CRLF;
   // client_socket << "Date: Tue, 11 Jul 2023 07:36:50 GMT" << CRLF;
-  if (util::string::ends_with(conn.header.path, ".css"))
+  if (util::string::ends_with(path, ".css"))
     *conn.client_socket << "Content-Type: text/css" << CRLF;
-  else if (util::string::ends_with(conn.header.path, ".js"))
+  else if (util::string::ends_with(path, ".js"))
     *conn.client_socket << "Content-Type: text/javascript" << CRLF;
-  else if (util::string::ends_with(conn.header.path, ".jpg"))
+  else if (util::string::ends_with(path, ".jpg"))
     *conn.client_socket << "Content-Type: image/jpeg" << CRLF;
-  else if (util::string::ends_with(conn.header.path, ".png"))
+  else if (util::string::ends_with(path, ".png"))
     *conn.client_socket << "Content-Type: image/png" << CRLF;
-  else if (util::string::ends_with(conn.header.path, ".gif"))
+  else if (util::string::ends_with(path, ".gif"))
     *conn.client_socket << "Content-Type: image/gif" << CRLF;
-  else if (util::string::ends_with(conn.header.path, ".ico"))
+  else if (util::string::ends_with(path, ".ico"))
     *conn.client_socket << "Content-Type: image/x-icon" << CRLF;
-  else if (util::string::ends_with(conn.header.path, ".svg"))
+  else if (util::string::ends_with(path, ".svg"))
     *conn.client_socket << "Content-Type: image/svg+xml" << CRLF;
-  else if (util::string::ends_with(conn.header.path, ".html"))
+  else if (util::string::ends_with(path, ".html"))
     *conn.client_socket << "Content-Type: text/html" << CRLF;
   else
     *conn.client_socket << "Content-Type: text/plain" << CRLF;
