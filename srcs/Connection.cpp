@@ -2,8 +2,10 @@
 
 #include <sys/wait.h>
 
+#include <cctype>
 #include <cerrno>
 #include <map>
+#include <string>
 
 #include "DeleteHandler.hpp"
 #include "Server.hpp"
@@ -79,6 +81,26 @@ int Connection::clear() {
   return 0;
 }
 
+static bool is_valid_path(std::string const &path) { return (path[0] == '/'); }
+
+static bool deconde_parcent(std::string &path) {
+  std::string dst;
+  for (size_t i = 0; i < path.size();) {
+    if (path[i] != '%') {
+      dst += path[i];
+      i++;
+      continue;
+    }
+    if (i + 2 >= path.size()) return false;
+    if (!(std::isxdigit(path[i + 1]) && std::isxdigit(path[i + 2])))
+      return false;
+    dst += strtol(path.substr(i + 1, 2).c_str(), NULL, 16);
+    i += 3;
+  }
+  path = dst;
+  return true;
+}
+
 // TODO: make this noexcept
 // https://datatracker.ietf.org/doc/html/rfc2616#section-5.1
 // Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
@@ -98,21 +120,24 @@ int Connection::parse_start_line() {
   ss >> header.method;   // ss does not throw (cf. playground/fuga.cpp)
   ss >> header.path;     // ss does not throw
   ss >> header.version;  // ss does not throw
+
+  {
+    std::string::size_type i = header.path.find_first_of('?');
+    if (i != std::string::npos) {
+      header.query = header.path.substr(i + 1);
+      header.path = header.path.substr(0, i);
+    }
+  }
+
   // Path must be starting with /
-  if (header.path[0] != '/') {
+  if (!is_valid_path(header.path) || !deconde_parcent(header.path) ||
+      !deconde_parcent(header.query)) {
     Log::cinfo() << "Invalid path: " << header.path << std::endl;
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
     return WSV_AGAIN;
   }
-  // Get cwd
-  char cwd[PATH_MAX];
-  if (getcwd(cwd, PATH_MAX) == 0) {
-    Log::cfatal() << "getcwd failed" << std::endl;
-    ErrorHandler::handle(*this, 500);
-    handler = &Connection::response;
-    return WSV_AGAIN;
-  }
+
   // TODO: Defense Directory traversal attack
   // TODO: Handle absoluteURI
   // TODO: Handle *
@@ -158,6 +183,14 @@ int Connection::split_header_field(const std::string &line, std::string &key,
   return 0;
 }
 
+std::string tolower(std::string const &str) {
+  std::string dst = str;
+  for (size_t i = 0; i < str.size(); i++) {
+    dst[i] = std::tolower(str[i]);
+  }
+  return dst;
+}
+
 int Connection::parse_header_fields() {  // throwable
   std::string line;
   while (client_socket->read_telnet_line(line) == 0) {  // throwable
@@ -180,7 +213,7 @@ int Connection::parse_header_fields() {  // throwable
       handler = &Connection::response;
       return WSV_AGAIN;
     }
-    header.fields[key] = value;  // throwable
+    header.fields[tolower(key)] = value;  // throwable
   }
   return WSV_WAIT;
 }
@@ -188,11 +221,11 @@ int Connection::parse_header_fields() {  // throwable
 // https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
 int Connection::parse_body() {  // throwable
   Log::debug("parse_body");
-  if (header.fields.find("Transfer-Encoding") != header.fields.end() &&
-      header.fields["Transfer-Encoding"].find("chunked") != std::string::npos) {
+  if (header.fields.find("transfer-encoding") != header.fields.end() &&
+      header.fields["transfer-encoding"].find("chunked") != std::string::npos) {
     // TODO: Handle invalid Transfer-Encoding
-    if (header.fields.find("Content-Length") != header.fields.end()) {
-      Log::cinfo() << "Both Transfer-Encoding and Content-Length are "
+    if (header.fields.find("content-length") != header.fields.end()) {
+      Log::cinfo() << "Both Transfer-Encoding and content-length are "
                       "specified"
                    << std::endl;
       ErrorHandler::handle(*this, 400);
@@ -292,12 +325,12 @@ int Connection::parse_body_chunk_trailer_section() {  // throwable
 int Connection::parse_body_content_length() {  // throwable
   Log::debug("parse_body_content_length");
   if (body.empty()) {
-    if (header.fields.find("Content-Length") == header.fields.end()) {
+    if (header.fields.find("content-length") == header.fields.end()) {
       handler = &Connection::handle;
       return WSV_AGAIN;
     }
     // TODO: Handle invalid Content-Length
-    content_length = atoi(header.fields["Content-Length"].c_str());
+    content_length = atoi(header.fields["content-length"].c_str());
     body.reserve(content_length);
   }
   std::vector<char> buf(content_length - body.size());
@@ -324,8 +357,8 @@ const config::Server *select_srv_cf(const config::Config &cf,
                                     const Connection &conn) throw() {
   struct sockaddr_storage *saddr = &(*conn.client_socket)->saddr;
   std::string host;
-  if (conn.header.fields.find("Host") != conn.header.fields.end()) {
-    host = conn.header.fields.find("Host")->second;
+  if (conn.header.fields.find("host") != conn.header.fields.end()) {
+    host = conn.header.fields.find("host")->second;
   }
   // Remove port number
   size_t pos = host.find(':');
@@ -618,7 +651,7 @@ int Connection::handle_cgi_parse() {  // throwable
       handler = &Connection::response;
       break;
     }
-    cgi_header_fields[key] = value;
+    cgi_header_fields[(key)] = value;
   }
   if (cgi_header_fields.find("Status") != cgi_header_fields.end()) {
     // TODO: validate status code
@@ -655,7 +688,7 @@ int Connection::response() throw() {
     if (client_socket->hasReceivedEof) {
       Log::info("Client socket has received EOF, remove connection");
       return WSV_REMOVE;
-    } else if (header.fields["Connection"] == "close") {
+    } else if (header.fields["connection"] == "close") {
       Log::info("Connection: close, remove connection");
       return WSV_REMOVE;
     } else {
