@@ -47,7 +47,7 @@ def test_request(method, path, status_code, content_type=None, content_length=No
     # Print data (Trim if too long)
     if data is not None:
         if isinstance(data, bytes) and len(data) > 20:
-            sys.stdout.write(': {}... '.format(data[:20]))
+            sys.stdout.write(': {}...({} bytes) '.format(data[:20], len(data)))
         else:
             sys.stdout.write(': {} '.format(data))
     sys.stdout.write(': ')
@@ -135,11 +135,16 @@ if __name__ == '__main__':
     test_get_request(path='/', status_code=200, file_path='./tests/html/index5.html', content_type='text/html', host='webserv5')
 
     # POST
+    # test_post_request(path='/limit_except/post/', status_code=200, content_type='text/html', data=b'Hello, world!\n', content=b'Hello, world!\n') # TODO: Fix conf file
+    test_post_request(path='/limit_except/get/', status_code=405, content_type='text/html', data=b'Hello, world!\n')
     test_post_request(path='/cgi/echo.py', status_code=200, content_type='text/plain', content=b'Hello, world!\n', data=b'Hello, world!\n')
     test_post_request(path='/cgi/echo.py', status_code=200, content_type='text/plain', content=b'42Tokyo', data=b'42Tokyo')
     test_post_request(path='/cgi/echo.py', status_code=200, content_type='text/plain', content=b'42Tokyo', data=b'42Tokyo')
     random_bytes = os.urandom(1000000)
     test_post_request(path='/cgi/echo.py', status_code=200, content_type='text/plain', content=random_bytes, data=random_bytes)
+    test_post_request(path='/upload/', status_code=201, content_type='application/json', content=b'{"success":"true"}', data=b'Hello, world!\n') # TODO: Test Location /upload/1695790257-1622650073 (random)
+    test_post_request(path='/upload/limit/', status_code=201, content_type='application/json', data=os.urandom(1024), content=b'{"success":"true"}')
+    test_post_request(path='/upload/limit/', status_code=413, content_type='text/html', data=os.urandom(1025))
 
     # POST(Chunked)
     test_post_request(path='/cgi/echo.py', status_code=200, content_type='text/plain', content=b'Hi, there bob!', data=gen())
