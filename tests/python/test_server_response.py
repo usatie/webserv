@@ -27,15 +27,21 @@ def assertContent(response, expected):
     else:
         assertEqual(actual, expected, 'content')
 
-def test_get_request(path, status_code, content_type=None, content_length=None, file_path=None, content=None, location=None):
+def test_get_request(path, status_code, content_type=None, content_length=None, file_path=None, content=None, location=None, host=None):
     global err
     err = False
     assert(file_path is None or content is None) # Specifying both is not allowed
     global cnt
     cnt += 1
-    sys.stdout.write('Test ' + str(cnt) + ': ' + path + ' ')
+    # Print test name, cnt, path and host
+    sys.stdout.write('Test {:02d}: GET {} '.format(cnt, path))
+    if host is not None:
+        sys.stdout.write('(Host: {}) '.format(host))
     sys.stdout.flush()
-    response = requests.get(url + path, allow_redirects=False)
+    headers = {}
+    if host is not None:
+        headers['Host'] = host
+    response = requests.get(url + path, headers=headers, allow_redirects=False)
     
     # Status Code
     assertEqual(response.status_code, status_code, 'status_code')
@@ -89,6 +95,15 @@ if __name__ == '__main__':
     test_get_request(path='/redirect/path/', status_code=301, location='/kapouet/pouic/toto/pouet')
     test_get_request(path='/cgi-bin/a.out.cgi', status_code=200, content_type='text/html', content=b'<html><head><title>CGI</title></head><body>\n<h1>CGI</h1>\n<p>CGI is a standard for interfacing external applications with information servers, such as HTTP or web servers.</p>\n</body></html>\n')
     test_get_request(path='/autoindex/', status_code=200, content_type='text/html')
+
+    # Host header
+    test_get_request(path='/', status_code=200, file_path='./tests/html/index.html', content_type='text/html', host=None)
+    test_get_request(path='/', status_code=200, file_path='./tests/html/index.html', content_type='text/html', host='nosuchhost')
+    test_get_request(path='/', status_code=200, file_path='./tests/html/index1.html', content_type='text/html', host='webserv1')
+    test_get_request(path='/', status_code=200, file_path='./tests/html/index2.html', content_type='text/html', host='webserv2')
+    test_get_request(path='/', status_code=200, file_path='./tests/html/index3.html', content_type='text/html', host='webserv3')
+    test_get_request(path='/', status_code=200, file_path='./tests/html/index4.html', content_type='text/html', host='webserv4')
+    test_get_request(path='/', status_code=200, file_path='./tests/html/index5.html', content_type='text/html', host='webserv5')
     if err_cnt > 0:
         sys.stdout.write('\033[31m' + str(err_cnt) + '/' + str(cnt) + ' tests failed.\033[0m\n')
         sys.exit(1)
