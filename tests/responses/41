@@ -1,6 +1,6 @@
 HTTP/1.1 200 OK
 Server: webserv/0.0.1
-Content-Type: text/plain
+Content-Type: text/html
 Content-Length: 30
 
 <html><h1>Index 2</h1></html>
