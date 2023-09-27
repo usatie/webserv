@@ -1,0 +1,49 @@
+<head>
+	<title>webserv review</title>
+</head>
+<body>
+	<h1>webserv review</h1>
+	<ul>
+		<li><code>brew install siege</code></li>
+		<li>check <a href="../srcs/Server.cpp">Server.cpp</a> for usage of <code>select()</code></li>
+		<br>
+		<li><code>./webserv ./tests/test.conf &amp;</code></li>
+		<br>
+		<li><code>curl --resolve example.com:8181:127.0.0.1</code></li>
+		<li><code>curl localhost:8181/</code></li>
+		<li><code>curl -X POST localhost:8181/upload/limit/ -H "Content-Type: plain/text" --data `python3 -c 'print("a"*1024)'`</code></li>
+		<li><code>curl -X POST localhost:8181/upload/limit/ -H "Content-Type: plain/text" --data `python3 -c 'print("a"*2048)'`</code></li>
+		<li><code>curl -X DELETE localhost:8181/</code></li>
+		<li><code>curl -X UNKNOWN localhost:8181/</code></li>
+		<br>
+		<li><a href="http://localhost:8181/">http://localhost:8181/</a> </li>
+		<li><a href="http://localhost:8181/index.html">http://localhost:8181/index.html</a> </li>
+		<li><a href="http://localhost:8181/tests/static/42Tokyo.html">http://localhost:8181/tests/static/42Tokyo.html</a> </li>
+		<li><a href="http://localhost:8181/tests/static/abe.html">http://localhost:8181/tests/static/abe.html</a> </li>
+		<br>
+		<li><a href="http://localhost:8181/error_page/">http://localhost:8181/error_page/</a> </li>
+
+		<li><a href="http://localhost:8181/alias//index.html">http://localhost:8181/alias/</a> </li>
+		<li><a href="http://localhost:8181/redirect/">http://localhost:8181/redirect</a> google.com </li>
+		<li><a href="http://localhost:8181/redirect/path/index.html">http://localhost:8181/redirect/path/index.html</a> </li>
+		<br>
+		<li><a href="http://localhost:8181/autoindex/">http://localhost:8181/autoindex/</a> </li>
+
+		<li><a href="http://localhost:8181/limit_except/">http://localhost:8181/limit_except/</a> </li>
+		<li><a href="http://localhost:8181/limit_except/get/index.html">http://localhost:8181/limit_except/get/index.html</a> </li>
+		<li><a href="http://localhost:8181/limit_except/post/index.html">http://localhost:8181/limit_except/post/index.html</a> </li>
+		<li><a href="http://localhost:8181/limit_except/delete/index.html">http://localhost:8181/limit_except/delete/index.html</a> </li>
+		<li>POST http://localhost:8181/upload/limit/<form action="http://localhost:8181/upload/limit/" method="post">
+			<input type="file" name="data" enctype="multipart/form-data"/> <input type="submit" />
+		</form></li>
+
+		<li><a href="http://localhost:8181/cgi/hello.py">http://localhost:8181/cgi/hello.py</a> </li>
+		<!-- li><a href="http://localhost:8181/cgi/echo.py">http://localhost:8181/cgi/echo.py</a> </li -->
+		<li>http://localhost:8181/cgi/echo.py<form action="http://localhost:8181/cgi/echo.py" method="post">
+			<input type="text" name="data" data="input_data" /> <input type="submit" />
+		</form></li>
+		<li><a href="http://localhost:8181/cgi/infinite_loop.py">http://localhost:8181/cgi/infinite_loop.py</a> </li>
+		<br>
+		<li><code>siege --concurrent=255 --time=10s http://localhost:8181/kapouet/pouic/toto/pouet -b </code></li>
+	</ul>
+</body>
