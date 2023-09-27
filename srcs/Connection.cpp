@@ -81,6 +81,33 @@ int Connection::clear() {
   return 0;
 }
 
+static bool	is_valid_path(std::string const &path)
+{
+	return (path[0] == '/');
+}
+
+static bool	deconde_parcent(std::string &path)
+{
+	std::string dst;
+	for (size_t i = 0; i < path.size(); )
+	{
+		if (path[i] != '%')
+		{
+			dst += path[i];
+			i++;
+			continue;
+		}
+		if (i + 2 >= path.size())
+			return false;
+		if (!(std::isxdigit(path[i + 1]) && std::isxdigit(path[i + 2])))
+			return false;
+		dst += strtol(path.substr(i + 1, 2).c_str(), NULL, 16);
+		i += 3;
+	}
+	path = dst;
+	return true;
+}
+
 // TODO: make this noexcept
 // https://datatracker.ietf.org/doc/html/rfc2616#section-5.1
 // Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
@@ -100,21 +127,15 @@ int Connection::parse_start_line() {
   ss >> header.method;   // ss does not throw (cf. playground/fuga.cpp)
   ss >> header.path;     // ss does not throw
   ss >> header.version;  // ss does not throw
+
   // Path must be starting with /
-  if (header.path[0] != '/') {
+  if (!is_valid_path(header.path) || !deconde_parcent(header.path)) {
     Log::cinfo() << "Invalid path: " << header.path << std::endl;
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
     return WSV_AGAIN;
   }
-  // Get cwd
-  char cwd[PATH_MAX];
-  if (getcwd(cwd, PATH_MAX) == 0) {
-    Log::cfatal() << "getcwd failed" << std::endl;
-    ErrorHandler::handle(*this, 500);
-    handler = &Connection::response;
-    return WSV_AGAIN;
-  }
+
   // TODO: Defense Directory traversal attack
   // TODO: Handle absoluteURI
   // TODO: Handle *
