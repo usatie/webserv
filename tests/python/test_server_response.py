@@ -29,7 +29,7 @@ def assertContent(response, expected):
         assertEqual(actual, expected, 'content')
 
 def test_get_request(path, status_code, content_type=None, content_length=None, file_path=None, content=None, location=None, host=None, headers=None):
-    test_request('GET', path, status_code, content_type, content_length, file_path, content, location, host, headers)
+    test_request('GET', path, status_code, content_type, content_length, file_path, content, location, host, headers=headers)
 
 def test_post_request(path, status_code, content_type=None, content_length=None, file_path=None, content=None, location=None, host=None, data=None, headers=None):
     test_request('POST', path, status_code, content_type, content_length, file_path, content, location, host, data, headers)
@@ -93,10 +93,10 @@ def test_request(method, path, status_code, content_type=None, content_length=No
 # This is for chunked encoding test
 def gen(message=None):
     if message is None:
-        yield 'Hi, '
-        yield 'there '
-        yield 'bob'
-        yield '!'
+        yield b'Hi, '
+        yield b'there '
+        yield b'bob'
+        yield b'!'
     else:
         # yield message by chunk of 1000 bytes
         for i in range(0, len(message), 1000):
