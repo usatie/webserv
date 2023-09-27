@@ -46,10 +46,10 @@ def test_request(method, path, status_code, content_type=None, content_length=No
         sys.stdout.write('(Host: {}) '.format(host))
     # Print data (Trim if too long)
     if data is not None:
-        if isinstance(data, bytes) and len(data) > 20:
-            sys.stdout.write(': {}...({} bytes) '.format(data[:20], len(data)))
+        if isinstance(data, bytes) and len(data) > 15:
+            sys.stdout.write('(Body: {}...({} bytes)) '.format(data[:15], len(data)))
         else:
-            sys.stdout.write(': {} '.format(data))
+            sys.stdout.write('(Body: {}) '.format(data))
     sys.stdout.write(': ')
     sys.stdout.flush()
     headers = {}
@@ -149,6 +149,11 @@ if __name__ == '__main__':
     # POST(Chunked)
     test_post_request(path='/cgi/echo.py', status_code=200, content_type='text/plain', content=b'Hi, there bob!', data=gen())
     test_post_request(path='/cgi/echo.py', status_code=200, content_type='text/plain', content=random_bytes, data=gen(random_bytes))
+
+    # Server Error
+    test_post_request(path='/cgi-invalid-handler/echo.py', status_code=500, content_type='text/html', data=b'Hello, world!\n')
+    test_post_request(path='/cgi/infinite_loop.py', status_code=504, content_type='text/html', data=b'Hello, world!\n')
+    test_get_request(path='/cgi/infinite_loop.py', status_code=504, content_type='text/html')
 
     if err_cnt > 0:
         sys.stdout.write('\033[31m' + str(err_cnt) + '/' + str(cnt) + ' tests failed.\033[0m\n')
