@@ -128,8 +128,17 @@ int Connection::parse_start_line() {
   ss >> header.path;     // ss does not throw
   ss >> header.version;  // ss does not throw
 
+  {
+    std::string::size_type i = header.path.find_first_of('?');
+    if (i != std::string::npos)
+    {
+      header.query = header.path.substr(i + 1);
+      header.path = header.path.substr(0, i);
+    }
+  }
+
   // Path must be starting with /
-  if (!is_valid_path(header.path) || !deconde_parcent(header.path)) {
+  if (!is_valid_path(header.path) || !deconde_parcent(header.path) || !deconde_parcent(header.query)) {
     Log::cinfo() << "Invalid path: " << header.path << std::endl;
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
