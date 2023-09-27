@@ -3,63 +3,95 @@ import sys
 
 url = 'http://localhost:8181'
 cnt = 0
+err_cnt = 0
+err = False
 
 def assertEqual(actual, expected, itemName=None):
+    global err
     if actual != expected:
-        sys.stderr.write('\033[31mNG\033[0m\n')
+        if not err:
+            sys.stdout.write('\033[31mNG\033[0m\n')
         if itemName is not None:
             sys.stderr.write(itemName + ': ')
         sys.stderr.write('Expected {}, but got {}.\n'.format(expected, actual))
-        sys.exit(1)
+        err = True
 
-def test_get_request(path, expected_status_code, expected_file_path, expected_content_type):
+def assertHeader(response, headerName, expected):
+    actual = response.headers.get(headerName)
+    assertEqual(actual, expected, headerName)
+
+def assertContent(response, expected):
+    actual = response.content
+    if expected is None:
+        assertEqual(actual, b'', 'content')
+    else:
+        assertEqual(actual, expected, 'content')
+
+def test_get_request(path, status_code, content_type=None, content_length=None, file_path=None, content=None, location=None):
+    global err
+    err = False
+    assert(file_path is None or content is None) # Specifying both is not allowed
     global cnt
     cnt += 1
     sys.stdout.write('Test ' + str(cnt) + ': ' + path + ' ')
     sys.stdout.flush()
     response = requests.get(url + path, allow_redirects=False)
     
-    assertEqual(response.status_code, expected_status_code, 'status_code')
-    if expected_content_type is not None:
-        assertEqual(response.headers['Content-Type'], expected_content_type, 'Content-Type')
-    else:
-        assertEqual(response.headers.get('Content-Type'), None, 'Content-Type')
+    # Status Code
+    assertEqual(response.status_code, status_code, 'status_code')
+    # Content-Type
+    if content_type is not None:
+        assertHeader(response, 'Content-Type', content_type)
+    # Content-Length
+    if content_length is not None:
+        assertHeader(response, 'Content-Length', str(content_length))
+    # Location
+    if location is not None:
+        assertHeader(response, 'Location', location)
 
-    # using 'rb' mode to handle binary data including cases with \r\n and \n characters.
-    if expected_file_path is not None:
-        expected_content = open(expected_file_path, 'rb').read()
-        assertEqual(response.headers['Content-Length'], str(len(expected_content)), 'Content-Length')
-        assertEqual(response.content, expected_content, 'content')
-    else:
-        if response.headers.get('Content-Length') is not None:
-            assertEqual(response.headers['Content-Length'], '0', 'Content-Length')
-        assertEqual(response.content, b'', 'content')
+    # Content
+    if file_path is not None:
+        content = open(file_path, 'rb').read()
+
+    if content is not None:
+        # Content-Length again
+        assertHeader(response, 'Content-Length', str(len(content)))
+        # Content
+        assertEqual(response.content, content, 'content')
 
     # OK with green color
-    print('\033[32mOK\033[0m')
+    if err:
+        global err_cnt
+        err_cnt += 1
+    else:
+        print('\033[32mOK\033[0m')
 
 if __name__ == '__main__':
-    test_get_request('/tests/static/a.text', 200, './tests/static/a.text', 'text/plain')
-    test_get_request('/tests/static/b.text', 200, './tests/static/b.text', 'text/plain')
-    test_get_request('/tests/static/abe.html', 200, './tests/static/abe.html', 'text/html')
-    test_get_request('/tests/static/abe_files/abehiroshi.jpg', 200, './tests/static/abe_files/abehiroshi.jpg', 'image/jpeg')
-    test_get_request('/tests/static/abe_files/menu.html', 200, './tests/static/abe_files/menu.html', 'text/html')
-    test_get_request('/', 200, './tests/html/index.html', 'text/html')
-    test_get_request('/cgi/echo.py', 200, None, 'text/plain')
-    # test_get_request('/cgi/hello.py', 200, 'hello.out', 'text/plain') # TODO: hello.out is not created
-    test_get_request('/root/', 200, './tests/html/root/root.html', 'text/html')
-    test_get_request('/root/root.html', 200, './tests/html/root/root.html', 'text/html')
-    test_get_request('/alias/', 200, './tests/html/foo/index.html', 'text/html')
-    test_get_request('/alias/foo.html', 200, './tests/html/foo/foo.html', 'text/html')
-    test_get_request('/index/', 200, './tests/html/foo/foo.html', 'text/html')
-    test_get_request('/kapouet/pouic/toto/pouet', 200, '/tmp/www/pouic/toto/pouet', 'text/plain')
-    test_get_request('/multiple-index/', 200, './tests/html/foo/foo.html', 'text/html')
-    test_get_request('/error_page/nosuchfile', 404, '/tmp/www/404.html', 'text/html')
-    # test_get_request('/limit_except/post/', 405, './tests/html/405.html', 'text/html') # TODO: 405.html is not created
-    test_get_request('/limit_except/get/', 200, './tests/html/foo/index.html', 'text/html')
-    test_get_request('/redirect/url/', 301, None, None) #TODO: Test Location
-    test_get_request('/redirect/path/', 301, None, None) #TODO: Test Location
-    # test_get_request('/cgi-bin/a.out.cgi', 200, 'a.out.cgi.out', 'text/html') # TODO: a.out.cgi.out is not created
-    # test_get_request('/autoindex/', 200, './tests/html/autoindex/', 'text/html') # TODO : autoindex is not created
-    
-    sys.exit(0)
+    test_get_request(path='/tests/static/a.text', status_code=200, file_path='./tests/static/a.text', content_type='text/plain')
+    test_get_request(path='/tests/static/b.text', status_code=200, file_path='./tests/static/b.text', content_type='text/plain')
+    test_get_request(path='/tests/static/abe.html', status_code=200, file_path='./tests/static/abe.html', content_type='text/html')
+    test_get_request(path='/tests/static/abe_files/abehiroshi.jpg', status_code=200, file_path='./tests/static/abe_files/abehiroshi.jpg', content_type='image/jpeg')
+    test_get_request(path='/tests/static/abe_files/menu.html', status_code=200, file_path='./tests/static/abe_files/menu.html', content_type='text/html')
+    test_get_request(path='/', status_code=200, file_path='./tests/html/index.html', content_type='text/html')
+    test_get_request(path='/cgi/echo.py', status_code=200, content_type=None, content_length=0)
+    test_get_request(path='/cgi/hello.py', status_code=200, content_type='text/plain', content=b'Hello, world!\n')
+    test_get_request(path='/root/', status_code=200, file_path='./tests/html/root/root.html', content_type='text/html')
+    test_get_request(path='/root/root.html', status_code=200, file_path='./tests/html/root/root.html', content_type='text/html')
+    test_get_request(path='/alias/', status_code=200, file_path='./tests/html/foo/index.html', content_type='text/html')
+    test_get_request(path='/alias/foo.html', status_code=200, file_path='./tests/html/foo/foo.html', content_type='text/html')
+    test_get_request(path='/index/', status_code=200, file_path='./tests/html/foo/foo.html', content_type='text/html')
+    test_get_request(path='/kapouet/pouic/toto/pouet', status_code=200, file_path='/tmp/www/pouic/toto/pouet', content_type='text/plain')
+    test_get_request(path='/multiple-index/', status_code=200, file_path='./tests/html/foo/foo.html', content_type='text/html')
+    test_get_request(path='/error_page/nosuchfile', status_code=404, file_path='/tmp/www/404.html', content_type='text/html')
+    test_get_request(path='/limit_except/post/', status_code=405, content_type='text/html')
+    test_get_request(path='/limit_except/get/', status_code=200, file_path='./tests/html/foo/index.html', content_type='text/html')
+    test_get_request(path='/redirect/url/', status_code=301, location='https://www.google.com')
+    test_get_request(path='/redirect/path/', status_code=301, location='/kapouet/pouic/toto/pouet')
+    test_get_request(path='/cgi-bin/a.out.cgi', status_code=200, content_type='text/html', content=b'<html><head><title>CGI</title></head><body>\n<h1>CGI</h1>\n<p>CGI is a standard for interfacing external applications with information servers, such as HTTP or web servers.</p>\n</body></html>\n')
+    test_get_request(path='/autoindex/', status_code=200, content_type='text/html')
+    if err_cnt > 0:
+        sys.stdout.write('\033[31m' + str(err_cnt) + '/' + str(cnt) + ' tests failed.\033[0m\n')
+        sys.exit(1)
+    else:
+        sys.stdout.write('\033[32m' + str(cnt) + '/' + str(cnt) + ' tests passed.\033[0m\n')
+        sys.exit(0)
