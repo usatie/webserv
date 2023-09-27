@@ -1,5 +1,6 @@
 import requests
 import sys
+import os
 
 url = 'http://localhost:8181'
 cnt = 0
@@ -28,20 +29,36 @@ def assertContent(response, expected):
         assertEqual(actual, expected, 'content')
 
 def test_get_request(path, status_code, content_type=None, content_length=None, file_path=None, content=None, location=None, host=None):
+    test_request('GET', path, status_code, content_type, content_length, file_path, content, location, host)
+
+def test_post_request(path, status_code, content_type=None, content_length=None, file_path=None, content=None, location=None, host=None, data=None):
+    test_request('POST', path, status_code, content_type, content_length, file_path, content, location, host, data)
+
+def test_request(method, path, status_code, content_type=None, content_length=None, file_path=None, content=None, location=None, host=None, data=None):
     global err
     err = False
     assert(file_path is None or content is None) # Specifying both is not allowed
     global cnt
     cnt += 1
     # Print test name, cnt, path and host
-    sys.stdout.write('Test {:02d}: GET {} '.format(cnt, path))
+    sys.stdout.write('Test {:02d}: {} {} '.format(cnt, method, path))
     if host is not None:
         sys.stdout.write('(Host: {}) '.format(host))
+    # Print data (Trim if too long)
+    if data is not None:
+        if isinstance(data, bytes) and len(data) > 20:
+            sys.stdout.write(': {}... '.format(data[:20]))
+        else:
+            sys.stdout.write(': {} '.format(data))
+    sys.stdout.write(': ')
     sys.stdout.flush()
     headers = {}
     if host is not None:
         headers['Host'] = host
-    response = requests.get(url + path, headers=headers, allow_redirects=False)
+    if data is not None and content_length is None:
+        if isinstance(data, str):
+            headers['Content-Length'] = str(len(data))
+    response = requests.request(method, url + path, headers=headers, data=data, allow_redirects=False)
     
     # Status Code
     assertEqual(response.status_code, status_code, 'status_code')
@@ -71,6 +88,18 @@ def test_get_request(path, status_code, content_type=None, content_length=None, 
         err_cnt += 1
     else:
         print('\033[32mOK\033[0m')
+
+# This is for chunked encoding test
+def gen(message=None):
+    if message is None:
+        yield 'Hi, '
+        yield 'there '
+        yield 'bob'
+        yield '!'
+    else:
+        # yield message by chunk of 1000 bytes
+        for i in range(0, len(message), 1000):
+            yield message[i:i+1000]
 
 if __name__ == '__main__':
     test_get_request(path='/tests/static/a.text', status_code=200, file_path='./tests/static/a.text', content_type='text/plain')
@@ -104,6 +133,18 @@ if __name__ == '__main__':
     test_get_request(path='/', status_code=200, file_path='./tests/html/index3.html', content_type='text/html', host='webserv3')
     test_get_request(path='/', status_code=200, file_path='./tests/html/index4.html', content_type='text/html', host='webserv4')
     test_get_request(path='/', status_code=200, file_path='./tests/html/index5.html', content_type='text/html', host='webserv5')
+
+    # POST
+    test_post_request(path='/cgi/echo.py', status_code=200, content_type='text/plain', content=b'Hello, world!\n', data=b'Hello, world!\n')
+    test_post_request(path='/cgi/echo.py', status_code=200, content_type='text/plain', content=b'42Tokyo', data=b'42Tokyo')
+    test_post_request(path='/cgi/echo.py', status_code=200, content_type='text/plain', content=b'42Tokyo', data=b'42Tokyo')
+    random_bytes = os.urandom(1000000)
+    test_post_request(path='/cgi/echo.py', status_code=200, content_type='text/plain', content=random_bytes, data=random_bytes)
+
+    # POST(Chunked)
+    test_post_request(path='/cgi/echo.py', status_code=200, content_type='text/plain', content=b'Hi, there bob!', data=gen())
+    test_post_request(path='/cgi/echo.py', status_code=200, content_type='text/plain', content=random_bytes, data=gen(random_bytes))
+
     if err_cnt > 0:
         sys.stdout.write('\033[31m' + str(err_cnt) + '/' + str(cnt) + ' tests failed.\033[0m\n')
         sys.exit(1)
