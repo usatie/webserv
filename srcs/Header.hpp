@@ -29,7 +29,7 @@ class Header {
     version.clear();
     fullpath.clear();
     fields.clear();
-	query.clear();
+    query.clear();
     return 0;
   }
 };

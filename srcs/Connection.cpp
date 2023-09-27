@@ -1,11 +1,11 @@
 #include "Connection.hpp"
 
-#include <cctype>
-#include <string>
 #include <sys/wait.h>
 
+#include <cctype>
 #include <cerrno>
 #include <map>
+#include <string>
 
 #include "DeleteHandler.hpp"
 #include "Server.hpp"
@@ -81,31 +81,24 @@ int Connection::clear() {
   return 0;
 }
 
-static bool	is_valid_path(std::string const &path)
-{
-	return (path[0] == '/');
-}
+static bool is_valid_path(std::string const &path) { return (path[0] == '/'); }
 
-static bool	deconde_parcent(std::string &path)
-{
-	std::string dst;
-	for (size_t i = 0; i < path.size(); )
-	{
-		if (path[i] != '%')
-		{
-			dst += path[i];
-			i++;
-			continue;
-		}
-		if (i + 2 >= path.size())
-			return false;
-		if (!(std::isxdigit(path[i + 1]) && std::isxdigit(path[i + 2])))
-			return false;
-		dst += strtol(path.substr(i + 1, 2).c_str(), NULL, 16);
-		i += 3;
-	}
-	path = dst;
-	return true;
+static bool deconde_parcent(std::string &path) {
+  std::string dst;
+  for (size_t i = 0; i < path.size();) {
+    if (path[i] != '%') {
+      dst += path[i];
+      i++;
+      continue;
+    }
+    if (i + 2 >= path.size()) return false;
+    if (!(std::isxdigit(path[i + 1]) && std::isxdigit(path[i + 2])))
+      return false;
+    dst += strtol(path.substr(i + 1, 2).c_str(), NULL, 16);
+    i += 3;
+  }
+  path = dst;
+  return true;
 }
 
 // TODO: make this noexcept
@@ -130,15 +123,15 @@ int Connection::parse_start_line() {
 
   {
     std::string::size_type i = header.path.find_first_of('?');
-    if (i != std::string::npos)
-    {
+    if (i != std::string::npos) {
       header.query = header.path.substr(i + 1);
       header.path = header.path.substr(0, i);
     }
   }
 
   // Path must be starting with /
-  if (!is_valid_path(header.path) || !deconde_parcent(header.path) || !deconde_parcent(header.query)) {
+  if (!is_valid_path(header.path) || !deconde_parcent(header.path) ||
+      !deconde_parcent(header.query)) {
     Log::cinfo() << "Invalid path: " << header.path << std::endl;
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
@@ -190,14 +183,12 @@ int Connection::split_header_field(const std::string &line, std::string &key,
   return 0;
 }
 
-std::string	tolower(std::string const &str)
-{
-	std::string	dst = str;
-	for (size_t i = 0; i < str.size(); i++)
-	{
-		dst[i] = std::tolower(str[i]);
-	}
-	return dst;
+std::string tolower(std::string const &str) {
+  std::string dst = str;
+  for (size_t i = 0; i < str.size(); i++) {
+    dst[i] = std::tolower(str[i]);
+  }
+  return dst;
 }
 
 int Connection::parse_header_fields() {  // throwable
