@@ -155,6 +155,8 @@ int Connection::parse_start_line() {
   }
   // ss.fail() : method or path or version is missing
   // !ss.eof()  : there are more than 3 tokens or extra white spaces
+  if (!ss.eof())
+    ss >> std::ws; // Trailing white spaces are allowed
   if (ss.fail() || !ss.eof()) {
     Log::cinfo() << "Invalid start line: " << line << std::endl;
     ErrorHandler::handle(*this, 400);

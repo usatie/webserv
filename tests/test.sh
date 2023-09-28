@@ -29,10 +29,10 @@ mkdir -p /tmp/www/pouic/toto \
 # 2. Tests
 # arg for save error count
 cnt=0
-for i in {1..44}; do
+for i in {1..45}; do
   echo -n "Test${i}   : " | tee -a error.log
   # skip test 12, 23, 29
-  if [ $i -eq 3 ] || [ $i -eq 4 ] || [ $i -eq 7 ] || [ $i -eq 8 ] || [ $i -eq 10 ]; then
+  if [ $i -eq 3 ] || [ $i -eq 4 ] || [ $i -eq 7 ] || [ $i -eq 8 ] || [ $i -eq 10 ] || [ $i -eq 45 ]; then
 	  : # do nothing ( keep testing )
   else
 	echo "Skip"
