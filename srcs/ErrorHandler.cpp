@@ -123,10 +123,12 @@ void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
   // Default Error Page
   switch (status_code) {
     case 400:
+      conn.keep_alive = false;
       *conn.client_socket << "HTTP/1.1 400 Bad Request" << CRLF;
       *conn.client_socket << "Content-Type: text/html" << CRLF;
       *conn.client_socket << "Content-Length: "
                           << sizeof(http_error_400_page) - 1 << CRLF;
+      *conn.client_socket << "Connection: close" << CRLF;
       *conn.client_socket << CRLF;  // end of header
       *conn.client_socket << http_error_400_page;
       break;

@@ -1,11 +1,6 @@
-HTTP/1.1 400 Bad Request
-Content-Type: text/html
-Content-Length: 158
+HTTP/1.1 200 OK
+Server: webserv/0.0.1
+Content-Type: text/plain
+Content-Length: 6
 
-<html>
-<head><title>400 Bad Request</title></head>
-<body>
-<center><h1>400 Bad Request</h1></center>
-<hr><center>webserv/0.0.1</center>
-</body>
-</html>
+aaaaa

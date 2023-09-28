@@ -1,2 +1,3 @@
 GET /root/root.html/ HTTP/1.1
+Host: localhost
 
