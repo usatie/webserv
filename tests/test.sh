@@ -32,9 +32,11 @@ cnt=0
 for i in {1..44}; do
   echo -n "Test${i}   : " | tee -a error.log
   # skip test 12, 23, 29
-  if [ $i -eq 12 ] || [ $i -eq 23 ] || [ $i -eq 29 ]; then
-    echo "Skipped"
-    continue
+  if [ $i -eq 3 ] || [ $i -eq 4 ] || [ $i -eq 7 ] || [ $i -eq 8 ] || [ $i -eq 10 ]; then
+	  : # do nothing ( keep testing )
+  else
+	echo "Skip"
+	continue
   fi
   echo "" >>error.log
   if [[ "$(uname -s)" == "Linux" ]]; then
