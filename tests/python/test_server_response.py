@@ -29,10 +29,34 @@ def assertContent(response, expected):
         assertEqual(actual, expected, 'content')
 
 def test_get_request(path, status_code, content_type=None, content_length=None, file_path=None, content=None, location=None, host=None, headers=None):
-    test_request('GET', path, status_code, content_type, content_length, file_path, content, location, host, headers=headers)
+    test_request(
+            method='GET',
+            path=path, 
+            status_code=status_code,
+            content_type=content_type,
+            content_length=content_length,
+            file_path=file_path,
+            content=content,
+            location=location,
+            host=host,
+            data=None,
+            headers=headers
+            )
 
 def test_post_request(path, status_code, content_type=None, content_length=None, file_path=None, content=None, location=None, host=None, data=None, headers=None):
-    test_request('POST', path, status_code, content_type, content_length, file_path, content, location, host, data, headers)
+    test_request(
+            method='POST',
+            path=path, 
+            status_code=status_code,
+            content_type=content_type,
+            content_length=content_length,
+            file_path=file_path,
+            content=content,
+            location=location,
+            host=host,
+            data=data,
+            headers=headers
+            )
 
 def test_request(method, path, status_code, content_type=None, content_length=None, file_path=None, content=None, location=None, host=None, data=None, headers=None):
     global err
@@ -155,7 +179,12 @@ if __name__ == '__main__':
     test_post_request(path='/cgi-invalid-handler/echo.py', status_code=500, content_type='text/html', data=b'Hello, world!\n')
 
     # GET (with query string)
-    test_get_request(path='/?foo=bar', status_code=200, file_path='./tests/html/index.html', content_type='text/html', host=None)
+    test_get_request(path='/?foo=bar', status_code=200, file_path='./tests/html/index.html', content_type='text/html')
+
+    # GET (with fragment)
+    # However, requests.request() will remove fragment in the actual HTTP request. So, we need another way to test this.
+    # test_get_request(path='/#somefragment', status_code=200, file_path='./tests/html/index.html', content_type='text/html')
+    # test_get_request(path='/?foo=bar#somefragment', status_code=200, file_path='./tests/html/index.html', content_type='text/html')
 
     # GET (with percent encoding)
     test_get_request(path='/alias/foo.html', status_code=200, file_path='./tests/html/foo/foo.html', content_type='text/html')
