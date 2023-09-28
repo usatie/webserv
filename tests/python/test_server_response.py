@@ -153,12 +153,9 @@ if __name__ == '__main__':
 
     # Server Error
     test_post_request(path='/cgi-invalid-handler/echo.py', status_code=500, content_type='text/html', data=b'Hello, world!\n')
-    #test_post_request(path='/cgi/infinite_loop.py', status_code=504, content_type='text/html', data=b'Hello, world!\n')
-    #test_get_request(path='/cgi/infinite_loop.py', status_code=504, content_type='text/html')
 
     # GET (with query string)
     test_get_request(path='/?foo=bar', status_code=200, file_path='./tests/html/index.html', content_type='text/html', host=None)
-    # test_get_request(path='/cgi/echo.py?foo=bar', status_code=200, content_type='text/plain', content=b'foo=bar')
 
     # GET (with percent encoding)
     test_get_request(path='/alias/foo.html', status_code=200, file_path='./tests/html/foo/foo.html', content_type='text/html')
@@ -168,6 +165,13 @@ if __name__ == '__main__':
     test_get_request(path='/', status_code=200, file_path='./tests/html/index1.html', content_type='text/html', headers={'Host': 'webserv1'})
     test_get_request(path='/', status_code=200, file_path='./tests/html/index1.html', content_type='text/html', headers={'host': 'webserv1'})
     test_get_request(path='/', status_code=200, file_path='./tests/html/index1.html', content_type='text/html', headers={'hOsT': 'webserv1'})
+
+    # Slow test
+    ## GET (with query string)
+    test_get_request(path='/cgi/echo.py?foo=bar', status_code=200, content_type='text/plain', content=b'')
+    ## Server Error
+    test_post_request(path='/cgi/infinite_loop.py', status_code=504, content_type='text/html', data=b'Hello, world!\n')
+    test_get_request(path='/cgi/infinite_loop.py', status_code=504, content_type='text/html')
 
     if err_cnt > 0:
         sys.stdout.write('\033[31m' + str(err_cnt) + '/' + str(cnt) + ' tests failed.\033[0m\n')
