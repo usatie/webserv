@@ -17,6 +17,7 @@ class Header {
   std::string version;
   std::string fullpath;
   std::string query;
+  std::string fragment;
   std::map<std::string, std::string> fields;  // unordered_map is preferred
                                               // but C++98 doesn't support it
   // Constructor/Destructor
@@ -30,6 +31,7 @@ class Header {
     fullpath.clear();
     fields.clear();
     query.clear();
+    fragment.clear();
     return 0;
   }
 };

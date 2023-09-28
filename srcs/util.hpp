@@ -83,6 +83,11 @@ bool contains(const std::vector<T>& vec, const T& str) {
 }  // namespace vector
 namespace http {
 bool is_tchar(const char c);
+bool is_pchar(const std::string &str, size_t pos);
+bool is_unreserved(const char c);
+bool is_sub_delims(const char c);
+bool is_HEXDIG(const char c);
+bool is_pct_encoded(const std::string& str, size_t pos);
 bool is_token(const std::string& str);
 }  // namespace http
 namespace inet {

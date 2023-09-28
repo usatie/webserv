@@ -81,7 +81,77 @@ int Connection::clear() {
   return 0;
 }
 
-static bool is_valid_path(std::string const &path) { return (path[0] == '/'); }
+// RFC[URI] : https://datatracker.ietf.org/doc/html/rfc3986
+//            https://datatracker.ietf.org/doc/html/rfc3986#appendix-A
+// RFC[HTTP] : https://datatracker.ietf.org/doc/html/rfc9110#uri
+//
+// URI references are used to target requests, indicate redirects, and define relationships.
+//
+// The definitions of "URI-reference", "absolute-URI", "relative-part", "authority", "port", "host", "path-abempty", "segment", and "query" are adopted from the URI generic syntax. An "absolute-path" rule is defined for protocol elements that can contain a non-empty path component. (This rule differs slightly from the path-abempty rule of RFC 3986, which allows for an empty path, and path-absolute rule, which does not allow paths that begin with "//".) A "partial-URI" rule is defined for protocol elements that can contain a relative URI but not a fragment component.
+//
+//
+// 1. URI-reference
+// URI-reference = URI / relative-ref
+// URI           = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
+// relative-ref  = relative-part [ "?" query ] [ "#" fragment ]
+// hier-part     = "//" authority path-abempty
+//               / path-absolute
+//               / path-rootless
+//               / path-empty
+//
+// 2. absolute-URI
+// absolute-URI  = scheme ":" hier-part [ "?" query ]
+//
+// 3. relative-part
+// relative-part = "//" authority path-abempty
+//               / path-absolute
+//               / path-noscheme
+//               / path-empty
+// 
+// 4. authority
+// authority     = [ userinfo "@" ] host [ ":" port ]
+//
+// 5. host
+// host          = IP-literal / IPv4address / reg-name
+// reg-name      = *( unreserved / pct-encoded / sub-delims )
+//
+// 6. port
+// port          = *DIGIT
+//
+// 7. path-abempty
+// path-abempty  = *( "/" segment )
+// * empty path is not allowed in HTTP
+//
+// 8. segment
+// segment       = *pchar
+//
+// 9. query
+// query         = *( pchar / "/" / "?" )
+//
+// absolute-path = 1*( "/" segment )
+// partial-URI   = relative-part [ "?" query ]
+
+// It is RECOMMENDED that all senders and recipients support, at a minimum, URIs with lengths of 8000 octets in protocol elements. Note that this implies some structures and on-wire representations (for example, the request line in HTTP/1.1) will necessarily be larger in some cases.
+#define MAX_URI_LENGTH 8000
+
+static bool is_valid_path(std::string const &path) {
+  // Empty path is allowed
+  if (path.empty()) return true;
+
+  if (path.size() > MAX_URI_LENGTH) return false; // Too long
+  if (path[0] != '/') return false; // relative path
+  /*
+   * Nginx does not check the following
+  for (size_t i = 0; i < path.size();) {
+    if (path[i] != '/') return false;
+    i++;
+    while (i < path.size() && util::http::is_pchar(path, i)) {
+      i++;
+    }
+  }
+  */
+  return true;
+}
 
 static bool deconde_parcent(std::string &path) {
   std::string dst;
@@ -121,9 +191,17 @@ int Connection::parse_start_line() {
   ss >> header.path;     // ss does not throw
   ss >> header.version;  // ss does not throw
 
+  // URI = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
+  // relative-ref = relative-part [ "?" query ] [ "#" fragment ]
   {
-    std::string::size_type i = header.path.find_first_of('?');
-    if (i != std::string::npos) {
+    std::string::size_type i;
+    // [ "#" fragment ]
+    if ((i = header.path.find_first_of('#')) != std::string::npos) {
+      header.fragment = header.path.substr(i + 1);
+      header.path = header.path.substr(0, i);
+    }
+    // [ "?" query ]
+    if ((i = header.path.find_first_of('?')) != std::string::npos) {
       header.query = header.path.substr(i + 1);
       header.path = header.path.substr(0, i);
     }
