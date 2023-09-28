@@ -161,7 +161,7 @@ int Connection::parse_start_line() {
     handler = &Connection::response;
     return WSV_AGAIN;
   }
-  handler = &Connection::parse_header_fields;
+  handler = &Connection::read_header_fields;
   return WSV_AGAIN;
 }
 
@@ -191,12 +191,12 @@ std::string tolower(std::string const &str) {
   return dst;
 }
 
-int Connection::parse_header_fields() {  // throwable
+int Connection::read_header_fields() {  // throwable
   std::string line;
   while (client_socket->read_telnet_line(line) == 0) {  // throwable
     // Empty line indicates the end of header fields
     if (line == "") {
-      handler = &Connection::parse_body;
+      handler = &Connection::parse_header_fields;
       return WSV_AGAIN;
     }
     Log::cdebug() << "header line: " << line << std::endl;
@@ -216,6 +216,30 @@ int Connection::parse_header_fields() {  // throwable
     header.fields[tolower(key)] = value;  // throwable
   }
   return WSV_WAIT;
+}
+
+int Connection::parse_header_fields() {  // throwable
+  if (header.fields.find("host") == header.fields.end()) {
+    Log::cinfo() << "Host header is missing" << std::endl;
+    ErrorHandler::handle(*this, 400);
+    handler = &Connection::response;
+    return WSV_AGAIN;
+  }
+  if (header.fields.find("connection") != header.fields.end()) {
+    if (header.fields["connection"] == "close") {
+      keep_alive = false;
+    } else if (header.fields["connection"] == "keep-alive") {
+      keep_alive = true;
+    } else {
+      Log::cinfo() << "Invalid Connection header: "
+                   << header.fields["connection"] << std::endl;
+      ErrorHandler::handle(*this, 400);
+      handler = &Connection::response;
+      return WSV_AGAIN;
+    }
+  }
+  handler = &Connection::parse_body;
+  return WSV_AGAIN;
 }
 
 // https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
@@ -688,7 +712,7 @@ int Connection::response() throw() {
     if (client_socket->hasReceivedEof) {
       Log::info("Client socket has received EOF, remove connection");
       return WSV_REMOVE;
-    } else if (header.fields["connection"] == "close") {
+    } else if (!keep_alive) {
       Log::info("Connection: close, remove connection");
       return WSV_REMOVE;
     } else {

@@ -60,6 +60,7 @@ class Connection {
   Server *server;  // This will never be a NULL so it can be reference.
                    // But to avoid circular dependency with Server.hpp, we use
                    // forward declaration and pointer.
+  bool keep_alive;
 
  public:
   IOStatus io_status;
@@ -84,6 +85,7 @@ class Connection {
         cgi_started(0),  // What should be the initial value?
         handler(&Connection::parse_start_line),
         server(server),
+        keep_alive(true),
         io_status(NO_IO) {}
   ~Connection() throw() {}
   Connection(const Connection &other) throw();  // Do not implement this
@@ -114,6 +116,7 @@ class Connection {
   int split_header_field(const std::string &line, std::string &key,
                          std::string &value);  // throwable
 
+  int read_header_fields();  // throwable
   int parse_header_fields();  // throwable
 
   int parse_body();                        // throwable
