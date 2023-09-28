@@ -139,7 +139,7 @@ static bool is_valid_path(std::string const &path) {
   if (path.empty()) return true;
 
   if (path.size() > MAX_URI_LENGTH) return false; // Too long
-  if (path[0] != '/') return false; // relative path
+  if (path[0] != '/') return false; // TODO: Allow absoluteURI
   /*
    * Nginx does not check the following
   for (size_t i = 0; i < path.size();) {
@@ -150,6 +150,24 @@ static bool is_valid_path(std::string const &path) {
     }
   }
   */
+  return true;
+}
+
+static bool is_valid_decoded_path(std::string const &path) {
+  // Prohibit path component ".."
+  // 1. path contains "/../" is not allowed
+  // 2. path ends with "/.." is not allowed
+  std::string::size_type s = 0, i = 0; // s points to the first char of the segment
+  for (; i < path.size();) {
+    if (path[i] != '/') {
+      i++;
+      continue;
+    }
+    if ((i-s) == 2 && path[s] == '.' && path[s+1] == '.') return false;
+    i++;
+    s = i; // s does not point to '/'
+  }
+  if ((i-s) == 2 && path[s] == '.' && path[s+1] == '.') return false;
   return true;
 }
 
@@ -208,8 +226,11 @@ int Connection::parse_start_line() {
   }
 
   // Path must be starting with /
-  if (!is_valid_path(header.path) || !deconde_parcent(header.path) ||
-      !deconde_parcent(header.query)) {
+  if (!is_valid_path(header.path)
+      || !deconde_parcent(header.path)
+      || !deconde_parcent(header.query)
+      || !deconde_parcent(header.fragment)
+      || !is_valid_decoded_path(header.path)) {
     Log::cinfo() << "Invalid path: " << header.path << std::endl;
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
