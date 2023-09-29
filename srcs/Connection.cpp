@@ -777,7 +777,7 @@ int Connection::handle_cgi_parse() {  // throwable
       handler = &Connection::response;
       break;
     }
-    cgi_header_fields[(key)] = value;
+    cgi_header_fields[util::http::canonical_header_key(key)] = value;
   }
   if (cgi_header_fields.find("Status") != cgi_header_fields.end()) {
     // TODO: validate status code
