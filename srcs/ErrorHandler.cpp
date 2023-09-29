@@ -46,10 +46,7 @@ const config::ErrorPage* find_error_page(const ConfigItem* cf,
   it = cf->error_pages.begin();
   end = cf->error_pages.end();
   for (; it != end; ++it) {
-    if (std::find(it->codes.begin(), it->codes.end(), status_code) ==
-        it->codes.end())
-      continue;
-    return &(*it);
+    if (util::contains(it->codes, status_code)) return &(*it);
   }
   return NULL;
 }

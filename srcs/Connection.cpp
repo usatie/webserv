@@ -321,20 +321,20 @@ int Connection::read_header_fields() {  // throwable
 }
 
 int Connection::parse_header_fields() {  // throwable
-  if (header.fields.find("Host") == header.fields.end()) {
+  if (!util::contains(header.fields, "Host")) {
     Log::cinfo() << "Host header is missing" << std::endl;
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
     return WSV_AGAIN;
   }
-  if (header.fields.find("Connection") != header.fields.end()) {
-    if (header.fields["Connection"] == "close") {
+  Header::const_iterator it = header.fields.find("Connection");
+  if (it != header.fields.end()) {
+    if (it->second == "close") {
       keep_alive = false;
-    } else if (header.fields["Connection"] == "keep-alive") {
+    } else if (it->second == "keep-alive") {
       keep_alive = true;
     } else {
-      Log::cinfo() << "Invalid Connection header: "
-                   << header.fields["Connection"] << std::endl;
+      Log::cinfo() << "Invalid Connection header: " << it->second << std::endl;
       ErrorHandler::handle(*this, 400);
       handler = &Connection::response;
       return WSV_AGAIN;
@@ -347,10 +347,10 @@ int Connection::parse_header_fields() {  // throwable
 // https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
 int Connection::parse_body() {  // throwable
   Log::debug("parse_body");
-  if (header.fields.find("Transfer-Encoding") != header.fields.end() &&
-      header.fields["Transfer-Encoding"].find("chunked") != std::string::npos) {
+  Header::const_iterator it = header.fields.find("Transfer-Encoding");
+  if (it != header.fields.end() && util::contains(it->second, "chunked")) {
     // TODO: Handle invalid Transfer-Encoding
-    if (header.fields.find("Content-Length") != header.fields.end()) {
+    if (util::contains(header.fields, "Content-Length")) {
       Log::cinfo() << "Both Transfer-Encoding and content-length are "
                       "specified"
                    << std::endl;
@@ -451,12 +451,13 @@ int Connection::parse_body_chunk_trailer_section() {  // throwable
 int Connection::parse_body_content_length() {  // throwable
   Log::debug("parse_body_content_length");
   if (body.empty()) {
-    if (header.fields.find("Content-Length") == header.fields.end()) {
+    Header::iterator it = header.fields.find("Content-Length");
+    if (it == header.fields.end()) {
       handler = &Connection::handle;
       return WSV_AGAIN;
     }
     // TODO: Handle invalid Content-Length
-    content_length = atoi(header.fields["Content-Length"].c_str());
+    content_length = atoi(it->second.c_str());
     body.reserve(content_length);
   }
   std::vector<char> buf(content_length - body.size());
@@ -483,8 +484,9 @@ const config::Server *select_srv_cf(const config::Config &cf,
                                     const Connection &conn) throw() {
   struct sockaddr_storage *saddr = &(*conn.client_socket)->saddr;
   std::string host;
-  if (conn.header.fields.find("Host") != conn.header.fields.end()) {
-    host = conn.header.fields.find("Host")->second;
+  Header::const_iterator it = conn.header.fields.find("Host");
+  if (it != conn.header.fields.end()) {
+    host = it->second;
   }
   // Remove port number
   size_t pos = host.find(':');
@@ -511,7 +513,7 @@ const config::Server *select_srv_cf(const config::Config &cf,
       }
 
       // 3. Filter by host name
-      if (util::vector::contains(srv.server_names, host)) {
+      if (util::contains(srv.server_names, host)) {
         srv_cf = &srv;
         break;
       }
@@ -581,7 +583,7 @@ const config::CgiHandler *select_cgi_handler_cf(const ConfigItem *cf,
   std::string ext = util::path::get_extension(path);  // throwable
   for (unsigned int i = 0; i < cf->cgi_handlers.size(); i++) {
     const config::CgiHandler &cgi = cf->cgi_handlers[i];
-    if (util::vector::contains(cgi.extensions, ext)) {
+    if (util::contains(cgi.extensions, ext)) {
       return &cgi;
     }
   }
@@ -597,7 +599,7 @@ const config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf,
   }
   // Find CGI handler for this request
   std::string ext = util::path::get_extension(path);  // throwable
-  if (util::vector::contains(cf->cgi_extensions, ext)) {
+  if (util::contains(cf->cgi_extensions, ext)) {
     return &cf->cgi_extensions;
   }
   return NULL;
@@ -638,8 +640,7 @@ int Connection::handle() {  // throwable
 
   // `limit_except` directive
   if (loc_cf && loc_cf->limit_except.configured) {
-    if (util::vector::contains(loc_cf->limit_except.methods, header.method) ==
-        false) {
+    if (!util::contains(loc_cf->limit_except.methods, header.method)) {
       Log::cinfo() << "Unsupported method: " << header.method << std::endl;
       ErrorHandler::handle(*this, 405);
       handler = &Connection::response;
@@ -671,139 +672,6 @@ int Connection::handle() {  // throwable
   } else {
     Log::cinfo() << "Unsupported method: " << header.method << std::endl;
     ErrorHandler::handle(*this, 405);  // throwable
-  }
-  handler = &Connection::response;
-  return WSV_AGAIN;
-}
-
-int Connection::handle_cgi_req() throw() {
-  Log::debug("handle_cgi_req");
-  Log::cdebug() << "isSendBufEmpty: " << cgi_socket->isSendBufEmpty()
-                << std::endl;
-  if (cgi_socket->isSendBufEmpty()) {
-    shutdown(cgi_socket->get_fd(), SHUT_WR);
-    handler = &Connection::handle_cgi_res;
-    return WSV_AGAIN;
-  }
-  return WSV_WAIT;
-}
-
-int Connection::handle_cgi_res() throw() {
-  Log::debug("handle_cgi_res");
-  if (cgi_socket->hasReceivedEof) {
-    Log::info("cgi_socket has received EOF");
-    handler = &Connection::handle_cgi_parse;
-    return WSV_AGAIN;
-  }
-  return WSV_WAIT;
-}
-
-// CGI Response syntax (https://datatracker.ietf.org/doc/html/rfc3875#section-6)
-//
-// generic-response   = 1*header-field NL [ response-body ]
-// CGI-Response       = document-response | local-redir-response |
-//                      client-redir-response | client-redirdoc-response
-//
-// document-response        = Content-Type [ Status ] *other-field NL
-//                            response-body
-// local-redir-response     = local-Location NL
-// client-redir-response    = client-Location *extension-field NL
-// client-redirdoc-response = client-Location Status Content-Type
-//                            *other-field NL response-body
-//
-// header-field    = CGI-field | other-field
-// CGI-field       = Content-Type | Location | Status
-// other-field     = protocol-field | extension-field
-// protocol-field  = generic-field
-// extension-field = generic-field
-// generic-field   = field-name ":" [ field-value ] NL
-// field-name      = token
-// field-value     = *( field-content | LWSP )
-// field-content   = *( token | separator | quoted-string )
-//
-// Content-Type = "Content-Type:" media-type NL
-//
-// Location        = local-Location | client-Location
-// client-Location = "Location:" fragment-URI NL
-// local-Location  = "Location:" local-pathquery NL
-// fragment-URI    = absoluteURI [ "#" fragment ]
-// fragment        = *uric
-// local-pathquery = abs-path [ "?" query-string ]
-// abs-path        = "/" path-segments
-// path-segments   = segment *( "/" segment )
-// segment         = *pchar
-// pchar           = unreserved | escaped | extra
-// extra           = ":" | "@" | "&" | "=" | "+" | "$" | ","
-//
-// Status         = "Status:" status-code SP reason-phrase NL
-// status-code    = "200" | "302" | "400" | "501" | extension-code
-// extension-code = 3digit
-// reason-phrase  = *TEXT
-int Connection::handle_cgi_parse() {  // throwable
-  Log::debug("handle_cgi_parse");
-  // CGI Process is already terminated
-  if (cgi_pid < 0) {
-    handler = &Connection::response;
-    return WSV_AGAIN;
-  }
-
-  // Kill CGI process
-  int exit_status = kill_and_reap_cgi_process();
-
-  // CGI Script Error
-  if (exit_status != 0) {
-    Log::cdebug() << "CGI process terminated with status: " << exit_status
-                  << std::endl;
-    ErrorHandler::handle(*this, 500);
-    handler = &Connection::response;
-    return WSV_AGAIN;
-  }
-
-  // TODO: parse
-  std::string line;
-  // Read header fields
-  std::map<std::string, std::string> cgi_header_fields;
-  while (cgi_socket->readline(line) == 0) {  // throwable
-    Log::cdebug() << "CGI line: " << line << std::endl;
-    // Empty line indicates the end of header fields
-    if (line == "" || line == "\r") {
-      handler = &Connection::response;
-      break;
-    }
-    std::string key, value;
-    if (split_header_field(line, key, value) < 0) {
-      Log::cwarn() << "Invalid CGI header field: " << line << std::endl;
-      ErrorHandler::handle(*this, 500);
-      handler = &Connection::response;
-      break;
-    }
-    cgi_header_fields[util::http::canonical_header_key(key)] = value;
-  }
-  if (cgi_header_fields.find("Status") != cgi_header_fields.end()) {
-    // TODO: validate status code
-    Log::cdebug() << "Status found: " << cgi_header_fields["Status"]
-                  << std::endl;
-    *client_socket << "HTTP/1.1 " << cgi_header_fields["Status"] << CRLF;
-  } else {
-    Log::cdebug() << "Status not found" << std::endl;
-    *client_socket << "HTTP/1.1 200 OK" << CRLF;
-  }
-  // Send header fields
-  std::map<std::string, std::string>::const_iterator it;
-  for (it = cgi_header_fields.begin(); it != cgi_header_fields.end(); ++it) {
-    if (it->first == "Status") continue;
-    // TODO: validate header field
-    *client_socket << it->first << ": " << it->second << CRLF;
-  }
-  // Send response-body if any
-  size_t size = cgi_socket->getReadBufSize();
-  if (size > 0) {
-    *client_socket << "Content-Length: " << size << CRLF;
-    *client_socket << CRLF;  // End of header fields
-    *cgi_socket >> *client_socket;
-  } else {
-    *client_socket << "Content-Length: 0" << CRLF;
-    *client_socket << CRLF;  // End of header fields
   }
   handler = &Connection::response;
   return WSV_AGAIN;

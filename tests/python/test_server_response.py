@@ -204,6 +204,9 @@ if __name__ == '__main__':
     # GET (with .. but valid)
     test_get_request(path='/..path/to../..somewhere..', status_code=404, content_type='text/html')
 
+    # Content-Length and Transfer-Encoding (Bad Request)
+    test_post_request(path='/cgi/echo.py', status_code=400, content_type='text/html', data=gen(), headers={'Content-Length': '10', 'Transfer-Encoding': 'chunked'})
+
     ## Slow test
     ### GET (with query string)
     #test_get_request(path='/cgi/echo.py?foo=bar', status_code=200, content_type='text/plain', content=b'')
