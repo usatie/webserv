@@ -2,6 +2,9 @@
 #define UTIL_TPP
 
 #include <cstddef> // NULL
+#include <map>
+#include <vector>
+#include <string>
 
 namespace util {
   template <typename U>
@@ -9,6 +12,31 @@ namespace util {
 
   template <typename T, class D = Deleter<T> >
   class shared_ptr;
+
+  template <typename E, typename T>
+  bool contains(const std::vector<E>& container, const T& value);
+
+  template <typename T, typename K, typename V>
+  bool contains(const std::map<K, V>& container, const T& value);
+
+  template <typename S>
+  bool contains(const std::string &str, const S &substr);
+}
+
+template <typename S>
+bool util::contains(const std::string &str, const S &substr) {
+  return str.find(substr) != std::string::npos;
+}
+
+template <typename T, typename K, typename V>
+bool util::contains(const std::map<K, V>& container, const T& value) {
+  return container.find(value) != container.end();
+}
+
+template <typename E, typename T>
+bool util::contains(const std::vector<E>& container, const T& value) {
+  return std::find(container.begin(), container.end(), value) !=
+         container.end();
 }
 
 template <typename U>

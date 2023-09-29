@@ -2,8 +2,8 @@
 #define UTIL_HPP
 
 #include <algorithm>
+#include <map>
 #include <string>
-#include <vector>
 
 struct sockaddr_storage;
 namespace util {
@@ -20,12 +20,6 @@ namespace path {
 std::string get_extension(const std::string& filepath);
 }
 
-namespace vector {
-template <typename T>
-bool contains(const std::vector<T>& vec, const T& str) {
-  return std::find(vec.begin(), vec.end(), str) != vec.end();
-}
-}  // namespace vector
 namespace http {
 bool is_tchar(const char c);
 bool is_pchar(const std::string& str, size_t pos);

@@ -256,10 +256,11 @@ Command *listen(Token **rest, Token *tok, int context) {
   if (tok->type == Token::TK_STR) {  // listen address[:port]
     std::string tmp = tok->str;
     // if tok contains ':', it means port is specified
-    if (tmp.find(':') != std::string::npos) {
+    std::string::size_type pos = tmp.find(':');
+    if (pos != std::string::npos) {
       // TODO: support IPv6
-      cmd->address = tmp.substr(0, tmp.find(':'));
-      cmd->port = atoi(tmp.substr(tmp.find(':') + 1).c_str());
+      cmd->address = tmp.substr(0, pos);
+      cmd->port = atoi(tmp.substr(pos + 1).c_str());
       tok = tok->next;
     } else {
       cmd->address = tok->str;
