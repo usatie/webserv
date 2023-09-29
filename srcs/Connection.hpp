@@ -116,7 +116,7 @@ class Connection {
   int split_header_field(const std::string &line, std::string &key,
                          std::string &value);  // throwable
 
-  int read_header_fields();  // throwable
+  int read_header_fields();   // throwable
   int parse_header_fields();  // throwable
 
   int parse_body();                        // throwable

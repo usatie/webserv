@@ -85,9 +85,17 @@ int Connection::clear() {
 //            https://datatracker.ietf.org/doc/html/rfc3986#appendix-A
 // RFC[HTTP] : https://datatracker.ietf.org/doc/html/rfc9110#uri
 //
-// URI references are used to target requests, indicate redirects, and define relationships.
+// URI references are used to target requests, indicate redirects, and define
+// relationships.
 //
-// The definitions of "URI-reference", "absolute-URI", "relative-part", "authority", "port", "host", "path-abempty", "segment", and "query" are adopted from the URI generic syntax. An "absolute-path" rule is defined for protocol elements that can contain a non-empty path component. (This rule differs slightly from the path-abempty rule of RFC 3986, which allows for an empty path, and path-absolute rule, which does not allow paths that begin with "//".) A "partial-URI" rule is defined for protocol elements that can contain a relative URI but not a fragment component.
+// The definitions of "URI-reference", "absolute-URI", "relative-part",
+// "authority", "port", "host", "path-abempty", "segment", and "query" are
+// adopted from the URI generic syntax. An "absolute-path" rule is defined for
+// protocol elements that can contain a non-empty path component. (This rule
+// differs slightly from the path-abempty rule of RFC 3986, which allows for an
+// empty path, and path-absolute rule, which does not allow paths that begin
+// with "//".) A "partial-URI" rule is defined for protocol elements that can
+// contain a relative URI but not a fragment component.
 //
 //
 // 1. URI-reference
@@ -107,7 +115,7 @@ int Connection::clear() {
 //               / path-absolute
 //               / path-noscheme
 //               / path-empty
-// 
+//
 // 4. authority
 // authority     = [ userinfo "@" ] host [ ":" port ]
 //
@@ -131,15 +139,18 @@ int Connection::clear() {
 // absolute-path = 1*( "/" segment )
 // partial-URI   = relative-part [ "?" query ]
 
-// It is RECOMMENDED that all senders and recipients support, at a minimum, URIs with lengths of 8000 octets in protocol elements. Note that this implies some structures and on-wire representations (for example, the request line in HTTP/1.1) will necessarily be larger in some cases.
+// It is RECOMMENDED that all senders and recipients support, at a minimum, URIs
+// with lengths of 8000 octets in protocol elements. Note that this implies some
+// structures and on-wire representations (for example, the request line in
+// HTTP/1.1) will necessarily be larger in some cases.
 #define MAX_URI_LENGTH 8000
 
 static bool is_valid_path(std::string const &path) {
   // Empty path is allowed
   if (path.empty()) return true;
 
-  if (path.size() > MAX_URI_LENGTH) return false; // Too long
-  if (path[0] != '/') return false; // TODO: Allow absoluteURI
+  if (path.size() > MAX_URI_LENGTH) return false;  // Too long
+  if (path[0] != '/') return false;                // TODO: Allow absoluteURI
   /*
    * Nginx does not check the following
   for (size_t i = 0; i < path.size();) {
@@ -157,17 +168,18 @@ static bool is_valid_decoded_path(std::string const &path) {
   // Prohibit path component ".."
   // 1. path contains "/../" is not allowed
   // 2. path ends with "/.." is not allowed
-  std::string::size_type s = 0, i = 0; // s points to the first char of the segment
+  std::string::size_type s = 0,
+                         i = 0;  // s points to the first char of the segment
   for (; i < path.size();) {
     if (path[i] != '/') {
       i++;
       continue;
     }
-    if ((i-s) == 2 && path[s] == '.' && path[s+1] == '.') return false;
+    if ((i - s) == 2 && path[s] == '.' && path[s + 1] == '.') return false;
     i++;
-    s = i; // s does not point to '/'
+    s = i;  // s does not point to '/'
   }
-  if ((i-s) == 2 && path[s] == '.' && path[s+1] == '.') return false;
+  if ((i - s) == 2 && path[s] == '.' && path[s + 1] == '.') return false;
   return true;
 }
 
@@ -226,11 +238,9 @@ int Connection::parse_start_line() {
   }
 
   // Path must be starting with /
-  if (!is_valid_path(header.path)
-      || !deconde_parcent(header.path)
-      || !deconde_parcent(header.query)
-      || !deconde_parcent(header.fragment)
-      || !is_valid_decoded_path(header.path)) {
+  if (!is_valid_path(header.path) || !deconde_parcent(header.path) ||
+      !deconde_parcent(header.query) || !deconde_parcent(header.fragment) ||
+      !is_valid_decoded_path(header.path)) {
     Log::cinfo() << "Invalid path: " << header.path << std::endl;
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
@@ -254,8 +264,7 @@ int Connection::parse_start_line() {
   }
   // ss.fail() : method or path or version is missing
   // !ss.eof()  : there are more than 3 tokens or extra white spaces
-  if (!ss.eof())
-    ss >> std::ws; // Trailing white spaces are allowed
+  if (!ss.eof()) ss >> std::ws;  // Trailing white spaces are allowed
   if (ss.fail() || !ss.eof()) {
     Log::cinfo() << "Invalid start line: " << line << std::endl;
     ErrorHandler::handle(*this, 400);
