@@ -102,10 +102,26 @@ int Connection::handle_cgi_parse() {  // throwable
       break;
     }
     key = util::http::canonical_header_key(key);
+    // https://datatracker.ietf.org/doc/html/rfc3875#section-6.3
+    // each CGI field MUST NOT appear more than once in the response.
+    if (util::contains(cgi_header_fields, key)) {
+      Log::cwarn() << "Duplicate CGI header field: " << line << std::endl;
+      ErrorHandler::handle(*this, 500);
+      handler = &Connection::response;
+      break;
+    }
     cgi_header_fields[key] = value;
   }
+  // https://datatracker.ietf.org/doc/html/rfc3875#section-6.3
+  // At least one CGI field MUST be supplied;
+  if (cgi_header_fields.empty()) {
+    Log::cwarn() << "No CGI header field" << std::endl;
+    ErrorHandler::handle(*this, 500);
+    handler = &Connection::response;
+    return WSV_AGAIN;
+  }
+
   Header::const_iterator it;
-  
   // 1. Status
   if ((it = cgi_header_fields.find("Status")) != cgi_header_fields.end()) {
     // TODO: validate status code
