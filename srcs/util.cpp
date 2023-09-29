@@ -49,19 +49,20 @@ bool util::http::is_token(const std::string &str) {
 }
 
 // pchar = unreserved / pct-encoded / sub-delims / ":" / "@"
+// cppcheck-suppress unusedFunction
 bool util::http::is_pchar(const std::string &str, size_t pos) {
   if (str.size() <= pos) {
     return false;
   }
   char c = str[pos];
-  return is_unreserved(c) || is_pct_encoded(str, pos) || is_sub_delims(c) || c == ':' ||
-         c == '@';
+  return is_unreserved(c) || is_pct_encoded(str, pos) || is_sub_delims(c) ||
+         c == ':' || c == '@';
 }
 
 // unreserved = ALPHA / DIGIT / "-" / "." / "_" / "~"
 bool util::http::is_unreserved(const char c) {
-  return std::isalpha(c) || std::isdigit(c) || c == '-' || c == '.' || c == '_' ||
-         c == '~';
+  return std::isalpha(c) || std::isdigit(c) || c == '-' || c == '.' ||
+         c == '_' || c == '~';
 }
 
 // sub-delims = "!" / "$" / "&" / "'" / "(" / ")"
@@ -72,7 +73,7 @@ bool util::http::is_sub_delims(const char c) {
 }
 
 // pct-encoded = "%" HEXDIG HEXDIG
-bool util::http::is_pct_encoded(const std::string& str, size_t pos) {
+bool util::http::is_pct_encoded(const std::string &str, size_t pos) {
   if (str.size() < pos + 3) {
     return false;
   }
@@ -83,6 +84,20 @@ bool util::http::is_pct_encoded(const std::string& str, size_t pos) {
 //        / "a" / "b" / "c" / "d" / "e" / "f"
 bool util::http::is_HEXDIG(const char c) {
   return isdigit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
+}
+
+std::string util::http::canonical_header_key(const std::string &key) {
+  bool upper = true;
+  std::string s = key;
+  for (std::string::size_type i = 0; i < s.size(); ++i) {
+    if (upper && std::islower(s[i])) {
+      s[i] = std::toupper(s[i]);
+    } else if (!upper && std::isupper(s[i])) {
+      s[i] = std::tolower(s[i]);
+    }
+    upper = (s[i] == '-');
+  }
+  return s;
 }
 
 // inet
