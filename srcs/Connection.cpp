@@ -293,14 +293,6 @@ int Connection::split_header_field(const std::string &line, std::string &key,
   return 0;
 }
 
-std::string tolower(std::string const &str) {
-  std::string dst = str;
-  for (size_t i = 0; i < str.size(); i++) {
-    dst[i] = std::tolower(str[i]);
-  }
-  return dst;
-}
-
 int Connection::read_header_fields() {  // throwable
   std::string line;
   while (client_socket->read_telnet_line(line) == 0) {  // throwable
@@ -323,26 +315,26 @@ int Connection::read_header_fields() {  // throwable
       handler = &Connection::response;
       return WSV_AGAIN;
     }
-    header.fields[tolower(key)] = value;  // throwable
+    header.fields[util::http::canonical_header_key(key)] = value;  // throwable
   }
   return WSV_WAIT;
 }
 
 int Connection::parse_header_fields() {  // throwable
-  if (header.fields.find("host") == header.fields.end()) {
+  if (header.fields.find("Host") == header.fields.end()) {
     Log::cinfo() << "Host header is missing" << std::endl;
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
     return WSV_AGAIN;
   }
-  if (header.fields.find("connection") != header.fields.end()) {
-    if (header.fields["connection"] == "close") {
+  if (header.fields.find("Connection") != header.fields.end()) {
+    if (header.fields["Connection"] == "close") {
       keep_alive = false;
-    } else if (header.fields["connection"] == "keep-alive") {
+    } else if (header.fields["Connection"] == "keep-alive") {
       keep_alive = true;
     } else {
       Log::cinfo() << "Invalid Connection header: "
-                   << header.fields["connection"] << std::endl;
+                   << header.fields["Connection"] << std::endl;
       ErrorHandler::handle(*this, 400);
       handler = &Connection::response;
       return WSV_AGAIN;
@@ -355,10 +347,10 @@ int Connection::parse_header_fields() {  // throwable
 // https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
 int Connection::parse_body() {  // throwable
   Log::debug("parse_body");
-  if (header.fields.find("transfer-encoding") != header.fields.end() &&
-      header.fields["transfer-encoding"].find("chunked") != std::string::npos) {
+  if (header.fields.find("Transfer-Encoding") != header.fields.end() &&
+      header.fields["Transfer-Encoding"].find("chunked") != std::string::npos) {
     // TODO: Handle invalid Transfer-Encoding
-    if (header.fields.find("content-length") != header.fields.end()) {
+    if (header.fields.find("Content-Length") != header.fields.end()) {
       Log::cinfo() << "Both Transfer-Encoding and content-length are "
                       "specified"
                    << std::endl;
@@ -459,12 +451,12 @@ int Connection::parse_body_chunk_trailer_section() {  // throwable
 int Connection::parse_body_content_length() {  // throwable
   Log::debug("parse_body_content_length");
   if (body.empty()) {
-    if (header.fields.find("content-length") == header.fields.end()) {
+    if (header.fields.find("Content-Length") == header.fields.end()) {
       handler = &Connection::handle;
       return WSV_AGAIN;
     }
     // TODO: Handle invalid Content-Length
-    content_length = atoi(header.fields["content-length"].c_str());
+    content_length = atoi(header.fields["Content-Length"].c_str());
     body.reserve(content_length);
   }
   std::vector<char> buf(content_length - body.size());
@@ -491,8 +483,8 @@ const config::Server *select_srv_cf(const config::Config &cf,
                                     const Connection &conn) throw() {
   struct sockaddr_storage *saddr = &(*conn.client_socket)->saddr;
   std::string host;
-  if (conn.header.fields.find("host") != conn.header.fields.end()) {
-    host = conn.header.fields.find("host")->second;
+  if (conn.header.fields.find("Host") != conn.header.fields.end()) {
+    host = conn.header.fields.find("Host")->second;
   }
   // Remove port number
   size_t pos = host.find(':');

@@ -86,6 +86,20 @@ bool util::http::is_HEXDIG(const char c) {
   return isdigit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
 }
 
+std::string util::http::canonical_header_key(const std::string &key) {
+  bool upper = true;
+  std::string s = key;
+  for (std::string::size_type i = 0; i < s.size(); ++i) {
+    if (upper && std::islower(s[i])) {
+      s[i] = std::toupper(s[i]);
+    } else if (!upper && std::isupper(s[i])) {
+      s[i] = std::tolower(s[i]);
+    }
+    upper = (s[i] == '-');
+  }
+  return s;
+}
+
 // inet
 static bool eq_addr(const sockaddr_in *a, const sockaddr_in *b,
                     bool allow_wildcard) {

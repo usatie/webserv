@@ -34,6 +34,7 @@ bool is_sub_delims(const char c);
 bool is_HEXDIG(const char c);
 bool is_pct_encoded(const std::string& str, size_t pos);
 bool is_token(const std::string& str);
+std::string canonical_header_key(const std::string& key);
 }  // namespace http
 namespace inet {
 bool eq_addr46(const sockaddr_storage* a, const sockaddr_storage* b,
