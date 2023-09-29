@@ -1,5 +1,11 @@
 #include "Connection.hpp"
 
+static const char* http_header_fields[] = {
+    //"Content-Type", // This will be set automatically
+    //"Content-Length", // This will be set automatically
+    //"Location", // This will be set automatically
+    "Set-Cookie", "Server", NULL};
+
 int Connection::handle_cgi_req() throw() {
   Log::debug("handle_cgi_req");
   Log::cdebug() << "isSendBufEmpty: " << cgi_socket->isSendBufEmpty()
@@ -20,6 +26,18 @@ int Connection::handle_cgi_res() throw() {
     return WSV_AGAIN;
   }
   return WSV_WAIT;
+}
+
+static bool is_valid_status_code(const std::string& status_code) {
+  if (status_code.size() != 3) {
+    return false;
+  }
+  for (size_t i = 0; i < status_code.size(); i++) {
+    if (!std::isdigit(status_code[i])) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // CGI Response syntax (https://datatracker.ietf.org/doc/html/rfc3875#section-6)
@@ -123,33 +141,111 @@ int Connection::handle_cgi_parse() {  // throwable
 
   Header::const_iterator it;
   // 1. Status
+  /*
+   The Status header field contains a 3-digit integer result code that
+   indicates the level of success of the script's attempt to handle the
+   request.
+      Status         = "Status:" status-code SP reason-phrase NL
+      status-code    = "200" | "302" | "400" | "501" | extension-code
+      extension-code = 3digit
+      reason-phrase  = *TEXT
+  */
   if ((it = cgi_header_fields.find("Status")) != cgi_header_fields.end()) {
     // TODO: validate status code
     Log::cdebug() << "Status found: " << it->second << std::endl;
-    *client_socket << "HTTP/1.1 " << it->second << CRLF;
+    std::stringstream ss(it->second);
+    std::string status_code, reason_phrase;
+    ss >> status_code;
+    ss >> std::ws;
+    std::getline(ss, reason_phrase);
+    if (!is_valid_status_code(status_code) || ss.fail()) {
+      Log::cwarn() << "Invalid CGI status code: " << status_code << std::endl;
+      ErrorHandler::handle(*this, 500);
+      handler = &Connection::response;
+      return WSV_AGAIN;
+    }
+    *client_socket << "HTTP/1.1 " << status_code << " " << reason_phrase
+                   << CRLF;
   } else {
     Log::cdebug() << "Status not found" << std::endl;
 
     *client_socket << "HTTP/1.1 200 OK" << CRLF;
   }
-  
-  // Send header fields
-  for (it = cgi_header_fields.begin(); it != cgi_header_fields.end(); ++it) {
-    if (it->first == "Status") continue;
-    // TODO: validate header field
-    *client_socket << it->first << ": " << it->second << CRLF;
+
+  // 2. Location
+  /*
+   The Location header field is used to specify to the server that the
+   script is returning a reference to a document rather than an actual
+   document (see sections 6.2.3 and 6.2.4).  It is either an absolute
+   URI (optionally with a fragment identifier), indicating that the
+   client is to fetch the referenced document, or a local URI path
+   (optionally with a query string), indicating that the server is to
+   fetch the referenced document and return it to the client as the
+   response.
+      Location        = local-Location | client-Location
+      client-Location = "Location:" fragment-URI NL
+      local-Location  = "Location:" local-pathquery NL
+      fragment-URI    = absoluteURI [ "#" fragment ]
+      fragment        = *uric
+      local-pathquery = abs-path [ "?" query-string ]
+      abs-path        = "/" path-segments
+      path-segments   = segment *( "/" segment )
+      segment         = *pchar
+      pchar           = unreserved | escaped | extra
+      extra           = ":" | "@" | "&" | "=" | "+" | "$" | ","
+  */
+  if ((it = cgi_header_fields.find("Location")) != cgi_header_fields.end()) {
+    Log::cdebug() << "Location found: " << it->second << std::endl;
+    // TODO: validate location
+    *client_socket << "Location: " << it->second << CRLF;
   }
-  // Send response-body if any
+
+  // 3. Content-Type
+  /*
+   If an entity body is returned, the script MUST supply a Content-Type
+   field in the response.  If it fails to do so, the server SHOULD NOT
+   attempt to determine the correct content type.  The value SHOULD be
+   sent unmodified to the client, except for any charset parameter
+   changes.
+  */
+  if ((it = cgi_header_fields.find("Content-Type")) !=
+      cgi_header_fields.end()) {
+    Log::cdebug() << "Content-Type found: " << it->second << std::endl;
+    *client_socket << "Content-Type: " << it->second << CRLF;
+  } else if (cgi_socket->getReadBufSize() > 0) {
+    Log::cdebug() << "Content-Type must be found" << std::endl;
+    ErrorHandler::handle(*this, 500);
+    handler = &Connection::response;
+    return WSV_AGAIN;
+  }
+
+  // 4. Content-Length
   size_t size = cgi_socket->getReadBufSize();
+  *client_socket << "Content-Length: " << size << CRLF;
+
+  // 5. Protocol-Specific Header Fields
+  for (it = cgi_header_fields.begin(); it != cgi_header_fields.end(); ++it) {
+    if (it->first == "Status" || it->first == "Location" ||
+        it->first == "Content-Type" || it->first == "Content-Length") {
+      continue;
+    }
+    // Check if key is valid HTTP header field name
+    for (const char* p = http_header_fields[0]; p; ++p) {
+      if (it->first == p) {
+        Log::cdebug() << "Valid HTTP Header field: " << it->first << ": "
+                      << it->second << std::endl;
+        *client_socket << it->first << ": " << it->second << CRLF;
+        break;
+      }
+    }
+  }
+
+  *client_socket << CRLF;  // End of header fields
+
+  // 6. Entity Body (if any)
   if (size > 0) {
-    *client_socket << "Content-Length: " << size << CRLF;
-    *client_socket << CRLF;  // End of header fields
     *cgi_socket >> *client_socket;
-  } else {
-    *client_socket << "Content-Length: 0" << CRLF;
-    *client_socket << CRLF;  // End of header fields
   }
   handler = &Connection::response;
   return WSV_AGAIN;
 }
-
