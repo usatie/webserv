@@ -10,11 +10,13 @@
 		<li><code>./webserv ./tests/test.conf &amp;</code></li>
 		<br>
 		<li><code>curl --resolve example.com:8181:127.0.0.1</code></li>
-		<li><code>curl localhost:8181/</code></li>
-		<li><code>curl -X POST localhost:8181/upload/limit/ -H "Content-Type: plain/text" --data `python3 -c 'print("a"*1024)'`</code></li>
-		<li><code>curl -X POST localhost:8181/upload/limit/ -H "Content-Type: plain/text" --data `python3 -c 'print("a"*1025)'`</code></li>
-		<li><code>curl -X DELETE localhost:8181/delete/ </code></li>
-		<li><code>curl -X UNKNOWN localhost:8181/</code></li>
+		<li><code>curl -i localhost:8181/</code></li>
+		<li><code>curl -i -X POST localhost:8181/upload/limit/ -H "Content-Type: plain/text" --data `python3 -c 'print("a"*1024)'`</code></li>
+		<li><code>curl -i -X POST localhost:8181/upload/limit/ -H "Content-Type: plain/text" --data `python3 -c 'print("a"*1025)'`</code></li>
+		<li><code>curl -i -T Makefile localhost:8181/upload/ </code></li>
+		<li><code>curl -i -X GET localhost:8181/upload/{filename} </code></li>
+		<li><code>curl -i -X DELETE localhost:8181/delete/{filename} </code></li>
+		<li><code>curl -i -X UNKNOWN localhost:8181/</code></li>
 		<br>
 		<li><a href="http://localhost:8181/">http://localhost:8181/</a> </li>
 		<li><a href="http://localhost:8181/index.html">http://localhost:8181/index.html</a> </li>
