@@ -40,6 +40,11 @@
 		</form></li>
 
 		<li><a href="http://localhost:8181/cgi/hello.py">http://localhost:8181/cgi/hello.py</a> 200 </li>
+		<li><a href="http://localhost:8181/cgi/hello.py/foo/bar/pathinfo/">http://localhost:8181/cgi/hello.py/foo/bar/pathinfo/</a> 200 </li>
+		<li><a href="http://localhost:8181/cgi/env.py/foo/bar/pathinfo/?foo=bar&hoge=piyo">http://localhost:8181/cgi/env.py/foo/bar/pathinfo/?foo=bar&hoge=piyo</a> 200 </li>
+		<li>http://localhost:8181/cgi/env.py/foo/bar/pathinfo/?foo=bar&amp;hoge=piyo<form action="http://localhost:8181/cgi/env.py/foo/bar/pathinfo/?foo=bar&hoge=piyo" method="post">
+			data=<input type="text" name="data" /> <input type="submit" />
+		</form></li>
 		<!-- li><a href="http://localhost:8181/cgi/echo.py">http://localhost:8181/cgi/echo.py</a> </li -->
 		<li>http://localhost:8181/cgi/echo.py<form action="http://localhost:8181/cgi/echo.py" method="post">
 			data=<input type="text" name="data" /> <input type="submit" />

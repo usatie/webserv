@@ -190,6 +190,9 @@ if __name__ == '__main__':
     test_get_request(path='/alias/foo.html', status_code=200, file_path='./tests/html/foo/foo.html', content_type='text/html')
     test_get_request(path='/alias%2ffoo.html', status_code=200, file_path='./tests/html/foo/foo.html', content_type='text/html')
 
+    # GET PATH_INFO
+    test_get_request(path='/cgi/hello.py/foobar/path', status_code=200, content_type='text/plain', content=b'Hello, world!\n')
+
     # GET (with header name case insensitive)
     test_get_request(path='/', status_code=200, file_path='./tests/html/index1.html', content_type='text/html', headers={'Host': 'webserv1'})
     test_get_request(path='/', status_code=200, file_path='./tests/html/index1.html', content_type='text/html', headers={'host': 'webserv1'})
