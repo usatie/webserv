@@ -4,6 +4,7 @@
 #include "ErrorHandler.hpp"
 #include "util.hpp"
 // fork
+#include <string>
 #include <sys/stat.h>  // stat
 #include <unistd.h>
 
@@ -55,10 +56,11 @@ int CgiHandler::handle(Connection& conn) {  // throwable
     ss << "CONTENT_LENGTH=" << conn.content_length;
     // std::string auth_type = "AUTH_TYPE=";
     std::string content_length = ss.str();
-    // std::string content_type = "CONTENT_TYPE=" +
-    // conn.header.fields["Content-Type"]; std::string gateway_interface =
-    // "GATEWAY_INTERFACE=CGI/1.1";
-    path_info = "PATH_INFO=/"+path_info;  // TODO: Implement RFC3875 4.1.5
+    std::string content_type = "CONTENT_TYPE=";
+	if (util::contains(conn.header.fields, "Content-Type"))
+		content_type += conn.header.fields["Content-Type"];
+	std::string gateway_interface = "GATEWAY_INTERFACE=CGI/1.1";
+    std::string path_info_ = "PATH_INFO="+path_info;  // TODO: Implement RFC3875 4.1.5
     // std::string path_translated = "PATH_TRANSLATED=" + conn.header.fullpath;
     std::string query_string = "QUERY_STRING=" + conn.header.query;
     // std::string remote_addr = "REMOTE_ADDR=";
@@ -66,16 +68,16 @@ int CgiHandler::handle(Connection& conn) {  // throwable
     // std::string remote_ident = "REMOTE_IDENT=";
     // std::string remote_user = "REMOTE_USER=";
     std::string request_method = "REQUEST_METHOD=" + conn.header.method;
-    // std::string script_name = "SCRIPT_NAME=" + conn.header.path;
+	std::string script_name_ = "SCRIPT_NAME=" + script_name;
     // std::string server_name = "SERVER_NAME=" + conn.header.fields["Host"]; //
     // std::string server_port = "SERVER_PORT=";
     std::string server_protocol = "SERVER_PROTOCOL=HTTP/1.1";
     std::string server_software = "SERVER_SOFTWARE=webserv/0.0.1";
-    const char* const env[] = {// auth_type.c_str(),
+    const char* const env[] = {
+								// auth_type.c_str(),
                                content_length.c_str(),
-                               // content_type.c_str(),
-                               // gateway_interface.c_str(),
-                               path_info.c_str(),
+                               gateway_interface.c_str(),
+                               path_info_.c_str(),
                                // path_translated.c_str(),
                                query_string.c_str(),
                                // remote_addr.c_str(),
@@ -83,10 +85,12 @@ int CgiHandler::handle(Connection& conn) {  // throwable
                                // remote_ident.c_str(),
                                // remote_user.c_str(),
                                request_method.c_str(),
-                               // script_name.c_str(),
+                               script_name_.c_str(),
                                // server_name.c_str(),
                                // server_port.c_str(),
-                               server_protocol.c_str(), server_software.c_str(),
+                               server_protocol.c_str(),
+							   server_software.c_str(),
+                               util::contains(conn.header.fields, "Content-Type") ? content_type.c_str() : NULL,
                                NULL};
 
     // Change directory to script directory to execute script
