@@ -18,6 +18,8 @@ bool ends_with(const std::string& str, const std::string& suffix);
 }
 namespace path {
 std::string get_extension(const std::string& filepath);
+std::string get_script_path(const std::string& filepath);
+std::string get_path_info(const std::string& filepath);
 }
 
 namespace http {

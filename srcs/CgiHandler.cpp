@@ -2,6 +2,7 @@
 
 #include "Connection.hpp"
 #include "ErrorHandler.hpp"
+#include "util.hpp"
 // fork
 #include <sys/stat.h>  // stat
 #include <unistd.h>
@@ -10,10 +11,10 @@
 #include <cstdlib>  // exit
 
 int CgiHandler::handle(Connection& conn) {  // throwable
-  std::string script_path = conn.header.fullpath;
+  std::string script_path = util::path::get_script_path(conn.header.fullpath);
   std::string dir_path = script_path.substr(0, script_path.find_last_of('/'));
-  std::string script_name =
-      script_path.substr(script_path.find_last_of('/') + 1);
+  std::string script_name = script_path.substr(script_path.find_last_of('/') + 1);
+  std::string path_info = util::path::get_path_info(conn.header.fullpath);
   // Check if 404
   if (access(script_path.c_str(), F_OK) == -1) {
     ErrorHandler::handle(conn, 404);
@@ -57,7 +58,7 @@ int CgiHandler::handle(Connection& conn) {  // throwable
     // std::string content_type = "CONTENT_TYPE=" +
     // conn.header.fields["Content-Type"]; std::string gateway_interface =
     // "GATEWAY_INTERFACE=CGI/1.1";
-    std::string path_info = "PATH_INFO=/";  // TODO: Implement RFC3875 4.1.5
+    path_info = "PATH_INFO=/"+path_info;  // TODO: Implement RFC3875 4.1.5
     // std::string path_translated = "PATH_TRANSLATED=" + conn.header.fullpath;
     std::string query_string = "QUERY_STRING=" + conn.header.query;
     // std::string remote_addr = "REMOTE_ADDR=";

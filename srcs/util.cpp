@@ -17,7 +17,34 @@ std::string util::path::get_extension(const std::string &filepath) {
   if (pos == std::string::npos) {
     return "";
   }
-  return filepath.substr(pos);  // throwable
+  std::string ext = filepath.substr(pos);  // throwable
+  pos = ext.find('/');
+  ext = ext.substr(0, pos);
+  return ext;
+}
+
+std::string util::path::get_script_path(const std::string &filepath) {
+  size_t pos = filepath.rfind('.');
+  if (pos == std::string::npos) {
+    return "";
+  }
+  size_t end = filepath.find('/', pos);
+  std::string path = filepath.substr(0, end);  // throwable
+  return path;
+}
+
+std::string util::path::get_path_info(const std::string &filepath) {
+  size_t pos = filepath.rfind('.');
+  if (pos == std::string::npos) {
+    return "/";
+  }
+  std::string ext = filepath.substr(pos);  // throwable
+  pos = ext.find('/');
+  if (pos == std::string::npos) {
+    return "/";
+  }
+  ext = ext.substr(pos);
+  return ext;
 }
 
 // https://tools.ietf.org/html/rfc7230#section-3.2.6
