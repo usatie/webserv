@@ -69,7 +69,7 @@ int CgiHandler::handle(Connection& conn) {  // throwable
     // std::string remote_user = "REMOTE_USER=";
     std::string request_method = "REQUEST_METHOD=" + conn.header.method;
 	std::string script_name_ = "SCRIPT_NAME=" + script_name;
-    // std::string server_name = "SERVER_NAME=" + conn.header.fields["Host"]; //
+    std::string server_name = "SERVER_NAME=" + conn.srv_cf->server_names[0]; // server_names is guaranteed to be non-empty
     std::string server_port = "SERVER_PORT=" + conn.client_socket->socket->get_server_port_string();
     std::string server_protocol = "SERVER_PROTOCOL=HTTP/1.1";
     std::string server_software = "SERVER_SOFTWARE=webserv/0.0.1";
@@ -86,7 +86,7 @@ int CgiHandler::handle(Connection& conn) {  // throwable
                                // remote_user.c_str(),
                                request_method.c_str(),
                                script_name_.c_str(),
-                               // server_name.c_str(),
+                               server_name.c_str(),
                                server_port.c_str(),
                                server_protocol.c_str(),
 							   server_software.c_str(),
