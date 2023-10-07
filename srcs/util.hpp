@@ -15,7 +15,8 @@ class shared_ptr;
 
 namespace string {
 bool ends_with(const std::string& str, const std::string& suffix);
-}
+std::string tolower(const std::string& s);
+}  // namespace string
 namespace path {
 std::string get_extension(const std::string& filepath);
 std::string get_script_path(const std::string& filepath);
@@ -31,6 +32,7 @@ bool is_HEXDIG(const char c);
 bool is_pct_encoded(const std::string& str, size_t pos);
 bool is_token(const std::string& str);
 std::string canonical_header_key(const std::string& key);
+std::string normalized_host(const std::string& host);
 }  // namespace http
 namespace inet {
 bool eq_addr46(const sockaddr_storage* a, const sockaddr_storage* b,

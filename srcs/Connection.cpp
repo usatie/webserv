@@ -493,6 +493,7 @@ const config::Server *select_srv_cf(const config::Config &cf,
   if (pos != std::string::npos) {
     host.erase(pos);
   }
+  host = util::http::normalized_host(host);
   // struct sockaddr_storage* saddr = &(*client_socket)->saddr;
   const config::Server *srv_cf = NULL;
   for (unsigned int i = 0; i < cf.http.servers.size(); i++) {

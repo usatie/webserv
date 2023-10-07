@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "Config.hpp"
+#include "util.hpp"
 
 namespace config {
 Server::Server(Command* srv) {
@@ -90,6 +91,9 @@ Server::Server(Command* srv) {
   // NG: *:8080 and 8080
   // NG: localhost:8080 and 127.0.0.1:8080
   // server_names duplicates are allowed
+  for (unsigned int i = 0; i < server_names.size(); i++) {
+    server_names[i] = util::http::normalized_host(server_names[i]);
+  }
   if (server_names.empty()) {
     server_names.push_back("");
   }

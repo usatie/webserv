@@ -129,6 +129,12 @@ std::string util::http::canonical_header_key(const std::string &key) {
   return s;
 }
 
+std::string util::http::normalized_host(const std::string &host) {
+  std::string s = host;
+  std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+  return s;
+}
+
 // inet
 static bool eq_addr(const sockaddr_in *a, const sockaddr_in *b,
                     bool allow_wildcard) {

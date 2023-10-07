@@ -158,6 +158,8 @@ if __name__ == '__main__':
     test_get_request(path='/', status_code=200, file_path='./tests/html/index3.html', content_type='text/html', host='webserv3')
     test_get_request(path='/', status_code=200, file_path='./tests/html/index4.html', content_type='text/html', host='webserv4')
     test_get_request(path='/', status_code=200, file_path='./tests/html/index5.html', content_type='text/html', host='webserv5')
+    test_get_request(path='/', status_code=200, file_path='./tests/html/index2.html', content_type='text/html', host='WEBSERV2')
+    test_get_request(path='/', status_code=200, file_path='./tests/html/index3.html', content_type='text/html', host='WeBsErV3')
 
     # POST
     # test_post_request(path='/limit_except/post/', status_code=200, content_type='text/html', data=b'Hello, world!\n', content=b'Hello, world!\n') # TODO: Fix conf file
