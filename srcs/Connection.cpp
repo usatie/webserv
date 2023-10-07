@@ -395,7 +395,7 @@ int Connection::parse_body() {  // throwable
       Log::cinfo() << "Chunked encoding is not supported in HTTP/1.0.\n"
                    << "A server or client that receives an HTTP/1.0 message containing a Transfer-Encoding header field MUST treat the message as if the framing is faulty, even if a Content-Length is present, and close the connection after processing the message."
                    << std::endl;
-      handler = &Connection::parse_body_chunked;
+      handler = &Connection::parse_body_content_length;
       return WSV_AGAIN;
     }
     // TODO: Handle invalid Transfer-Encoding
@@ -729,12 +729,19 @@ int Connection::handle() {  // throwable
 
 int Connection::response() throw() {
   if (client_socket->isSendBufEmpty()) {
-    if (client_socket->hasReceivedEof) {
-      Log::info("Client socket has received EOF, remove connection");
+    if (client_socket->hasReceivedEof && client_socket->isRecvBufEmpty()) {
+      Log::info("Client socket has received EOF and recvbuf is empty, remove connection");
       return WSV_REMOVE;
     } else if (!keep_alive) {
       Log::info("Connection: close, remove connection");
       return WSV_REMOVE;
+    } else if (!client_socket->isRecvBufEmpty()) {
+      Log::info("Client socket has data, clear and keep connection");
+      if (get_cgifd() >= 0) {
+        server->clear_fd(get_cgifd());
+      }
+      clear();
+      return WSV_AGAIN;
     } else {
       Log::info("Request is done, clear connection");
       return WSV_CLEAR;
