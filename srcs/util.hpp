@@ -20,7 +20,7 @@ namespace path {
 std::string get_extension(const std::string& filepath);
 std::string get_script_path(const std::string& filepath);
 std::string get_path_info(const std::string& filepath);
-}
+}  // namespace path
 
 namespace http {
 bool is_tchar(const char c);
