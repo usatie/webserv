@@ -29,7 +29,7 @@ mkdir -p /tmp/www/pouic/toto \
 # 2. Tests
 # arg for save error count
 cnt=0
-for i in {1..50}; do
+for i in {1..52}; do
   echo -n "Test${i}   : " | tee -a error.log
   # skip test 12, 23, 29
   # Allow greater than or equal to 45

@@ -68,16 +68,20 @@ int Connection::resume() {  // throwable
 int Connection::clear() {
   cgi_socket = util::shared_ptr<SocketBuf>();
   header.clear();
-  handler = &Connection::parse_start_line;
   body.clear();
   content_length = 0;
   chunk.clear();
   chunk_size = 0;
-  cgi_pid = 0;
+  cgi_pid = -1;
   srv_cf = NULL;
   loc_cf = NULL;
   cgi_handler_cf = NULL;
   cgi_ext_cf = NULL;
+  last_modified = time(NULL);
+  cgi_started = 0;
+  handler = &Connection::parse_start_line;
+  keep_alive = false;
+  io_status = NO_IO;
   return 0;
 }
 
@@ -201,6 +205,16 @@ static bool deconde_parcent(std::string &path) {
   return true;
 }
 
+// Return 0 if success, -1 if failed
+static int parse_http_version(std::string const &s, Version &version) {
+  if (s.size() != 8) return -1;
+  if (s.find_first_of("HTTP/") != 0) return -1;
+  if (s[6] != '.') return -1;
+  version.major = s[5] - '0';
+  version.minor = s[7] - '0';
+  return 0;
+}
+
 // TODO: make this noexcept
 // https://datatracker.ietf.org/doc/html/rfc2616#section-5.1
 // Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
@@ -216,10 +230,11 @@ int Connection::parse_start_line() {
   }
   Log::cdebug() << "start line: " << line << std::endl;
   std::stringstream ss;
+  std::string version;
   ss << line;
   ss >> header.method;   // ss does not throw (cf. playground/fuga.cpp)
   ss >> header.path;     // ss does not throw
-  ss >> header.version;  // ss does not throw
+  ss >> version;  // ss does not throw
 
   // URI = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
   // relative-ref = relative-part [ "?" query ] [ "#" fragment ]
@@ -245,6 +260,30 @@ int Connection::parse_start_line() {
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
     return WSV_AGAIN;
+  }
+
+  // Parse HTTP version
+  // Before HTTP/1.0 (i.e. HTTP/0.9) does not have HTTP-Version
+  if (parse_http_version(version, header.version) < 0 || header.version < Version(1, 0))
+  {
+    Log::cinfo() << "Invalid HTTP version: " << version << std::endl;
+    ErrorHandler::handle(*this, 400);
+    handler = &Connection::response;
+    return WSV_AGAIN;
+  }
+
+  // Validate HTTP version (Only 1.1 or later is supported)
+  if (Version(2, 0) <= header.version) {
+    Log::cinfo() << "Unsupported HTTP version: " << version << std::endl;
+    keep_alive = false;
+    ErrorHandler::handle(*this, 505);
+    handler = &Connection::response;
+    return WSV_AGAIN;
+  }
+
+  // Keep-Alive is default for HTTP/1.1 or later
+  if (Version(1, 1) <= header.version) {
+    keep_alive = true;
   }
 
   // TODO: Defense Directory traversal attack
@@ -321,11 +360,14 @@ int Connection::read_header_fields() {  // throwable
 }
 
 int Connection::parse_header_fields() {  // throwable
-  if (!util::contains(header.fields, "Host")) {
-    Log::cinfo() << "Host header is missing" << std::endl;
-    ErrorHandler::handle(*this, 400);
-    handler = &Connection::response;
-    return WSV_AGAIN;
+  // Host header is mandatory for HTTP/1.1 or later
+  if (Version(1, 1) <= header.version) {
+    if (!util::contains(header.fields, "Host")) {
+      Log::cinfo() << "Host header is missing" << std::endl;
+      ErrorHandler::handle(*this, 400);
+      handler = &Connection::response;
+      return WSV_AGAIN;
+    }
   }
   Header::const_iterator it = header.fields.find("Connection");
   if (it != header.fields.end()) {
@@ -349,6 +391,13 @@ int Connection::parse_body() {  // throwable
   Log::debug("parse_body");
   Header::const_iterator it = header.fields.find("Transfer-Encoding");
   if (it != header.fields.end() && util::contains(it->second, "chunked")) {
+    if (header.version < Version(1, 1)) {
+      Log::cinfo() << "Chunked encoding is not supported in HTTP/1.0.\n"
+                   << "A server or client that receives an HTTP/1.0 message containing a Transfer-Encoding header field MUST treat the message as if the framing is faulty, even if a Content-Length is present, and close the connection after processing the message."
+                   << std::endl;
+      handler = &Connection::parse_body_content_length;
+      return WSV_AGAIN;
+    }
     // TODO: Handle invalid Transfer-Encoding
     if (util::contains(header.fields, "Content-Length")) {
       Log::cinfo() << "Both Transfer-Encoding and content-length are "
@@ -680,12 +729,19 @@ int Connection::handle() {  // throwable
 
 int Connection::response() throw() {
   if (client_socket->isSendBufEmpty()) {
-    if (client_socket->hasReceivedEof) {
-      Log::info("Client socket has received EOF, remove connection");
+    if (client_socket->hasReceivedEof && client_socket->isRecvBufEmpty()) {
+      Log::info("Client socket has received EOF and recvbuf is empty, remove connection");
       return WSV_REMOVE;
     } else if (!keep_alive) {
       Log::info("Connection: close, remove connection");
       return WSV_REMOVE;
+    } else if (!client_socket->isRecvBufEmpty()) {
+      Log::info("Client socket has data, clear and keep connection");
+      if (get_cgifd() >= 0) {
+        server->clear_fd(get_cgifd());
+      }
+      clear();
+      return WSV_AGAIN;
     } else {
       Log::info("Request is done, clear connection");
       return WSV_CLEAR;

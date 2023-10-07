@@ -229,6 +229,11 @@ void Server::clear_connection(ConnIterator conn_it) throw() {
   (*conn_it)->clear();
 }
 
+void Server::clear_fd(int fd) throw() {
+  FD_CLR(fd, &readfds);
+  FD_CLR(fd, &writefds);
+}
+
 Server::ConnIterator Server::remove_connection(ConnIterator conn_it) throw() {
   int fd = (*conn_it)->get_fd();
   int cgifd = (*conn_it)->get_cgifd();

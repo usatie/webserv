@@ -85,7 +85,7 @@ class Connection {
         cgi_started(0),  // What should be the initial value?
         handler(&Connection::parse_start_line),
         server(server),
-        keep_alive(true),
+        keep_alive(false),
         io_status(NO_IO) {}
   ~Connection() throw() {}
   Connection(const Connection &other) throw();  // Do not implement this
