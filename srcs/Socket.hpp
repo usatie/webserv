@@ -61,8 +61,9 @@ class Socket {
   int get_fd() const throw() { return fd; }
   int get_server_port() const throw();
   int get_client_port() const throw();
-  std::string get_server_ip_address();  // throwable
-  std::string get_client_ip_address();  // throwable
+  std::string get_server_port_string() const; // throwable
+  std::string get_server_ip_address() const;  // throwable
+  std::string get_client_ip_address() const;  // throwable
 
   // Member functions
   int reuseaddr() throw();

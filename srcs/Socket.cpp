@@ -1,5 +1,6 @@
 #include "Socket.hpp"
 #include <arpa/inet.h>  // inet_ntop
+#include <sstream>
 
 static int get_port(const struct sockaddr* addr) throw() {
   if (addr->sa_family == AF_INET6) {
@@ -12,7 +13,6 @@ static int get_port(const struct sockaddr* addr) throw() {
   }
 }
 
-// cppcheck-suppress unusedFunction
 int Socket::get_server_port() const throw() {
   return get_port(reinterpret_cast<const struct sockaddr*>(&saddr));
 }
@@ -21,7 +21,14 @@ int Socket::get_client_port() const throw() {
   return get_port(reinterpret_cast<const struct sockaddr*>(&caddr));
 }
 
-std::string Socket::get_client_ip_address() { // throwable
+std::string Socket::get_server_port_string() const { // throwable
+  std::stringstream ss;
+  ss.exceptions(std::ios::failbit | std::ios::badbit);
+  ss << get_server_port();
+  return ss.str();
+}
+
+std::string Socket::get_client_ip_address() const { // throwable
   char ipstr[INET6_ADDRSTRLEN];
   if (caddr.ss_family == AF_INET6) {
     inet_ntop(AF_INET6,
