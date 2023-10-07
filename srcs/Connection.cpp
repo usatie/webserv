@@ -68,16 +68,20 @@ int Connection::resume() {  // throwable
 int Connection::clear() {
   cgi_socket = util::shared_ptr<SocketBuf>();
   header.clear();
-  handler = &Connection::parse_start_line;
   body.clear();
   content_length = 0;
   chunk.clear();
   chunk_size = 0;
-  cgi_pid = 0;
+  cgi_pid = -1;
   srv_cf = NULL;
   loc_cf = NULL;
   cgi_handler_cf = NULL;
   cgi_ext_cf = NULL;
+  last_modified = time(NULL);
+  cgi_started = 0;
+  handler = &Connection::parse_start_line;
+  keep_alive = false;
+  io_status = NO_IO;
   return 0;
 }
 
@@ -277,6 +281,11 @@ int Connection::parse_start_line() {
     return WSV_AGAIN;
   }
 
+  // Keep-Alive is default for HTTP/1.1 or later
+  if (Version(1, 1) <= header.version) {
+    keep_alive = true;
+  }
+
   // TODO: Defense Directory traversal attack
   // TODO: Handle absoluteURI
   // TODO: Handle *
@@ -351,11 +360,14 @@ int Connection::read_header_fields() {  // throwable
 }
 
 int Connection::parse_header_fields() {  // throwable
-  if (!util::contains(header.fields, "Host")) {
-    Log::cinfo() << "Host header is missing" << std::endl;
-    ErrorHandler::handle(*this, 400);
-    handler = &Connection::response;
-    return WSV_AGAIN;
+  // Host header is mandatory for HTTP/1.1 or later
+  if (Version(1, 1) <= header.version) {
+    if (!util::contains(header.fields, "Host")) {
+      Log::cinfo() << "Host header is missing" << std::endl;
+      ErrorHandler::handle(*this, 400);
+      handler = &Connection::response;
+      return WSV_AGAIN;
+    }
   }
   Header::const_iterator it = header.fields.find("Connection");
   if (it != header.fields.end()) {
@@ -379,6 +391,13 @@ int Connection::parse_body() {  // throwable
   Log::debug("parse_body");
   Header::const_iterator it = header.fields.find("Transfer-Encoding");
   if (it != header.fields.end() && util::contains(it->second, "chunked")) {
+    if (header.version < Version(1, 1)) {
+      Log::cinfo() << "Chunked encoding is not supported in HTTP/1.0.\n"
+                   << "A server or client that receives an HTTP/1.0 message containing a Transfer-Encoding header field MUST treat the message as if the framing is faulty, even if a Content-Length is present, and close the connection after processing the message."
+                   << std::endl;
+      handler = &Connection::parse_body_chunked;
+      return WSV_AGAIN;
+    }
     // TODO: Handle invalid Transfer-Encoding
     if (util::contains(header.fields, "Content-Length")) {
       Log::cinfo() << "Both Transfer-Encoding and content-length are "
