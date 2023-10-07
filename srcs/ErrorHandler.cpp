@@ -30,6 +30,8 @@ const char* status_line(int status_code) throw() {
       return "HTTP/1.1 500 Internal Server Error";
     case 504:
       return "HTTP/1.1 504 Gateway Timeout";
+    case 505:
+      return "HTTP/1.1 505 HTTP Version Not Supported";
     default:
       Log::cfatal() << "Unknown status code: " << status_code << std::endl;
       return "HTTP/1.1 500 Internal Server Error";
@@ -178,6 +180,14 @@ void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
                           << sizeof(http_error_504_page) - 1 << CRLF;
       *conn.client_socket << CRLF;  // end of header
       *conn.client_socket << http_error_504_page;
+      break;
+    case 505:
+      *conn.client_socket << "HTTP/1.1 505 HTTP Version Not Supported" << CRLF;
+      *conn.client_socket << "Content-Type: text/html" << CRLF;
+      *conn.client_socket << "Content-Length: "
+                          << sizeof(http_error_505_page) - 1 << CRLF;
+      *conn.client_socket << CRLF;  // end of header
+      *conn.client_socket << http_error_505_page;
       break;
     default:
       Log::cerror() << "Unknown status code: " << status_code << std::endl;

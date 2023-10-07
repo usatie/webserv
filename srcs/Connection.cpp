@@ -201,6 +201,16 @@ static bool deconde_parcent(std::string &path) {
   return true;
 }
 
+// Return 0 if success, -1 if failed
+static int parse_http_version(std::string const &s, Version &version) {
+  if (s.size() != 8) return -1;
+  if (s.find_first_of("HTTP/") != 0) return -1;
+  if (s[6] != '.') return -1;
+  version.major = s[5] - '0';
+  version.minor = s[7] - '0';
+  return 0;
+}
+
 // TODO: make this noexcept
 // https://datatracker.ietf.org/doc/html/rfc2616#section-5.1
 // Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
@@ -216,10 +226,11 @@ int Connection::parse_start_line() {
   }
   Log::cdebug() << "start line: " << line << std::endl;
   std::stringstream ss;
+  std::string version;
   ss << line;
   ss >> header.method;   // ss does not throw (cf. playground/fuga.cpp)
   ss >> header.path;     // ss does not throw
-  ss >> header.version;  // ss does not throw
+  ss >> version;  // ss does not throw
 
   // URI = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
   // relative-ref = relative-part [ "?" query ] [ "#" fragment ]
@@ -243,6 +254,25 @@ int Connection::parse_start_line() {
       !is_valid_decoded_path(header.path)) {
     Log::cinfo() << "Invalid path: " << header.path << std::endl;
     ErrorHandler::handle(*this, 400);
+    handler = &Connection::response;
+    return WSV_AGAIN;
+  }
+
+  // Parse HTTP version
+  // Before HTTP/1.0 (i.e. HTTP/0.9) does not have HTTP-Version
+  if (parse_http_version(version, header.version) < 0 || header.version < Version(1, 0))
+  {
+    Log::cinfo() << "Invalid HTTP version: " << version << std::endl;
+    ErrorHandler::handle(*this, 400);
+    handler = &Connection::response;
+    return WSV_AGAIN;
+  }
+
+  // Validate HTTP version (Only 1.1 or later is supported)
+  if (Version(2, 0) <= header.version) {
+    Log::cinfo() << "Unsupported HTTP version: " << version << std::endl;
+    keep_alive = false;
+    ErrorHandler::handle(*this, 505);
     handler = &Connection::response;
     return WSV_AGAIN;
   }

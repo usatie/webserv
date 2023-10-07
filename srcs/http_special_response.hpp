@@ -37,4 +37,9 @@ static const char http_error_504_page[] =
     "<html>" CRLF "<head><title>504 Gateway Timeout</title></head>" CRLF
     "<body>" CRLF
     "<center><h1>504 Gateway Timeout</h1></center>" CRLF ERROR_TAIL;
+
+static const char http_error_505_page[] =
+    "<html>" CRLF "<head><title>505 HTTP Version Not Supported</title></head>" CRLF
+    "<body>" CRLF
+    "<center><h1>505 HTTP Version Not Supported</h1></center>" CRLF ERROR_TAIL;
 #endif

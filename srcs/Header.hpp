@@ -4,6 +4,7 @@
 #include <string>
 
 #include "Socket.hpp"
+#include "Version.hpp"
 #include "webserv.hpp"
 
 class Header {
@@ -16,7 +17,8 @@ class Header {
   // Member data
   std::string method;
   std::string path;
-  std::string version;
+  //std::string version;
+  Version version;
   std::string fullpath;
   std::string query;
   std::string fragment;
