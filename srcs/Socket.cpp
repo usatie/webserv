@@ -1,4 +1,5 @@
 #include "Socket.hpp"
+#include <arpa/inet.h>  // inet_ntop
 
 static int get_port(const struct sockaddr* addr) throw() {
   if (addr->sa_family == AF_INET6) {
@@ -18,6 +19,23 @@ int Socket::get_server_port() const throw() {
 
 int Socket::get_client_port() const throw() {
   return get_port(reinterpret_cast<const struct sockaddr*>(&caddr));
+}
+
+std::string Socket::get_client_ip_address() { // throwable
+  char ipstr[INET6_ADDRSTRLEN];
+  if (caddr.ss_family == AF_INET6) {
+    inet_ntop(AF_INET6,
+              &reinterpret_cast<const struct sockaddr_in6*>(&caddr)->sin6_addr,
+              ipstr, sizeof(ipstr));
+  } else if (caddr.ss_family == AF_INET) {
+    inet_ntop(AF_INET,
+              &reinterpret_cast<const struct sockaddr_in*>(&caddr)->sin_addr,
+              ipstr, sizeof(ipstr));
+  } else {
+    Log::error("Invalid socket family");
+    return "";
+  }
+  return std::string(ipstr);
 }
 
 util::shared_ptr<Socket> Socket::accept() {  // throwable

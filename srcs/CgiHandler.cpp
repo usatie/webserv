@@ -63,7 +63,7 @@ int CgiHandler::handle(Connection& conn) {  // throwable
     std::string path_info_ = "PATH_INFO="+path_info;  // TODO: Implement RFC3875 4.1.5
     // std::string path_translated = "PATH_TRANSLATED=" + conn.header.fullpath;
     std::string query_string = "QUERY_STRING=" + conn.header.query;
-    // std::string remote_addr = "REMOTE_ADDR=";
+    std::string remote_addr = "REMOTE_ADDR=" + conn.client_socket->socket->get_client_ip_address();
     // std::string remote_host = "REMOTE_HOST=";
     // std::string remote_ident = "REMOTE_IDENT=";
     // std::string remote_user = "REMOTE_USER=";
@@ -80,7 +80,7 @@ int CgiHandler::handle(Connection& conn) {  // throwable
                                path_info_.c_str(),
                                // path_translated.c_str(),
                                query_string.c_str(),
-                               // remote_addr.c_str(),
+                               remote_addr.c_str(),
                                // remote_host.c_str(),
                                // remote_ident.c_str(),
                                // remote_user.c_str(),
