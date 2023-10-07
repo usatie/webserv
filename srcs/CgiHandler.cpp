@@ -61,8 +61,7 @@ int CgiHandler::handle(Connection& conn) {  // throwable
     if (util::contains(conn.header.fields, "Content-Type"))
       content_type += conn.header.fields["Content-Type"];
     std::string gateway_interface = "GATEWAY_INTERFACE=CGI/1.1";
-    std::string path_info_ =
-        "PATH_INFO=" + path_info;  // TODO: Implement RFC3875 4.1.5
+    std::string path_info_ = "PATH_INFO=" + path_info;
     // std::string path_translated = "PATH_TRANSLATED=" + conn.header.fullpath;
     std::string query_string = "QUERY_STRING=" + conn.header.query;
     std::string remote_addr =
@@ -72,10 +71,8 @@ int CgiHandler::handle(Connection& conn) {  // throwable
     // std::string remote_user = "REMOTE_USER=";
     std::string request_method = "REQUEST_METHOD=" + conn.header.method;
     std::string script_name_ = "SCRIPT_NAME=" + script_name;
-    std::string server_name =
-        "SERVER_NAME=" +
-        conn.srv_cf
-            ->server_names[0];  // server_names is guaranteed to be non-empty
+    // server_names is guaranteed to be non-empty
+    std::string server_name = "SERVER_NAME=" + conn.srv_cf->server_names[0];
     std::string server_port =
         "SERVER_PORT=" + conn.client_socket->socket->get_server_port_string();
     std::string server_protocol = "SERVER_PROTOCOL=HTTP/1.1";
