@@ -19,7 +19,9 @@ std::string util::path::get_extension(const std::string &filepath) {
   }
   std::string ext = filepath.substr(pos);  // throwable
   pos = ext.find('/');
-  ext = ext.substr(0, pos);
+  if (pos != std::string::npos) {
+    ext.resize(pos);
+  }
   return ext;
 }
 
