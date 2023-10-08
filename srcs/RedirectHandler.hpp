@@ -15,7 +15,7 @@ class RedirectHandler {
   ~RedirectHandler() throw();           // Do not implement this
  public:
   // Member functions
-  static void handle(const Connection& conn, int status_code,
+  static void handle(Connection& conn, int status_code,
                      const std::string& location) throw();
 };
 

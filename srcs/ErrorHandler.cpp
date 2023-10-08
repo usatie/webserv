@@ -159,6 +159,9 @@ void gen_response(Connection& conn) {
   } else {
     *conn.client_socket << "Connection: close" << CRLF;
   }
+  if (conn.res.location != "") {
+    *conn.client_socket << "Location: " << conn.res.location << CRLF;
+  }
   if (conn.res.content_type != "") {
     *conn.client_socket << "Content-Type: " << conn.res.content_type << CRLF;
   }
