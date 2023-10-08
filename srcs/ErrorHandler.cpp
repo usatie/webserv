@@ -112,8 +112,8 @@ int try_error_page(Connection& conn, int status_code) {  // throwable
 
 void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
   conn.client_socket->clear_sendbuf();
+  conn.res = Response();
   if (status_code == 400) {
-    conn.keep_alive = false;
     conn.res.keep_alive = false;
   }
   // Error Page by `error_page` directive

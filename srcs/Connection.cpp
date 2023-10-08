@@ -80,7 +80,6 @@ int Connection::clear() {
   last_modified = time(NULL);
   cgi_started = 0;
   handler = &Connection::parse_start_line;
-  keep_alive = false;
   res = Response();
   io_status = NO_IO;
   return 0;
@@ -276,7 +275,7 @@ int Connection::parse_start_line() {
   // Validate HTTP version (Only 1.1 or later is supported)
   if (Version(2, 0) <= header.version) {
     Log::cinfo() << "Unsupported HTTP version: " << version << std::endl;
-    keep_alive = false;
+    res.keep_alive = false;
     ErrorHandler::handle(*this, 505);
     handler = &Connection::response;
     return WSV_AGAIN;
@@ -284,7 +283,6 @@ int Connection::parse_start_line() {
 
   // Keep-Alive is default for HTTP/1.1 or later
   if (Version(1, 1) <= header.version) {
-    keep_alive = true;
     res.keep_alive = true;
   }
 
@@ -374,10 +372,8 @@ int Connection::parse_header_fields() {  // throwable
   Header::const_iterator it = header.fields.find("Connection");
   if (it != header.fields.end()) {
     if (it->second == "close") {
-      keep_alive = false;
       res.keep_alive = false;
     } else if (it->second == "keep-alive") {
-      keep_alive = true;
       res.keep_alive = true;
     } else {
       Log::cinfo() << "Invalid Connection header: " << it->second << std::endl;
@@ -742,7 +738,7 @@ int Connection::response() throw() {
           "Client socket has received EOF and recvbuf is empty, remove "
           "connection");
       return WSV_REMOVE;
-    } else if (!keep_alive) {
+    } else if (!res.keep_alive) {
       Log::info("Connection: close, remove connection");
       return WSV_REMOVE;
     } else if (!client_socket->isRecvBufEmpty()) {
