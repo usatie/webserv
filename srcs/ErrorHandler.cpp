@@ -38,7 +38,6 @@ std::string default_error_page(int status_code) throw() {
   }
 }
 
-
 template <typename ConfigItem>
 const config::ErrorPage* find_error_page(const ConfigItem* cf,
                                          int status_code) throw() {
@@ -114,8 +113,8 @@ int try_error_page(Connection& conn, int status_code) {  // throwable
 void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
   conn.client_socket->clear_sendbuf();
   if (status_code == 400) {
-      conn.keep_alive = false;
-      conn.res.keep_alive = false;
+    conn.keep_alive = false;
+    conn.res.keep_alive = false;
   }
   // Error Page by `error_page` directive
   if (!noredirect) {

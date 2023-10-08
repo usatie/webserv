@@ -97,7 +97,6 @@ const char* status_line(int status_code) throw() {
   }
 }
 
-
 int SocketBuf::send_response(const Response& res) throw() {
   *this << status_line(res.status_code) << CRLF;
   *this << "Server: " << WEBSERV_VER << CRLF;
@@ -116,16 +115,14 @@ int SocketBuf::send_response(const Response& res) throw() {
     *this << "Content-Type: " << res.content_type << CRLF;
   }
   if (res.content != "") {
-    *this << "Content-Length: " << res.content.length()
-                        << CRLF;
+    *this << "Content-Length: " << res.content.length() << CRLF;
     *this << CRLF;  // end of header
     *this << res.content;
   } else if (res.content_path != "" || res.content_length > 0) {
-    *this << "Content-Length: " << res.content_length
-                        << CRLF;
+    *this << "Content-Length: " << res.content_length << CRLF;
     *this << CRLF;  // end of header
     // TODO: Handle errors while reading content_path
-    send_file(res.content_path.c_str());
+    send_file(res.content_path);
   } else {
     *this << "Content-Length: 0" << CRLF;
     *this << CRLF;  // end of header

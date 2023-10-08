@@ -29,8 +29,8 @@ class Request;
 class Response;
 
 class Request {
-public:
-  Response* res;
+ public:
+  Response *res;
   Header header;
   std::string body;
   size_t content_length;
@@ -48,15 +48,15 @@ public:
 };
 
 class Response {
-public:
+ public:
   Response() : status_code(0), keep_alive(false), content_length(0) {}
-  int status_code; // "Status"
-  bool keep_alive; // "Connection"
-  size_t content_length; // "Content-Length"
-  std::string content; // "Content"
-  std::string content_path; // "Content"
-  std::string content_type; // "Content-Type"
-  std::string location; // "Location"
+  int status_code;           // "Status"
+  bool keep_alive;           // "Connection"
+  size_t content_length;     // "Content-Length"
+  std::string content;       // "Content"
+  std::string content_path;  // "Content"
+  std::string content_type;  // "Content-Type"
+  std::string location;      // "Location"
 };
 
 class Connection {
@@ -94,7 +94,7 @@ class Connection {
                    // But to avoid circular dependency with Server.hpp, we use
                    // forward declaration and pointer.
   // Response
-  bool keep_alive; // "Connection"
+  bool keep_alive;  // "Connection"
   Response res;
 
  public:

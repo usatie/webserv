@@ -233,9 +233,9 @@ int Connection::parse_start_line() {
   std::stringstream ss;
   std::string version;
   ss << line;
-  ss >> header.method;   // ss does not throw (cf. playground/fuga.cpp)
-  ss >> header.path;     // ss does not throw
-  ss >> version;  // ss does not throw
+  ss >> header.method;  // ss does not throw (cf. playground/fuga.cpp)
+  ss >> header.path;    // ss does not throw
+  ss >> version;        // ss does not throw
 
   // URI = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
   // relative-ref = relative-part [ "?" query ] [ "#" fragment ]
@@ -265,8 +265,8 @@ int Connection::parse_start_line() {
 
   // Parse HTTP version
   // Before HTTP/1.0 (i.e. HTTP/0.9) does not have HTTP-Version
-  if (parse_http_version(version, header.version) < 0 || header.version < Version(1, 0))
-  {
+  if (parse_http_version(version, header.version) < 0 ||
+      header.version < Version(1, 0)) {
     Log::cinfo() << "Invalid HTTP version: " << version << std::endl;
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
@@ -396,9 +396,13 @@ int Connection::parse_body() {  // throwable
   Header::const_iterator it = header.fields.find("Transfer-Encoding");
   if (it != header.fields.end() && util::contains(it->second, "chunked")) {
     if (header.version < Version(1, 1)) {
-      Log::cinfo() << "Chunked encoding is not supported in HTTP/1.0.\n"
-                   << "A server or client that receives an HTTP/1.0 message containing a Transfer-Encoding header field MUST treat the message as if the framing is faulty, even if a Content-Length is present, and close the connection after processing the message."
-                   << std::endl;
+      Log::cinfo()
+          << "Chunked encoding is not supported in HTTP/1.0.\n"
+          << "A server or client that receives an HTTP/1.0 message containing "
+             "a Transfer-Encoding header field MUST treat the message as if "
+             "the framing is faulty, even if a Content-Length is present, and "
+             "close the connection after processing the message."
+          << std::endl;
       handler = &Connection::parse_body_content_length;
       return WSV_AGAIN;
     }
@@ -734,7 +738,9 @@ int Connection::handle() {  // throwable
 int Connection::response() throw() {
   if (client_socket->isSendBufEmpty()) {
     if (client_socket->hasReceivedEof && client_socket->isRecvBufEmpty()) {
-      Log::info("Client socket has received EOF and recvbuf is empty, remove connection");
+      Log::info(
+          "Client socket has received EOF and recvbuf is empty, remove "
+          "connection");
       return WSV_REMOVE;
     } else if (!keep_alive) {
       Log::info("Connection: close, remove connection");
