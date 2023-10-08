@@ -73,13 +73,10 @@ int Connection::clear() {
   chunk.clear();
   chunk_size = 0;
   cgi_pid = -1;
-  srv_cf = NULL;
-  loc_cf = NULL;
-  cgi_handler_cf = NULL;
-  cgi_ext_cf = NULL;
   last_modified = time(NULL);
   cgi_started = 0;
   handler = &Connection::parse_start_line;
+  req = Request();
   res = Response();
   io_status = NO_IO;
   return 0;
@@ -660,41 +657,41 @@ const config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf,
 }
 
 int Connection::handle() {  // throwable
-  srv_cf = select_srv_cf(server->cf, *this);
-  loc_cf = select_loc_cf(srv_cf, header.path);
-  cgi_handler_cf = loc_cf ? select_cgi_handler_cf(loc_cf, header.path)
-                          : select_cgi_handler_cf(srv_cf, header.path);
-  cgi_ext_cf = loc_cf ? select_cgi_ext_cf(loc_cf, header.path)
-                      : select_cgi_ext_cf(srv_cf, header.path);
+  req.srv_cf = select_srv_cf(server->cf, *this);
+  req.loc_cf = select_loc_cf(req.srv_cf, header.path);
+  req.cgi_handler_cf = req.loc_cf ? select_cgi_handler_cf(req.loc_cf, header.path)
+                          : select_cgi_handler_cf(req.srv_cf, header.path);
+  req.cgi_ext_cf = req.loc_cf ? select_cgi_ext_cf(req.loc_cf, header.path)
+                      : select_cgi_ext_cf(req.srv_cf, header.path);
 
   // `return` directive
-  if (loc_cf && loc_cf->returns.size() > 0) {
-    RedirectHandler::handle(*this, loc_cf->returns[0].code,
-                            loc_cf->returns[0].url);
+  if (req.loc_cf && req.loc_cf->returns.size() > 0) {
+    RedirectHandler::handle(*this, req.loc_cf->returns[0].code,
+                            req.loc_cf->returns[0].url);
     handler = &Connection::response;
     return WSV_AGAIN;
   }
 
   // generate fullpath
   // `root` and `alias` directive
-  if (!loc_cf) {
+  if (!req.loc_cf) {
     // Server Root    : Append path to root
     Log::cdebug() << "Server Root" << std::endl;
-    header.fullpath = srv_cf->root + header.path;  // throwable
-  } else if (!loc_cf->alias.configured) {
+    header.fullpath = req.srv_cf->root + header.path;  // throwable
+  } else if (!req.loc_cf->alias.configured) {
     // Location Root  : Append path to root
-    Log::cdebug() << "Location Root: " << loc_cf->path << std::endl;
-    header.fullpath = loc_cf->root + header.path;  // throwable
+    Log::cdebug() << "Location Root: " << req.loc_cf->path << std::endl;
+    header.fullpath = req.loc_cf->root + header.path;  // throwable
   } else {
     // Location Alias : Replace prefix with alias
-    Log::cdebug() << "Location Alias: " << loc_cf->path << std::endl;
+    Log::cdebug() << "Location Alias: " << req.loc_cf->path << std::endl;
     header.fullpath =
-        loc_cf->alias + header.path.substr(loc_cf->path.size());  // throwable
+        req.loc_cf->alias + header.path.substr(req.loc_cf->path.size());  // throwable
   }
 
   // `limit_except` directive
-  if (loc_cf && loc_cf->limit_except.configured) {
-    if (!util::contains(loc_cf->limit_except.methods, header.method)) {
+  if (req.loc_cf && req.loc_cf->limit_except.configured) {
+    if (!util::contains(req.loc_cf->limit_except.methods, header.method)) {
       Log::cinfo() << "Unsupported method: " << header.method << std::endl;
       ErrorHandler::handle(*this, 405);
       handler = &Connection::response;
@@ -703,7 +700,7 @@ int Connection::handle() {  // throwable
   }
 
   // if CGI
-  if (cgi_ext_cf || cgi_handler_cf) {
+  if (req.cgi_ext_cf || req.cgi_handler_cf) {
     Log::cdebug() << "CGI request" << std::endl;
     cgi_started = time(NULL);
     if (CgiHandler::handle(*this) < 0) {

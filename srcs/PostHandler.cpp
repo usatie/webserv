@@ -81,10 +81,10 @@ static int internal_handle(Connection& conn, ConfigItem* cf) {  // throwable
 
 void PostHandler::handle(Connection& conn) {
   int err;
-  if (conn.loc_cf) {
-    err = internal_handle(conn, conn.loc_cf);  // throwable
+  if (conn.req.loc_cf) {
+    err = internal_handle(conn, conn.req.loc_cf);  // throwable
   } else {
-    err = internal_handle(conn, conn.srv_cf);  // throwable
+    err = internal_handle(conn, conn.req.srv_cf);  // throwable
   }
   switch (err) {
     case SUCCESS:

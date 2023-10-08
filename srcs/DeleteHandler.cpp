@@ -11,21 +11,21 @@ void DeleteHandler::handle(Connection& conn) throw() {
   // 1. Get the path
   std::string path;
   // `root` and `alias` directive
-  if (!conn.loc_cf) {
+  if (!conn.req.loc_cf) {
     // Server Root    : Append path to root
     Log::cdebug() << "Server Root" << std::endl;
-    path = conn.srv_cf->root + conn.header.path;
-  } else if (conn.loc_cf->alias.configured) {
+    path = conn.req.srv_cf->root + conn.header.path;
+  } else if (conn.req.loc_cf->alias.configured) {
     // TODO: Question: What if parent location has alias?
     // TODO: What if location is nested?
     // Location Alias : Replace prefix with alias
-    Log::cdebug() << "Location Alias: " << conn.loc_cf->path << std::endl;
+    Log::cdebug() << "Location Alias: " << conn.req.loc_cf->path << std::endl;
     path =
-        conn.loc_cf->alias + conn.header.path.substr(conn.loc_cf->path.size());
+        conn.req.loc_cf->alias + conn.header.path.substr(conn.req.loc_cf->path.size());
   } else {
     // Location Root  : Append path to root
-    Log::cdebug() << "Location Root: " << conn.loc_cf->path << std::endl;
-    path = conn.loc_cf->root + conn.header.path;
+    Log::cdebug() << "Location Root: " << conn.req.loc_cf->path << std::endl;
+    path = conn.req.loc_cf->root + conn.header.path;
   }
   // 2. Check if the path exists
   struct stat st;

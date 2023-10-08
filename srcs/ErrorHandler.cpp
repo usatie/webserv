@@ -60,13 +60,13 @@ const config::ErrorPage* find_error_page(const ConfigItem* cf,
 #define ERR_500 4
 int try_error_page(Connection& conn, int status_code) {  // throwable
   // 1. No context for error_page
-  if (!conn.loc_cf && !conn.srv_cf) {
+  if (!conn.req.loc_cf && !conn.req.srv_cf) {
     return -1;
   }
   // 2. Find error_page for status_code
   const config::ErrorPage* error_page;
-  error_page = find_error_page(conn.loc_cf, status_code);
-  if (!error_page) error_page = find_error_page(conn.srv_cf, status_code);
+  error_page = find_error_page(conn.req.loc_cf, status_code);
+  if (!error_page) error_page = find_error_page(conn.req.srv_cf, status_code);
   if (!error_page) return -1;
 
   // 3. Resolve path
@@ -76,8 +76,8 @@ int try_error_page(Connection& conn, int status_code) {  // throwable
   int ret;
   struct stat st;
   std::string path;
-  const config::Server* srv_cf = conn.srv_cf;
-  const config::Location* loc_cf = select_loc_cf(conn.srv_cf, error_page->uri);
+  const config::Server* srv_cf = conn.req.srv_cf;
+  const config::Location* loc_cf = select_loc_cf(conn.req.srv_cf, error_page->uri);
   ret = resolve_path(srv_cf, loc_cf, error_page->uri, path, st);
 
   if (ret == ERR_500) {

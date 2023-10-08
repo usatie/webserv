@@ -10,7 +10,7 @@
 class Header {
  private:
   Header(const Header &src) throw();             // Do not implement
-  Header &operator=(const Header &rhs) throw();  // Do not implement
+  //Header &operator=(const Header &rhs) throw();  // Do not implement
  public:
   typedef std::map<std::string, std::string>::iterator iterator;
   typedef std::map<std::string, std::string>::const_iterator const_iterator;
