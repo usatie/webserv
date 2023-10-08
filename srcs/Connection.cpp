@@ -285,6 +285,7 @@ int Connection::parse_start_line() {
   // Keep-Alive is default for HTTP/1.1 or later
   if (Version(1, 1) <= header.version) {
     keep_alive = true;
+    res.keep_alive = true;
   }
 
   // TODO: Defense Directory traversal attack

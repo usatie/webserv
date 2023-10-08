@@ -148,7 +148,7 @@ int try_error_page(Connection& conn, int status_code) {  // throwable
   //
 }
 
-static void gen_response(Connection& conn) {
+void gen_response(Connection& conn) {
   *conn.client_socket << status_line(conn.res.status_code) << CRLF;
   *conn.client_socket << "Server: " << WEBSERV_VER << CRLF;
   //*conn.client_socket << "Date: " << util::get_date() << CRLF;
@@ -171,6 +171,7 @@ static void gen_response(Connection& conn) {
     *conn.client_socket << "Content-Length: " << conn.res.content_length
                         << CRLF;
     *conn.client_socket << CRLF;  // end of header
+    // TODO: Handle errors while reading content_path
     conn.client_socket->send_file(conn.res.content_path.c_str());
   } else {
     *conn.client_socket << "Content-Length: 0" << CRLF;
