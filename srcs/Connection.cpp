@@ -81,6 +81,7 @@ int Connection::clear() {
   cgi_started = 0;
   handler = &Connection::parse_start_line;
   keep_alive = false;
+  res = Response();
   io_status = NO_IO;
   return 0;
 }

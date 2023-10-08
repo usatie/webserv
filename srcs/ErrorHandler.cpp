@@ -90,11 +90,15 @@ int try_error_page(Connection& conn, int status_code) {  // throwable
     return 0;
   }
   //  4. Send error page
-  *conn.client_socket << status_line(status_code) << CRLF;
-  *conn.client_socket << "Content-Type: text/html" << CRLF;
-  *conn.client_socket << "Content-Length: " << st.st_size << CRLF;
-  *conn.client_socket << CRLF;  // end of header
-  conn.client_socket->send_file(path.c_str());
+  //*conn.client_socket << status_line(status_code) << CRLF;
+  //*conn.client_socket << "Content-Type: text/html" << CRLF;
+  //*conn.client_socket << "Content-Length: " << st.st_size << CRLF;
+  //*conn.client_socket << CRLF;  // end of header
+  //conn.client_socket->send_file(path.c_str());
+  conn.res.status_code = status_code;
+  conn.res.content_type = "text/html";
+  conn.res.content_length = st.st_size;
+  conn.res.content_path = path;
   return 0;
   // This causes an internal redirect to the specified uri with the client
   // request method changed to “GET” (for all methods other than “GET” and
@@ -111,86 +115,86 @@ int try_error_page(Connection& conn, int status_code) {  // throwable
   //
 }
 
+static void gen_response(Connection& conn) {
+  *conn.client_socket << status_line(conn.res.status_code) << CRLF;
+  *conn.client_socket << "Server: " << WEBSERV_VER << CRLF;
+  //*conn.client_socket << "Date: " << util::get_date() << CRLF;
+  if (conn.res.keep_alive) {
+    *conn.client_socket << "Connection: keep-alive" << CRLF;
+    //*conn.client_socket << "Keep-Alive: timeout=" << conn.srv_cf->timeout
+    //                    << CRLF;
+  } else {
+    *conn.client_socket << "Connection: close" << CRLF;
+  }
+  if (conn.res.content_type != "") {
+    *conn.client_socket << "Content-Type: " << conn.res.content_type << CRLF;
+  }
+  if (conn.res.content != "") {
+    *conn.client_socket << "Content-Length: " << conn.res.content.length()
+                        << CRLF;
+    *conn.client_socket << CRLF;  // end of header
+    *conn.client_socket << conn.res.content;
+  } else if (conn.res.content_path != "") {
+    *conn.client_socket << "Content-Length: " << conn.res.content_length
+                        << CRLF;
+    *conn.client_socket << CRLF;  // end of header
+    conn.client_socket->send_file(conn.res.content_path.c_str());
+  } else {
+    *conn.client_socket << "Content-Length: 0" << CRLF;
+    *conn.client_socket << CRLF;  // end of header
+  }
+}
+
 void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
   conn.client_socket->clear_sendbuf();
   // Error Page by `error_page` directive
   if (!noredirect) {
     if (try_error_page(conn, status_code) == 0) {  // throwable
+      gen_response(conn);
       return;
     }
   }
   // Default Error Page
+  conn.res.status_code = status_code;
+  conn.res.content_type = "text/html";
   switch (status_code) {
     case 400:
       conn.keep_alive = false;
-      *conn.client_socket << "HTTP/1.1 400 Bad Request" << CRLF;
-      *conn.client_socket << "Content-Type: text/html" << CRLF;
-      *conn.client_socket << "Content-Length: "
-                          << sizeof(http_error_400_page) - 1 << CRLF;
-      *conn.client_socket << "Connection: close" << CRLF;
-      *conn.client_socket << CRLF;  // end of header
-      *conn.client_socket << http_error_400_page;
+      conn.res.keep_alive = false;
+      conn.res.content_length = sizeof(http_error_400_page) - 1;
+      conn.res.content = http_error_400_page;
       break;
     case 403:
-      *conn.client_socket << "HTTP/1.1 403 Forbidden" << CRLF;
-      *conn.client_socket << "Content-Type: text/html" << CRLF;
-      *conn.client_socket << "Content-Length: "
-                          << sizeof(http_error_400_page) -
-                                 1  // -1 because of the null terminator
-                          << CRLF;
-      *conn.client_socket << CRLF;  // end of header
-      *conn.client_socket << http_error_403_page;
+      conn.res.content_length = sizeof(http_error_403_page) - 1;
+      conn.res.content = http_error_403_page;
       break;
     case 404:
-      *conn.client_socket << "HTTP/1.1 404 Resource Not Found" << CRLF;
-      *conn.client_socket << "Content-Type: text/html" << CRLF;
-      *conn.client_socket << "Content-Length: "
-                          << sizeof(http_error_404_page) - 1 << CRLF;
-      *conn.client_socket << CRLF;  // end of header
-      *conn.client_socket << http_error_404_page;
+      conn.res.content_length = sizeof(http_error_404_page) - 1;
+      conn.res.content = http_error_404_page;
       break;
     case 405:
-      *conn.client_socket << "HTTP/1.1 405 Method Not Allowed" << CRLF;
-      *conn.client_socket << "Content-Type: text/html" << CRLF;
-      *conn.client_socket << "Content-Length: "
-                          << sizeof(http_error_405_page) - 1 << CRLF;
-      *conn.client_socket << CRLF;  // end of header
-      *conn.client_socket << http_error_405_page;
+      conn.res.content_length = sizeof(http_error_405_page) - 1;
+      conn.res.content = http_error_405_page;
       break;
     case 413:
-      *conn.client_socket << "HTTP/1.1 413 Request Entity Too Large" << CRLF;
-      *conn.client_socket << "Content-Type: text/html" << CRLF;
-      *conn.client_socket << "Content-Length: "
-                          << sizeof(http_error_413_page) - 1 << CRLF;
-      *conn.client_socket << CRLF;  // end of header
-      *conn.client_socket << http_error_413_page;
+      conn.res.content_length = sizeof(http_error_413_page) - 1;
+      conn.res.content = http_error_413_page;
       break;
     case 500:
-      *conn.client_socket << "HTTP/1.1 500 Internal Server Error" << CRLF;
-      *conn.client_socket << "Content-Type: text/html" << CRLF;
-      *conn.client_socket << "Content-Length: "
-                          << sizeof(http_error_500_page) - 1 << CRLF;
-      *conn.client_socket << CRLF;  // end of header
-      *conn.client_socket << http_error_500_page;
+      conn.res.content_length = sizeof(http_error_500_page) - 1;
+      conn.res.content = http_error_500_page;
       break;
     case 504:
-      *conn.client_socket << "HTTP/1.1 504 Gateway Timeout" << CRLF;
-      *conn.client_socket << "Content-Type: text/html" << CRLF;
-      *conn.client_socket << "Content-Length: "
-                          << sizeof(http_error_504_page) - 1 << CRLF;
-      *conn.client_socket << CRLF;  // end of header
-      *conn.client_socket << http_error_504_page;
+      conn.res.content_length = sizeof(http_error_504_page) - 1;
+      conn.res.content = http_error_504_page;
       break;
     case 505:
-      *conn.client_socket << "HTTP/1.1 505 HTTP Version Not Supported" << CRLF;
-      *conn.client_socket << "Content-Type: text/html" << CRLF;
-      *conn.client_socket << "Content-Length: "
-                          << sizeof(http_error_505_page) - 1 << CRLF;
-      *conn.client_socket << CRLF;  // end of header
-      *conn.client_socket << http_error_505_page;
+      conn.res.content_length = sizeof(http_error_505_page) - 1;
+      conn.res.content = http_error_505_page;
       break;
     default:
       Log::cerror() << "Unknown status code: " << status_code << std::endl;
       break;
   }
+  gen_response(conn);
 }

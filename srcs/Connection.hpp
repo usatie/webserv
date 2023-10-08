@@ -25,6 +25,39 @@
 #define WSV_CLEAR -3
 
 class Server;
+class Request;
+class Response;
+
+class Request {
+public:
+  Response* res;
+  Header header;
+  std::string body;
+  size_t content_length;
+  std::string chunk;  // single chunk
+  size_t chunk_size;
+  const config::Server *srv_cf;
+  const config::Location *loc_cf;
+  const config::CgiHandler *cgi_handler_cf;
+  const config::CgiExtensions *cgi_ext_cf;
+  // Server
+  Server *server;  // This will never be a NULL so it can be reference.
+                   // But to avoid circular dependency with Server.hpp, we use
+                   // forward declaration and pointer.
+  bool keep_alive;
+};
+
+class Response {
+public:
+  Response() : status_code(0), keep_alive(false), content_length(0) {}
+  int status_code; // "Status"
+  bool keep_alive; // "Connection"
+  size_t content_length; // "Content-Length"
+  std::string content; // "Content"
+  std::string content_path; // "Content"
+  std::string content_type; // "Content-Type"
+  std::string location; // "Location"
+};
 
 class Connection {
  public:
@@ -60,7 +93,9 @@ class Connection {
   Server *server;  // This will never be a NULL so it can be reference.
                    // But to avoid circular dependency with Server.hpp, we use
                    // forward declaration and pointer.
-  bool keep_alive;
+  // Response
+  bool keep_alive; // "Connection"
+  Response res;
 
  public:
   IOStatus io_status;
