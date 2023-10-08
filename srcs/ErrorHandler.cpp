@@ -170,7 +170,7 @@ void gen_response(Connection& conn) {
                         << CRLF;
     *conn.client_socket << CRLF;  // end of header
     *conn.client_socket << conn.res.content;
-  } else if (conn.res.content_path != "") {
+  } else if (conn.res.content_path != "" || conn.res.content_length > 0) {
     *conn.client_socket << "Content-Length: " << conn.res.content_length
                         << CRLF;
     *conn.client_socket << CRLF;  // end of header

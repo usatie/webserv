@@ -1,5 +1,7 @@
 #include "Connection.hpp"
 
+void gen_response(Connection& conn);
+
 static const char* http_header_fields[] = {
     //"Content-Type", // This will be set automatically
     //"Content-Length", // This will be set automatically
@@ -164,12 +166,12 @@ int Connection::handle_cgi_parse() {  // throwable
       handler = &Connection::response;
       return WSV_AGAIN;
     }
-    *client_socket << "HTTP/1.1 " << status_code << " " << reason_phrase
-                   << CRLF;
+    ss.str(status_code);
+    ss.clear();
+    ss >> res.status_code;
   } else {
     Log::cdebug() << "Status not found" << std::endl;
-
-    *client_socket << "HTTP/1.1 200 OK" << CRLF;
+    res.status_code = 200;
   }
 
   // 2. Location
@@ -197,7 +199,7 @@ int Connection::handle_cgi_parse() {  // throwable
   if ((it = cgi_header_fields.find("Location")) != cgi_header_fields.end()) {
     Log::cdebug() << "Location found: " << it->second << std::endl;
     // TODO: validate location
-    *client_socket << "Location: " << it->second << CRLF;
+    res.location = it->second;
   }
 
   // 3. Content-Type
@@ -211,7 +213,7 @@ int Connection::handle_cgi_parse() {  // throwable
   if ((it = cgi_header_fields.find("Content-Type")) !=
       cgi_header_fields.end()) {
     Log::cdebug() << "Content-Type found: " << it->second << std::endl;
-    *client_socket << "Content-Type: " << it->second << CRLF;
+    res.content_type = it->second;
   } else if (cgi_socket->getReadBufSize() > 0) {
     Log::cdebug() << "Content-Type must be found" << std::endl;
     ErrorHandler::handle(*this, 500);
@@ -221,7 +223,7 @@ int Connection::handle_cgi_parse() {  // throwable
 
   // 4. Content-Length
   size_t size = cgi_socket->getReadBufSize();
-  *client_socket << "Content-Length: " << size << CRLF;
+  res.content_length = size;
 
   // 5. Protocol-Specific Header Fields
   for (it = cgi_header_fields.begin(); it != cgi_header_fields.end(); ++it) {
@@ -234,13 +236,15 @@ int Connection::handle_cgi_parse() {  // throwable
       if (it->first == p) {
         Log::cdebug() << "Valid HTTP Header field: " << it->first << ": "
                       << it->second << std::endl;
-        *client_socket << it->first << ": " << it->second << CRLF;
+        //*client_socket << it->first << ": " << it->second << CRLF;
+        // TODO: Add header field to response
         break;
       }
     }
   }
 
-  *client_socket << CRLF;  // End of header fields
+  //*client_socket << CRLF;  // End of header fields
+  gen_response(*this);
 
   // 6. Entity Body (if any)
   if (size > 0) {

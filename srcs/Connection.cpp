@@ -375,8 +375,10 @@ int Connection::parse_header_fields() {  // throwable
   if (it != header.fields.end()) {
     if (it->second == "close") {
       keep_alive = false;
+      res.keep_alive = false;
     } else if (it->second == "keep-alive") {
       keep_alive = true;
+      res.keep_alive = true;
     } else {
       Log::cinfo() << "Invalid Connection header: " << it->second << std::endl;
       ErrorHandler::handle(*this, 400);
