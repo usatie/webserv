@@ -5,6 +5,8 @@
 
 #include "Connection.hpp"
 
+void gen_response(Connection& conn);
+
 static int compar(const struct dirent** s1, const struct dirent** s2) {
   if ((*s1)->d_type != (*s2)->d_type)
     return (*s1)->d_type > (*s2)->d_type;
@@ -67,10 +69,9 @@ void send_directory_listing(Connection& conn,
     return;
   }
   // Send Response
-  *conn.client_socket << "HTTP/1.1 200 OK" << CRLF;
-  *conn.client_socket << "Server: " << WEBSERV_VER << CRLF;
-  *conn.client_socket << "Content-Type: text/html" << CRLF;
-  *conn.client_socket << "Content-Length: " << ss.str().length() << CRLF;
-  *conn.client_socket << CRLF;      // end of header
-  *conn.client_socket << ss.str();  // throwable
+  conn.res.status_code = 200;
+  conn.res.content_type = "text/html";
+  conn.res.content_length = ss.str().length();
+  conn.res.content = ss.str();
+  gen_response(conn);
 }
