@@ -13,6 +13,8 @@
 #define ERR_413 2
 #define ERR_500 3
 
+void gen_response(Connection& conn);
+
 // This is throwable
 template <typename ConfigItem>
 static int internal_handle(Connection& conn, ConfigItem* cf) {  // throwable
@@ -65,18 +67,17 @@ static int internal_handle(Connection& conn, ConfigItem* cf) {  // throwable
   }
   ofs.close();
   // Send response
-  *conn.client_socket << "HTTP/1.1 201 Created" << CRLF;
   // TODO: filepath is not necessarily the same as path in the request
   // TODO: what if conn.header.path is not exact match?
   // TODO: what if location is nested?
   // TODO: what if not aliased exactly the same as upload_store?
   // Question: Should we resolve the filepath location before saving the file?
-  *conn.client_socket << "Location: " << conn.header.path << filename << CRLF;
-  *conn.client_socket << "Content-Type: application/json" << CRLF;
-  *conn.client_socket << "Content-Length: 18" << CRLF;
-  *conn.client_socket << CRLF;
-  *conn.client_socket << "{\"success\":\"true\"}";
-  *conn.client_socket << CRLF;
+  conn.res.status_code = 201;
+  conn.res.location = conn.header.path + filename;
+  conn.res.content_type = "application/json";
+  conn.res.content_length = 18;
+  conn.res.content = "{\"success\":\"true\"}";
+  gen_response(conn);
   return SUCCESS;
 }
 
