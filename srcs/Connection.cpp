@@ -211,14 +211,22 @@ static int parse_http_version(std::string const &s, Version &version) {
 // https://datatracker.ietf.org/doc/html/rfc2616#section-5.1
 // Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
 int Connection::parse_start_line() {
+  Log::cdebug() << "parse_start_line" << std::endl;
   std::string line;
 
-  if (client_socket->read_telnet_line(line) < 0) {  // throwable
-    return WSV_WAIT;
-  }
-  if (line.empty()) {
-    Log::cdebug() << "empty line" << std::endl;
-    return WSV_WAIT;
+  // CRLF hoge CRLF fuga CRLF
+  while (1) {
+    // If buffer has not enough data to read a line, wait for more data
+    // TODO: What if client socket is closed?
+    if (client_socket->read_telnet_line(line) < 0) {  // throwable
+      return WSV_WAIT;
+    }
+
+    // If line is empty, ignore it
+    if (line.empty()) continue;
+
+    // If line is not empty, break to parse it
+    break;
   }
   Log::cdebug() << "start line: " << line << std::endl;
   std::stringstream ss;
