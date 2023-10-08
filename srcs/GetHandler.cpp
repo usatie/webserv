@@ -101,7 +101,7 @@ void GetHandler::handle(Connection& conn) {  // throwable
   struct stat st;
   std::string path;
   int response_type =
-      resolve_path(conn.req.srv_cf, conn.req.loc_cf, conn.header.path, path, st);
+      resolve_path(conn.req.srv_cf, conn.req.loc_cf, conn.req.header.path, path, st);
   if (response_type == ERR_500) {
     ErrorHandler::handle(conn, 500);
   } else if (response_type == ERR_404) {

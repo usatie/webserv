@@ -30,7 +30,7 @@ class Response;
 
 class Request {
  public:
-  Request() : content_length(0), chunk_size(0), keep_alive(false), srv_cf(NULL), loc_cf(NULL), cgi_handler_cf(NULL), cgi_ext_cf(NULL), server(NULL) {}
+  Request() : content_length(0), chunk_size(0), keep_alive(false), srv_cf(NULL), loc_cf(NULL), cgi_handler_cf(NULL), cgi_ext_cf(NULL) {}
 
   Header header;
   std::string body;
@@ -43,11 +43,6 @@ class Request {
   const config::Location *loc_cf;
   const config::CgiHandler *cgi_handler_cf;
   const config::CgiExtensions *cgi_ext_cf;
-
-  // Server
-  Server *server;  // This will never be a NULL so it can be reference.
-                   // But to avoid circular dependency with Server.hpp, we use
-                   // forward declaration and pointer.
 };
 
 class Response {
@@ -76,13 +71,8 @@ class Connection {
   // Member data
   util::shared_ptr<SocketBuf> client_socket;
   util::shared_ptr<SocketBuf> cgi_socket;
-  Header header;
 
  public:
-  std::string body;
-  size_t content_length;
-  std::string chunk;  // single chunk
-  size_t chunk_size;
   pid_t cgi_pid;
   time_t last_modified;
   time_t cgi_started;
@@ -106,11 +96,6 @@ class Connection {
   Connection(util::shared_ptr<Socket> sock, Server *server)
       : client_socket(util::shared_ptr<SocketBuf>(new SocketBuf(sock))),
         cgi_socket(NULL),
-        header(),
-        body(),
-        content_length(0),
-        chunk(),
-        chunk_size(0),
         cgi_pid(-1),
         last_modified(time(NULL)),
         cgi_started(0),  // What should be the initial value?

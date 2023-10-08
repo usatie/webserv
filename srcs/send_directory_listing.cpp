@@ -16,9 +16,9 @@ void send_directory_listing(Connection& conn,
                             const std::string& path) {  // throwable
   // Generate HTML for directory listing
   std::stringstream ss;
-  ss << "<html>" << CRLF << "<head><title>Index of " << conn.header.path
+  ss << "<html>" << CRLF << "<head><title>Index of " << conn.req.header.path
      << "</title></head>" << CRLF << "<body>" << CRLF << "<h1>Index of "
-     << conn.header.path << "</h1><hr><pre>";
+     << conn.req.header.path << "</h1><hr><pre>";
   struct dirent** dirlist;
   int r = scandir(path.c_str(), &dirlist, NULL, compar);
   if (r < 0) {

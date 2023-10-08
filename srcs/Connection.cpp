@@ -67,11 +67,6 @@ int Connection::resume() {  // throwable
 
 int Connection::clear() {
   cgi_socket = util::shared_ptr<SocketBuf>();
-  header.clear();
-  body.clear();
-  content_length = 0;
-  chunk.clear();
-  chunk_size = 0;
   cgi_pid = -1;
   last_modified = time(NULL);
   cgi_started = 0;
@@ -229,8 +224,8 @@ int Connection::parse_start_line() {
   std::stringstream ss;
   std::string version;
   ss << line;
-  ss >> header.method;  // ss does not throw (cf. playground/fuga.cpp)
-  ss >> header.path;    // ss does not throw
+  ss >> req.header.method;  // ss does not throw (cf. playground/fuga.cpp)
+  ss >> req.header.path;    // ss does not throw
   ss >> version;        // ss does not throw
 
   // URI = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
@@ -238,22 +233,22 @@ int Connection::parse_start_line() {
   {
     std::string::size_type i;
     // [ "#" fragment ]
-    if ((i = header.path.find_first_of('#')) != std::string::npos) {
-      header.fragment = header.path.substr(i + 1);
-      header.path = header.path.substr(0, i);
+    if ((i = req.header.path.find_first_of('#')) != std::string::npos) {
+      req.header.fragment = req.header.path.substr(i + 1);
+      req.header.path = req.header.path.substr(0, i);
     }
     // [ "?" query ]
-    if ((i = header.path.find_first_of('?')) != std::string::npos) {
-      header.query = header.path.substr(i + 1);
-      header.path = header.path.substr(0, i);
+    if ((i = req.header.path.find_first_of('?')) != std::string::npos) {
+      req.header.query = req.header.path.substr(i + 1);
+      req.header.path = req.header.path.substr(0, i);
     }
   }
 
   // Path must be starting with /
-  if (!is_valid_path(header.path) || !deconde_parcent(header.path) ||
-      !deconde_parcent(header.query) || !deconde_parcent(header.fragment) ||
-      !is_valid_decoded_path(header.path)) {
-    Log::cinfo() << "Invalid path: " << header.path << std::endl;
+  if (!is_valid_path(req.header.path) || !deconde_parcent(req.header.path) ||
+      !deconde_parcent(req.header.query) || !deconde_parcent(req.header.fragment) ||
+      !is_valid_decoded_path(req.header.path)) {
+    Log::cinfo() << "Invalid path: " << req.header.path << std::endl;
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
     return WSV_AGAIN;
@@ -261,8 +256,8 @@ int Connection::parse_start_line() {
 
   // Parse HTTP version
   // Before HTTP/1.0 (i.e. HTTP/0.9) does not have HTTP-Version
-  if (parse_http_version(version, header.version) < 0 ||
-      header.version < Version(1, 0)) {
+  if (parse_http_version(version, req.header.version) < 0 ||
+      req.header.version < Version(1, 0)) {
     Log::cinfo() << "Invalid HTTP version: " << version << std::endl;
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
@@ -270,7 +265,7 @@ int Connection::parse_start_line() {
   }
 
   // Validate HTTP version (Only 1.1 or later is supported)
-  if (Version(2, 0) <= header.version) {
+  if (Version(2, 0) <= req.header.version) {
     Log::cinfo() << "Unsupported HTTP version: " << version << std::endl;
     res.keep_alive = false;
     ErrorHandler::handle(*this, 505);
@@ -279,7 +274,7 @@ int Connection::parse_start_line() {
   }
 
   // Keep-Alive is default for HTTP/1.1 or later
-  if (Version(1, 1) <= header.version) {
+  if (Version(1, 1) <= req.header.version) {
     res.keep_alive = true;
   }
 
@@ -351,23 +346,23 @@ int Connection::read_header_fields() {  // throwable
       handler = &Connection::response;
       return WSV_AGAIN;
     }
-    header.fields[util::http::canonical_header_key(key)] = value;  // throwable
+    req.header.fields[util::http::canonical_header_key(key)] = value;  // throwable
   }
   return WSV_WAIT;
 }
 
 int Connection::parse_header_fields() {  // throwable
   // Host header is mandatory for HTTP/1.1 or later
-  if (Version(1, 1) <= header.version) {
-    if (!util::contains(header.fields, "Host")) {
+  if (Version(1, 1) <= req.header.version) {
+    if (!util::contains(req.header.fields, "Host")) {
       Log::cinfo() << "Host header is missing" << std::endl;
       ErrorHandler::handle(*this, 400);
       handler = &Connection::response;
       return WSV_AGAIN;
     }
   }
-  Header::const_iterator it = header.fields.find("Connection");
-  if (it != header.fields.end()) {
+  Header::const_iterator it = req.header.fields.find("Connection");
+  if (it != req.header.fields.end()) {
     if (it->second == "close") {
       res.keep_alive = false;
     } else if (it->second == "keep-alive") {
@@ -386,9 +381,9 @@ int Connection::parse_header_fields() {  // throwable
 // https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
 int Connection::parse_body() {  // throwable
   Log::debug("parse_body");
-  Header::const_iterator it = header.fields.find("Transfer-Encoding");
-  if (it != header.fields.end() && util::contains(it->second, "chunked")) {
-    if (header.version < Version(1, 1)) {
+  Header::const_iterator it = req.header.fields.find("Transfer-Encoding");
+  if (it != req.header.fields.end() && util::contains(it->second, "chunked")) {
+    if (req.header.version < Version(1, 1)) {
       Log::cinfo()
           << "Chunked encoding is not supported in HTTP/1.0.\n"
           << "A server or client that receives an HTTP/1.0 message containing "
@@ -400,7 +395,7 @@ int Connection::parse_body() {  // throwable
       return WSV_AGAIN;
     }
     // TODO: Handle invalid Transfer-Encoding
-    if (util::contains(header.fields, "Content-Length")) {
+    if (util::contains(req.header.fields, "Content-Length")) {
       Log::cinfo() << "Both Transfer-Encoding and content-length are "
                       "specified"
                    << std::endl;
@@ -432,7 +427,7 @@ int Connection::parse_body_chunked() {  // throwable
   std::string chunk_size_line;
   while (client_socket->read_telnet_line(chunk_size_line) == 0) {  // throwable
     std::stringstream ss(chunk_size_line);                         // throwable
-    ss >> std::hex >> chunk_size;                                  // no throw
+    ss >> std::hex >> req.chunk_size;                                  // no throw
     if (ss.fail()) {
       Log::cinfo() << "Invalid chunk size: " << chunk_size_line << std::endl;
       ErrorHandler::handle(*this, 400);
@@ -443,10 +438,10 @@ int Connection::parse_body_chunked() {  // throwable
 
     // If chunk-size is zero, this is the last-chunk
     // So, copy chunked_body to body
-    if (chunk_size == 0) {
+    if (req.chunk_size == 0) {
       // TODO: Improve this inefficiency
-      content_length = body.size();
-      chunk_size = 0;
+      req.content_length = req.body.size();
+      req.chunk_size = 0;
       handler = &Connection::parse_body_chunk_trailer_section;
       return WSV_AGAIN;
     }
@@ -460,30 +455,30 @@ int Connection::parse_body_chunked() {  // throwable
 
 int Connection::parse_body_chunk_data() {  // throwable
   Log::debug("parse_body_chunk_data");
-  Log::cdebug() << "chunk_size: " << chunk_size << std::endl;
+  Log::cdebug() << "chunk_size: " << req.chunk_size << std::endl;
   // Add 2 bytes for CRLF
-  std::vector<char> buf(chunk_size + 2);  // throwable
-  ssize_t ret = client_socket->read(&buf[0], 2 + chunk_size - chunk.size());
+  std::vector<char> buf(req.chunk_size + 2);  // throwable
+  ssize_t ret = client_socket->read(&buf[0], 2 + req.chunk_size - req.chunk.size());
 
   if (ret < 0) {
     return WSV_WAIT;
   } else if (ret == 0) {
     return WSV_WAIT;
   }
-  chunk.append(&buf[0], ret);
-  if (chunk.size() == chunk_size + 2) {  // +2 for CRLF
+  req.chunk.append(&buf[0], ret);
+  if (req.chunk.size() == req.chunk_size + 2) {  // +2 for CRLF
     // Check if the last two bytes are CRLF
-    if (chunk.substr(chunk.size() - 2) != CRLF) {  // throwable
-      Log::cinfo() << "Invalid chunk data: " << chunk << std::endl;
+    if (req.chunk.substr(req.chunk.size() - 2) != CRLF) {  // throwable
+      Log::cinfo() << "Invalid chunk data: " << req.chunk << std::endl;
       ErrorHandler::handle(*this, 400);
       handler = &Connection::response;
       return WSV_AGAIN;
     }
     // Remove CRLF
-    chunk.erase(chunk.size() - 2);
+    req.chunk.erase(req.chunk.size() - 2);
     // Append a chunk to chunked_body
-    body.append(chunk);
-    chunk.clear();
+    req.body.append(req.chunk);
+    req.chunk.clear();
     handler = &Connection::parse_body_chunked;
     return WSV_AGAIN;
   }
@@ -500,25 +495,25 @@ int Connection::parse_body_chunk_trailer_section() {  // throwable
 
 int Connection::parse_body_content_length() {  // throwable
   Log::debug("parse_body_content_length");
-  if (body.empty()) {
-    Header::iterator it = header.fields.find("Content-Length");
-    if (it == header.fields.end()) {
+  if (req.body.empty()) {
+    Header::iterator it = req.header.fields.find("Content-Length");
+    if (it == req.header.fields.end()) {
       handler = &Connection::handle;
       return WSV_AGAIN;
     }
     // TODO: Handle invalid Content-Length
-    content_length = atoi(it->second.c_str());
-    body.reserve(content_length);
+    req.content_length = atoi(it->second.c_str());
+    req.body.reserve(req.content_length);
   }
-  std::vector<char> buf(content_length - body.size());
+  std::vector<char> buf(req.content_length - req.body.size());
   ssize_t ret = client_socket->read(&buf[0], buf.size());  // throwable
   if (ret < 0) {
     return WSV_WAIT;
   } else if (ret == 0) {
     return WSV_WAIT;
   }
-  body.append(&buf[0], ret);
-  if (body.size() == content_length) {
+  req.body.append(&buf[0], ret);
+  if (req.body.size() == req.content_length) {
     handler = &Connection::handle;
     return WSV_AGAIN;
   } else {
@@ -534,8 +529,8 @@ const config::Server *select_srv_cf(const config::Config &cf,
                                     const Connection &conn) throw() {
   struct sockaddr_storage *saddr = &(*conn.client_socket)->saddr;
   std::string host;
-  Header::const_iterator it = conn.header.fields.find("Host");
-  if (it != conn.header.fields.end()) {
+  Header::const_iterator it = conn.req.header.fields.find("Host");
+  if (it != conn.req.header.fields.end()) {
     host = it->second;
   }
   // Remove port number
@@ -658,11 +653,11 @@ const config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf,
 
 int Connection::handle() {  // throwable
   req.srv_cf = select_srv_cf(server->cf, *this);
-  req.loc_cf = select_loc_cf(req.srv_cf, header.path);
-  req.cgi_handler_cf = req.loc_cf ? select_cgi_handler_cf(req.loc_cf, header.path)
-                          : select_cgi_handler_cf(req.srv_cf, header.path);
-  req.cgi_ext_cf = req.loc_cf ? select_cgi_ext_cf(req.loc_cf, header.path)
-                      : select_cgi_ext_cf(req.srv_cf, header.path);
+  req.loc_cf = select_loc_cf(req.srv_cf, req.header.path);
+  req.cgi_handler_cf = req.loc_cf ? select_cgi_handler_cf(req.loc_cf, req.header.path)
+                          : select_cgi_handler_cf(req.srv_cf, req.header.path);
+  req.cgi_ext_cf = req.loc_cf ? select_cgi_ext_cf(req.loc_cf, req.header.path)
+                      : select_cgi_ext_cf(req.srv_cf, req.header.path);
 
   // `return` directive
   if (req.loc_cf && req.loc_cf->returns.size() > 0) {
@@ -677,22 +672,22 @@ int Connection::handle() {  // throwable
   if (!req.loc_cf) {
     // Server Root    : Append path to root
     Log::cdebug() << "Server Root" << std::endl;
-    header.fullpath = req.srv_cf->root + header.path;  // throwable
+    req.header.fullpath = req.srv_cf->root + req.header.path;  // throwable
   } else if (!req.loc_cf->alias.configured) {
     // Location Root  : Append path to root
     Log::cdebug() << "Location Root: " << req.loc_cf->path << std::endl;
-    header.fullpath = req.loc_cf->root + header.path;  // throwable
+    req.header.fullpath = req.loc_cf->root + req.header.path;  // throwable
   } else {
     // Location Alias : Replace prefix with alias
     Log::cdebug() << "Location Alias: " << req.loc_cf->path << std::endl;
-    header.fullpath =
-        req.loc_cf->alias + header.path.substr(req.loc_cf->path.size());  // throwable
+    req.header.fullpath =
+        req.loc_cf->alias + req.header.path.substr(req.loc_cf->path.size());  // throwable
   }
 
   // `limit_except` directive
   if (req.loc_cf && req.loc_cf->limit_except.configured) {
-    if (!util::contains(req.loc_cf->limit_except.methods, header.method)) {
-      Log::cinfo() << "Unsupported method: " << header.method << std::endl;
+    if (!util::contains(req.loc_cf->limit_except.methods, req.header.method)) {
+      Log::cinfo() << "Unsupported method: " << req.header.method << std::endl;
       ErrorHandler::handle(*this, 405);
       handler = &Connection::response;
       return WSV_AGAIN;
@@ -712,16 +707,16 @@ int Connection::handle() {  // throwable
     return WSV_AGAIN;
   }
   // If not CGI
-  if (header.method == "GET") {
+  if (req.header.method == "GET") {
     GetHandler::handle(*this);  // throwable
-  } else if (header.method == "POST") {
+  } else if (req.header.method == "POST") {
     PostHandler::handle(*this);  // throwable
-  } else if (header.method == "PUT") {
+  } else if (req.header.method == "PUT") {
     PostHandler::handle(*this);  // throwable
-  } else if (header.method == "DELETE") {
+  } else if (req.header.method == "DELETE") {
     DeleteHandler::handle(*this);
   } else {
-    Log::cinfo() << "Unsupported method: " << header.method << std::endl;
+    Log::cinfo() << "Unsupported method: " << req.header.method << std::endl;
     ErrorHandler::handle(*this, 405);  // throwable
   }
   handler = &Connection::response;
