@@ -14,38 +14,6 @@ int resolve_path(const config::Server* srv_cf, const config::Location* loc_cf,
                  const std::string& req_path, std::string& path,
                  struct stat& st);
 
-const char* status_line(int status_code) throw() {
-  switch (status_code) {
-    case 200:
-      return http_200_status_line;
-    case 201:
-      return http_201_status_line;
-    case 204:
-      return http_204_status_line;
-    case 301:
-      return http_301_status_line;
-    case 400:
-      return http_400_status_line;
-    case 403:
-      return http_403_status_line;
-    case 404:
-      return http_404_status_line;
-    case 405:
-      return http_405_status_line;
-    case 413:
-      return http_413_status_line;
-    case 500:
-      return http_500_status_line;
-    case 504:
-      return http_504_status_line;
-    case 505:
-      return http_505_status_line;
-    default:
-      Log::cfatal() << "Unknown status code: " << status_code << std::endl;
-      return http_500_status_line;
-  }
-}
-
 std::string default_error_page(int status_code) throw() {
   switch (status_code) {
     case 400:
@@ -123,11 +91,6 @@ int try_error_page(Connection& conn, int status_code) {  // throwable
     return 0;
   }
   //  4. Send error page
-  //*conn.client_socket << status_line(status_code) << CRLF;
-  //*conn.client_socket << "Content-Type: text/html" << CRLF;
-  //*conn.client_socket << "Content-Length: " << st.st_size << CRLF;
-  //*conn.client_socket << CRLF;  // end of header
-  //conn.client_socket->send_file(path.c_str());
   conn.res.status_code = status_code;
   conn.res.content_type = "text/html";
   conn.res.content_length = st.st_size;
@@ -148,40 +111,6 @@ int try_error_page(Connection& conn, int status_code) {  // throwable
   //
 }
 
-void gen_response(Connection& conn) {
-  *conn.client_socket << status_line(conn.res.status_code) << CRLF;
-  *conn.client_socket << "Server: " << WEBSERV_VER << CRLF;
-  //*conn.client_socket << "Date: " << util::get_date() << CRLF;
-  if (conn.res.keep_alive) {
-    *conn.client_socket << "Connection: keep-alive" << CRLF;
-    //*conn.client_socket << "Keep-Alive: timeout=" << conn.srv_cf->timeout
-    //                    << CRLF;
-  } else {
-    *conn.client_socket << "Connection: close" << CRLF;
-  }
-  if (conn.res.location != "") {
-    *conn.client_socket << "Location: " << conn.res.location << CRLF;
-  }
-  if (conn.res.content_type != "") {
-    *conn.client_socket << "Content-Type: " << conn.res.content_type << CRLF;
-  }
-  if (conn.res.content != "") {
-    *conn.client_socket << "Content-Length: " << conn.res.content.length()
-                        << CRLF;
-    *conn.client_socket << CRLF;  // end of header
-    *conn.client_socket << conn.res.content;
-  } else if (conn.res.content_path != "" || conn.res.content_length > 0) {
-    *conn.client_socket << "Content-Length: " << conn.res.content_length
-                        << CRLF;
-    *conn.client_socket << CRLF;  // end of header
-    // TODO: Handle errors while reading content_path
-    conn.client_socket->send_file(conn.res.content_path.c_str());
-  } else {
-    *conn.client_socket << "Content-Length: 0" << CRLF;
-    *conn.client_socket << CRLF;  // end of header
-  }
-}
-
 void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
   conn.client_socket->clear_sendbuf();
   if (status_code == 400) {
@@ -191,7 +120,7 @@ void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
   // Error Page by `error_page` directive
   if (!noredirect) {
     if (try_error_page(conn, status_code) == 0) {  // throwable
-      gen_response(conn);
+      conn.client_socket->send_response(conn.res);
       return;
     }
   }
@@ -200,5 +129,5 @@ void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
   conn.res.content_type = "text/html";
   conn.res.content = default_error_page(status_code);
   conn.res.content_length = conn.res.content.length();
-  gen_response(conn);
+  conn.client_socket->send_response(conn.res);
 }

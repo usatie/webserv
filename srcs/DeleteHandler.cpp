@@ -6,8 +6,6 @@
 #include "Connection.hpp"
 #include "ErrorHandler.hpp"
 
-void gen_response(Connection& conn);
-
 void DeleteHandler::handle(Connection& conn) throw() {
   (void)conn;
   // 1. Get the path
@@ -75,5 +73,5 @@ void DeleteHandler::handle(Connection& conn) throw() {
 
   // 5. Send the response
   conn.res.status_code = 204;
-  gen_response(conn);
+  conn.client_socket->send_response(conn.res);
 }

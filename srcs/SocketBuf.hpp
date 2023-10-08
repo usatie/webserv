@@ -7,6 +7,8 @@
 #include "StreamCleaner.hpp"
 #include "webserv.hpp"
 
+class Response;
+
 class SocketBuf {
   // Member data
  public:
@@ -48,6 +50,7 @@ class SocketBuf {
     wss.setstate(wss.rdstate() | std::ios::badbit);
   }
   int send_file(const std::string& filepath) throw();
+  int send_response(const Response& res) throw();
 
   int readline(std::string& line);  // throwable
 

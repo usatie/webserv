@@ -5,8 +5,6 @@
 
 #include "Connection.hpp"
 
-void gen_response(Connection& conn);
-
 static int compar(const struct dirent** s1, const struct dirent** s2) {
   if ((*s1)->d_type != (*s2)->d_type)
     return (*s1)->d_type > (*s2)->d_type;
@@ -73,5 +71,5 @@ void send_directory_listing(Connection& conn,
   conn.res.content_type = "text/html";
   conn.res.content_length = ss.str().length();
   conn.res.content = ss.str();
-  gen_response(conn);
+  conn.client_socket->send_response(conn.res);
 }

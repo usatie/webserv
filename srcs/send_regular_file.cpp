@@ -1,7 +1,5 @@
 #include "Connection.hpp"
 
-void gen_response(Connection& conn);
-
 void send_regular_file(Connection& conn, const std::string& path,
                        size_t content_length) throw() {
   conn.res.status_code = 200;
@@ -25,5 +23,5 @@ void send_regular_file(Connection& conn, const std::string& path,
     conn.res.content_type = "text/plain";
   conn.res.content_length = content_length;
   conn.res.content_path = path;
-  gen_response(conn);
+  conn.client_socket->send_response(conn.res);
 }

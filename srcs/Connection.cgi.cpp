@@ -1,7 +1,5 @@
 #include "Connection.hpp"
 
-void gen_response(Connection& conn);
-
 static const char* http_header_fields[] = {
     //"Content-Type", // This will be set automatically
     //"Content-Length", // This will be set automatically
@@ -243,8 +241,7 @@ int Connection::handle_cgi_parse() {  // throwable
     }
   }
 
-  //*client_socket << CRLF;  // End of header fields
-  gen_response(*this);
+  client_socket->send_response(res);
 
   // 6. Entity Body (if any)
   if (size > 0) {

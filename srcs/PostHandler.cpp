@@ -13,8 +13,6 @@
 #define ERR_413 2
 #define ERR_500 3
 
-void gen_response(Connection& conn);
-
 // This is throwable
 template <typename ConfigItem>
 static int internal_handle(Connection& conn, ConfigItem* cf) {  // throwable
@@ -77,7 +75,7 @@ static int internal_handle(Connection& conn, ConfigItem* cf) {  // throwable
   conn.res.content_type = "application/json";
   conn.res.content_length = 18;
   conn.res.content = "{\"success\":\"true\"}";
-  gen_response(conn);
+  conn.client_socket->send_response(conn.res);
   return SUCCESS;
 }
 
