@@ -16,27 +16,60 @@ int resolve_path(const config::Server* srv_cf, const config::Location* loc_cf,
 
 const char* status_line(int status_code) throw() {
   switch (status_code) {
+    case 200:
+      return http_200_status_line;
+    case 201:
+      return http_201_status_line;
+    case 204:
+      return http_204_status_line;
+    case 301:
+      return http_301_status_line;
     case 400:
-      return "HTTP/1.1 400 Bad Request";
+      return http_400_status_line;
     case 403:
-      return "HTTP/1.1 403 Forbidden";
+      return http_403_status_line;
     case 404:
-      return "HTTP/1.1 404 Not Found";
+      return http_404_status_line;
     case 405:
-      return "HTTP/1.1 405 Method Not Allowed";
+      return http_405_status_line;
     case 413:
-      return "HTTP/1.1 413 Request Entity Too Large";
+      return http_413_status_line;
     case 500:
-      return "HTTP/1.1 500 Internal Server Error";
+      return http_500_status_line;
     case 504:
-      return "HTTP/1.1 504 Gateway Timeout";
+      return http_504_status_line;
     case 505:
-      return "HTTP/1.1 505 HTTP Version Not Supported";
+      return http_505_status_line;
     default:
       Log::cfatal() << "Unknown status code: " << status_code << std::endl;
-      return "HTTP/1.1 500 Internal Server Error";
+      return http_500_status_line;
   }
 }
+
+std::string default_error_page(int status_code) throw() {
+  switch (status_code) {
+    case 400:
+      return http_error_400_page;
+    case 403:
+      return http_error_403_page;
+    case 404:
+      return http_error_404_page;
+    case 405:
+      return http_error_405_page;
+    case 413:
+      return http_error_413_page;
+    case 500:
+      return http_error_500_page;
+    case 504:
+      return http_error_504_page;
+    case 505:
+      return http_error_505_page;
+    default:
+      Log::cfatal() << "Unknown status code: " << status_code << std::endl;
+      return "";
+  }
+}
+
 
 template <typename ConfigItem>
 const config::ErrorPage* find_error_page(const ConfigItem* cf,
@@ -147,6 +180,10 @@ static void gen_response(Connection& conn) {
 
 void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
   conn.client_socket->clear_sendbuf();
+  if (status_code == 400) {
+      conn.keep_alive = false;
+      conn.res.keep_alive = false;
+  }
   // Error Page by `error_page` directive
   if (!noredirect) {
     if (try_error_page(conn, status_code) == 0) {  // throwable
@@ -157,44 +194,7 @@ void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
   // Default Error Page
   conn.res.status_code = status_code;
   conn.res.content_type = "text/html";
-  switch (status_code) {
-    case 400:
-      conn.keep_alive = false;
-      conn.res.keep_alive = false;
-      conn.res.content_length = sizeof(http_error_400_page) - 1;
-      conn.res.content = http_error_400_page;
-      break;
-    case 403:
-      conn.res.content_length = sizeof(http_error_403_page) - 1;
-      conn.res.content = http_error_403_page;
-      break;
-    case 404:
-      conn.res.content_length = sizeof(http_error_404_page) - 1;
-      conn.res.content = http_error_404_page;
-      break;
-    case 405:
-      conn.res.content_length = sizeof(http_error_405_page) - 1;
-      conn.res.content = http_error_405_page;
-      break;
-    case 413:
-      conn.res.content_length = sizeof(http_error_413_page) - 1;
-      conn.res.content = http_error_413_page;
-      break;
-    case 500:
-      conn.res.content_length = sizeof(http_error_500_page) - 1;
-      conn.res.content = http_error_500_page;
-      break;
-    case 504:
-      conn.res.content_length = sizeof(http_error_504_page) - 1;
-      conn.res.content = http_error_504_page;
-      break;
-    case 505:
-      conn.res.content_length = sizeof(http_error_505_page) - 1;
-      conn.res.content = http_error_505_page;
-      break;
-    default:
-      Log::cerror() << "Unknown status code: " << status_code << std::endl;
-      break;
-  }
+  conn.res.content = default_error_page(status_code);
+  conn.res.content_length = conn.res.content.length();
   gen_response(conn);
 }
