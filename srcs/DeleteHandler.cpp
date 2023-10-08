@@ -6,6 +6,8 @@
 #include "Connection.hpp"
 #include "ErrorHandler.hpp"
 
+void gen_response(Connection& conn);
+
 void DeleteHandler::handle(Connection& conn) throw() {
   (void)conn;
   // 1. Get the path
@@ -72,6 +74,6 @@ void DeleteHandler::handle(Connection& conn) throw() {
   }
 
   // 5. Send the response
-  *conn.client_socket << "HTTP/1.1 204 No Content" << CRLF;
-  *conn.client_socket << CRLF;
+  conn.res.status_code = 204;
+  gen_response(conn);
 }
