@@ -120,7 +120,6 @@ void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
   // Error Page by `error_page` directive
   if (!noredirect) {
     if (try_error_page(conn, status_code) == 0) {  // throwable
-      conn.client_socket->send_response(conn.res);
       return;
     }
   }
@@ -129,5 +128,4 @@ void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
   conn.res.content_type = "text/html";
   conn.res.content = default_error_page(status_code);
   conn.res.content_length = conn.res.content.length();
-  conn.client_socket->send_response(conn.res);
 }

@@ -75,7 +75,6 @@ static int internal_handle(Connection& conn, ConfigItem* cf) {  // throwable
   conn.res.content_type = "application/json";
   conn.res.content_length = 18;
   conn.res.content = "{\"success\":\"true\"}";
-  conn.client_socket->send_response(conn.res);
   return SUCCESS;
 }
 

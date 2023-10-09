@@ -220,10 +220,12 @@ int Connection::handle_cgi_parse() {  // throwable
   }
 
   // 4. Content-Length
-  size_t size = cgi_socket->getReadBufSize();
-  res.content_length = size;
+  res.content_length = cgi_socket->getReadBufSize();
 
-  // 5. Protocol-Specific Header Fields
+  // 5. Entity Body (if any)
+  *cgi_socket >> res.content;
+
+  // 6. Protocol-Specific Header Fields
   for (it = cgi_header_fields.begin(); it != cgi_header_fields.end(); ++it) {
     if (it->first == "Status" || it->first == "Location" ||
         it->first == "Content-Type" || it->first == "Content-Length") {
@@ -239,13 +241,6 @@ int Connection::handle_cgi_parse() {  // throwable
         break;
       }
     }
-  }
-
-  client_socket->send_response(res);
-
-  // 6. Entity Body (if any)
-  if (size > 0) {
-    *cgi_socket >> *client_socket;
   }
   handler = &Connection::response;
   return WSV_AGAIN;

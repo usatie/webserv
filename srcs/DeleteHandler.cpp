@@ -73,5 +73,4 @@ void DeleteHandler::handle(Connection& conn) throw() {
 
   // 5. Send the response
   conn.res.status_code = 204;
-  conn.client_socket->send_response(conn.res);
 }

@@ -737,6 +737,12 @@ int Connection::handle() {  // throwable
 }
 
 int Connection::response() throw() {
+  client_socket->send_response(res);
+  handler = &Connection::flush_response;
+  return WSV_AGAIN;
+}
+
+int Connection::flush_response() throw() {
   if (client_socket->isSendBufEmpty()) {
     if (client_socket->hasReceivedEof && client_socket->isRecvBufEmpty()) {
       Log::info(
