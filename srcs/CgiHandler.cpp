@@ -12,7 +12,8 @@
 #include <string>
 
 int CgiHandler::handle(Connection& conn) {  // throwable
-  std::string script_path = util::path::get_script_path(conn.req.header.fullpath);
+  std::string script_path =
+      util::path::get_script_path(conn.req.header.fullpath);
   std::string dir_path = script_path.substr(0, script_path.find_last_of('/'));
   std::string script_name =
       script_path.substr(script_path.find_last_of('/') + 1);
@@ -109,8 +110,9 @@ int CgiHandler::handle(Connection& conn) {  // throwable
       execve(script_name.c_str(), const_cast<char* const*>(argv),
              const_cast<char* const*>(env));
     } else {  // script without shebang
-      const char* const argv[] = {conn.req.cgi_handler_cf->interpreter_path.c_str(),
-                                  script_name.c_str(), NULL};
+      const char* const argv[] = {
+          conn.req.cgi_handler_cf->interpreter_path.c_str(),
+          script_name.c_str(), NULL};
       close(cgi_socket[0]);
       dup2(cgi_socket[1], STDOUT_FILENO);
       dup2(cgi_socket[1], STDIN_FILENO);

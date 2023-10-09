@@ -77,7 +77,8 @@ int try_error_page(Connection& conn, int status_code) {  // throwable
   struct stat st;
   std::string path;
   const config::Server* srv_cf = conn.req.srv_cf;
-  const config::Location* loc_cf = select_loc_cf(conn.req.srv_cf, error_page->uri);
+  const config::Location* loc_cf =
+      select_loc_cf(conn.req.srv_cf, error_page->uri);
   ret = resolve_path(srv_cf, loc_cf, error_page->uri, path, st);
 
   if (ret == ERR_500) {

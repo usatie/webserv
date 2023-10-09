@@ -30,7 +30,14 @@ class Response;
 
 class Request {
  public:
-  Request() : content_length(0), chunk_size(0), keep_alive(false), srv_cf(NULL), loc_cf(NULL), cgi_handler_cf(NULL), cgi_ext_cf(NULL) {}
+  Request()
+      : content_length(0),
+        chunk_size(0),
+        keep_alive(false),
+        srv_cf(NULL),
+        loc_cf(NULL),
+        cgi_handler_cf(NULL),
+        cgi_ext_cf(NULL) {}
 
   Header header;
   std::string body;

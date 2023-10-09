@@ -234,7 +234,7 @@ int Connection::parse_start_line() {
   ss << line;
   ss >> req.header.method;  // ss does not throw (cf. playground/fuga.cpp)
   ss >> req.header.path;    // ss does not throw
-  ss >> version;        // ss does not throw
+  ss >> version;            // ss does not throw
 
   // URI = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
   // relative-ref = relative-part [ "?" query ] [ "#" fragment ]
@@ -254,7 +254,8 @@ int Connection::parse_start_line() {
 
   // Path must be starting with /
   if (!is_valid_path(req.header.path) || !deconde_parcent(req.header.path) ||
-      !deconde_parcent(req.header.query) || !deconde_parcent(req.header.fragment) ||
+      !deconde_parcent(req.header.query) ||
+      !deconde_parcent(req.header.fragment) ||
       !is_valid_decoded_path(req.header.path)) {
     Log::cinfo() << "Invalid path: " << req.header.path << std::endl;
     ErrorHandler::handle(*this, 400);
@@ -354,7 +355,8 @@ int Connection::read_header_fields() {  // throwable
       handler = &Connection::response;
       return WSV_AGAIN;
     }
-    req.header.fields[util::http::canonical_header_key(key)] = value;  // throwable
+    req.header.fields[util::http::canonical_header_key(key)] =
+        value;  // throwable
   }
   return WSV_WAIT;
 }
@@ -435,7 +437,7 @@ int Connection::parse_body_chunked() {  // throwable
   std::string chunk_size_line;
   while (client_socket->read_telnet_line(chunk_size_line) == 0) {  // throwable
     std::stringstream ss(chunk_size_line);                         // throwable
-    ss >> std::hex >> req.chunk_size;                                  // no throw
+    ss >> std::hex >> req.chunk_size;                              // no throw
     if (ss.fail()) {
       Log::cinfo() << "Invalid chunk size: " << chunk_size_line << std::endl;
       ErrorHandler::handle(*this, 400);
@@ -466,7 +468,8 @@ int Connection::parse_body_chunk_data() {  // throwable
   Log::cdebug() << "chunk_size: " << req.chunk_size << std::endl;
   // Add 2 bytes for CRLF
   std::vector<char> buf(req.chunk_size + 2);  // throwable
-  ssize_t ret = client_socket->read(&buf[0], 2 + req.chunk_size - req.chunk.size());
+  ssize_t ret =
+      client_socket->read(&buf[0], 2 + req.chunk_size - req.chunk.size());
 
   if (ret < 0) {
     return WSV_WAIT;
@@ -662,10 +665,11 @@ const config::CgiExtensions *select_cgi_ext_cf(const ConfigItem *cf,
 int Connection::handle() {  // throwable
   req.srv_cf = select_srv_cf(server->cf, *this);
   req.loc_cf = select_loc_cf(req.srv_cf, req.header.path);
-  req.cgi_handler_cf = req.loc_cf ? select_cgi_handler_cf(req.loc_cf, req.header.path)
-                          : select_cgi_handler_cf(req.srv_cf, req.header.path);
+  req.cgi_handler_cf = req.loc_cf
+                           ? select_cgi_handler_cf(req.loc_cf, req.header.path)
+                           : select_cgi_handler_cf(req.srv_cf, req.header.path);
   req.cgi_ext_cf = req.loc_cf ? select_cgi_ext_cf(req.loc_cf, req.header.path)
-                      : select_cgi_ext_cf(req.srv_cf, req.header.path);
+                              : select_cgi_ext_cf(req.srv_cf, req.header.path);
 
   // `return` directive
   if (req.loc_cf && req.loc_cf->returns.size() > 0) {
@@ -689,7 +693,8 @@ int Connection::handle() {  // throwable
     // Location Alias : Replace prefix with alias
     Log::cdebug() << "Location Alias: " << req.loc_cf->path << std::endl;
     req.header.fullpath =
-        req.loc_cf->alias + req.header.path.substr(req.loc_cf->path.size());  // throwable
+        req.loc_cf->alias +
+        req.header.path.substr(req.loc_cf->path.size());  // throwable
   }
 
   // `limit_except` directive

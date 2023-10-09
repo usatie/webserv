@@ -20,8 +20,8 @@ void DeleteHandler::handle(Connection& conn) throw() {
     // TODO: What if location is nested?
     // Location Alias : Replace prefix with alias
     Log::cdebug() << "Location Alias: " << conn.req.loc_cf->path << std::endl;
-    path =
-        conn.req.loc_cf->alias + conn.req.header.path.substr(conn.req.loc_cf->path.size());
+    path = conn.req.loc_cf->alias +
+           conn.req.header.path.substr(conn.req.loc_cf->path.size());
   } else {
     // Location Root  : Append path to root
     Log::cdebug() << "Location Root: " << conn.req.loc_cf->path << std::endl;

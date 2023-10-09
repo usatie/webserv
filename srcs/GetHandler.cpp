@@ -100,8 +100,8 @@ void GetHandler::handle(Connection& conn) {  // throwable
   // TODO: Write response headers
   struct stat st;
   std::string path;
-  int response_type =
-      resolve_path(conn.req.srv_cf, conn.req.loc_cf, conn.req.header.path, path, st);
+  int response_type = resolve_path(conn.req.srv_cf, conn.req.loc_cf,
+                                   conn.req.header.path, path, st);
   if (response_type == ERR_500) {
     ErrorHandler::handle(conn, 500);
   } else if (response_type == ERR_404) {
