@@ -25,6 +25,44 @@
 #define WSV_CLEAR -3
 
 class Server;
+class Request;
+class Response;
+
+class Request {
+ public:
+  Request()
+      : content_length(0),
+        chunk_size(0),
+        keep_alive(false),
+        srv_cf(NULL),
+        loc_cf(NULL),
+        cgi_handler_cf(NULL),
+        cgi_ext_cf(NULL) {}
+
+  Header header;
+  std::string body;
+  size_t content_length;
+  size_t chunk_size;
+  bool keep_alive;
+  std::string chunk;  // single chunk
+
+  const config::Server *srv_cf;
+  const config::Location *loc_cf;
+  const config::CgiHandler *cgi_handler_cf;
+  const config::CgiExtensions *cgi_ext_cf;
+};
+
+class Response {
+ public:
+  Response() : status_code(0), keep_alive(false), content_length(0) {}
+  int status_code;           // "Status"
+  bool keep_alive;           // "Connection"
+  size_t content_length;     // "Content-Length"
+  std::string content;       // "Content"
+  std::string content_path;  // "Content"
+  std::string content_type;  // "Content-Type"
+  std::string location;      // "Location"
+};
 
 class Connection {
  public:
@@ -40,18 +78,9 @@ class Connection {
   // Member data
   util::shared_ptr<SocketBuf> client_socket;
   util::shared_ptr<SocketBuf> cgi_socket;
-  Header header;
 
  public:
-  std::string body;
-  size_t content_length;
-  std::string chunk;  // single chunk
-  size_t chunk_size;
   pid_t cgi_pid;
-  const config::Server *srv_cf;
-  const config::Location *loc_cf;
-  const config::CgiHandler *cgi_handler_cf;
-  const config::CgiExtensions *cgi_ext_cf;
   time_t last_modified;
   time_t cgi_started;
   // Function pointer to member function
@@ -60,7 +89,10 @@ class Connection {
   Server *server;  // This will never be a NULL so it can be reference.
                    // But to avoid circular dependency with Server.hpp, we use
                    // forward declaration and pointer.
-  bool keep_alive;
+  // Request
+  Request req;
+  // Response
+  Response res;
 
  public:
   IOStatus io_status;
@@ -71,21 +103,11 @@ class Connection {
   Connection(util::shared_ptr<Socket> sock, Server *server)
       : client_socket(util::shared_ptr<SocketBuf>(new SocketBuf(sock))),
         cgi_socket(NULL),
-        header(),
-        body(),
-        content_length(0),
-        chunk(),
-        chunk_size(0),
         cgi_pid(-1),
-        srv_cf(NULL),
-        loc_cf(NULL),
-        cgi_handler_cf(NULL),
-        cgi_ext_cf(NULL),
         last_modified(time(NULL)),
         cgi_started(0),  // What should be the initial value?
         handler(&Connection::parse_start_line),
         server(server),
-        keep_alive(false),
         io_status(NO_IO) {}
   ~Connection() throw() {}
   Connection(const Connection &other) throw();  // Do not implement this

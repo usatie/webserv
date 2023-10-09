@@ -1,7 +1,8 @@
 HTTP/1.1 400 Bad Request
+Server: webserv/0.0.1
+Connection: close
 Content-Type: text/html
 Content-Length: 158
-Connection: close
 
 <html>
 <head><title>400 Bad Request</title></head>

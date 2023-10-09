@@ -2,33 +2,26 @@
 
 void send_regular_file(Connection& conn, const std::string& path,
                        size_t content_length) throw() {
-  *conn.client_socket << "HTTP/1.1 200 OK" << CRLF;
-  *conn.client_socket << "Server: " << WEBSERV_VER << CRLF;
-  // client_socket << "Date: Tue, 11 Jul 2023 07:36:50 GMT" << CRLF;
+  conn.res.status_code = 200;
   if (util::string::ends_with(path, ".css"))
-    *conn.client_socket << "Content-Type: text/css" << CRLF;
+    conn.res.content_type = "text/css";
   else if (util::string::ends_with(path, ".js"))
-    *conn.client_socket << "Content-Type: text/javascript" << CRLF;
+    conn.res.content_type = "text/javascript";
   else if (util::string::ends_with(path, ".jpg"))
-    *conn.client_socket << "Content-Type: image/jpeg" << CRLF;
+    conn.res.content_type = "image/jpeg";
   else if (util::string::ends_with(path, ".png"))
-    *conn.client_socket << "Content-Type: image/png" << CRLF;
+    conn.res.content_type = "image/png";
   else if (util::string::ends_with(path, ".gif"))
-    *conn.client_socket << "Content-Type: image/gif" << CRLF;
+    conn.res.content_type = "image/gif";
   else if (util::string::ends_with(path, ".ico"))
-    *conn.client_socket << "Content-Type: image/x-icon" << CRLF;
+    conn.res.content_type = "image/x-icon";
   else if (util::string::ends_with(path, ".svg"))
-    *conn.client_socket << "Content-Type: image/svg+xml" << CRLF;
+    conn.res.content_type = "image/svg+xml";
   else if (util::string::ends_with(path, ".html"))
-    *conn.client_socket << "Content-Type: text/html" << CRLF;
+    conn.res.content_type = "text/html";
   else
-    *conn.client_socket << "Content-Type: text/plain" << CRLF;
-  //*conn.client_socket << "Connection: close" << CRLF;
-  *conn.client_socket << "Content-Length: " << content_length << CRLF;
-  *conn.client_socket << CRLF;  // end of header
-  if (conn.client_socket->send_file(path) < 0) {
-    Log::error("send_file() failed");
-    ErrorHandler::handle(conn, 500);
-    return;
-  }
+    conn.res.content_type = "text/plain";
+  conn.res.content_length = content_length;
+  conn.res.content_path = path;
+  conn.client_socket->send_response(conn.res);
 }

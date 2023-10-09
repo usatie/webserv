@@ -9,15 +9,15 @@
 
 class Header {
  private:
-  Header(const Header &src) throw();             // Do not implement
-  Header &operator=(const Header &rhs) throw();  // Do not implement
+  Header(const Header &src) throw();  // Do not implement
+  // Header &operator=(const Header &rhs) throw();  // Do not implement
  public:
   typedef std::map<std::string, std::string>::iterator iterator;
   typedef std::map<std::string, std::string>::const_iterator const_iterator;
   // Member data
   std::string method;
   std::string path;
-  //std::string version;
+  // std::string version;
   Version version;
   std::string fullpath;
   std::string query;

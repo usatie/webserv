@@ -10,7 +10,9 @@
 #include <iostream>
 #include <string>
 
+#include "Connection.hpp"
 #include "StreamCleaner.hpp"
+#include "http_special_response.hpp"
 
 #define FILL_BUF_SIZE (1024 * 1024)
 #define SEND_BUF_SIZE (1024 * 1024)
@@ -62,6 +64,73 @@ int SocketBuf::send_file(const std::string& filepath) throw() {
   }
   return 0;
 }
+
+const char* status_line(int status_code) throw() {
+  switch (status_code) {
+    case 200:
+      return http_200_status_line;
+    case 201:
+      return http_201_status_line;
+    case 204:
+      return http_204_status_line;
+    case 301:
+      return http_301_status_line;
+    case 400:
+      return http_400_status_line;
+    case 403:
+      return http_403_status_line;
+    case 404:
+      return http_404_status_line;
+    case 405:
+      return http_405_status_line;
+    case 413:
+      return http_413_status_line;
+    case 500:
+      return http_500_status_line;
+    case 504:
+      return http_504_status_line;
+    case 505:
+      return http_505_status_line;
+    default:
+      Log::cfatal() << "Unknown status code: " << status_code << std::endl;
+      return http_500_status_line;
+  }
+}
+
+int SocketBuf::send_response(const Response& res) throw() {
+  *this << status_line(res.status_code) << CRLF;
+  *this << "Server: " << WEBSERV_VER << CRLF;
+  //*conn.client_socket << "Date: " << util::get_date() << CRLF;
+  if (res.keep_alive) {
+    *this << "Connection: keep-alive" << CRLF;
+    //*conn.client_socket << "Keep-Alive: timeout=" << conn.srv_cf->timeout
+    //                    << CRLF;
+  } else {
+    *this << "Connection: close" << CRLF;
+  }
+  if (res.location != "") {
+    *this << "Location: " << res.location << CRLF;
+  }
+  if (res.content_type != "") {
+    *this << "Content-Type: " << res.content_type << CRLF;
+  }
+  if (res.content != "") {
+    *this << "Content-Length: " << res.content.length() << CRLF;
+    *this << CRLF;  // end of header
+    *this << res.content;
+  } else if (res.content_path != "" || res.content_length > 0) {
+    *this << "Content-Length: " << res.content_length << CRLF;
+    *this << CRLF;  // end of header
+    // TODO: Handle errors while reading content_path
+    send_file(res.content_path);
+  } else {
+    *this << "Content-Length: 0" << CRLF;
+    *this << CRLF;  // end of header
+  }
+
+  return 0;
+}
+
 int SocketBuf::readline(std::string& line) {
   StreamCleaner _(rss, wss);
   if (bad()) {

@@ -16,9 +16,9 @@ void send_directory_listing(Connection& conn,
                             const std::string& path) {  // throwable
   // Generate HTML for directory listing
   std::stringstream ss;
-  ss << "<html>" << CRLF << "<head><title>Index of " << conn.header.path
+  ss << "<html>" << CRLF << "<head><title>Index of " << conn.req.header.path
      << "</title></head>" << CRLF << "<body>" << CRLF << "<h1>Index of "
-     << conn.header.path << "</h1><hr><pre>";
+     << conn.req.header.path << "</h1><hr><pre>";
   struct dirent** dirlist;
   int r = scandir(path.c_str(), &dirlist, NULL, compar);
   if (r < 0) {
@@ -67,10 +67,9 @@ void send_directory_listing(Connection& conn,
     return;
   }
   // Send Response
-  *conn.client_socket << "HTTP/1.1 200 OK" << CRLF;
-  *conn.client_socket << "Server: " << WEBSERV_VER << CRLF;
-  *conn.client_socket << "Content-Type: text/html" << CRLF;
-  *conn.client_socket << "Content-Length: " << ss.str().length() << CRLF;
-  *conn.client_socket << CRLF;      // end of header
-  *conn.client_socket << ss.str();  // throwable
+  conn.res.status_code = 200;
+  conn.res.content_type = "text/html";
+  conn.res.content_length = ss.str().length();
+  conn.res.content = ss.str();
+  conn.client_socket->send_response(conn.res);
 }

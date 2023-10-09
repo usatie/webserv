@@ -52,6 +52,7 @@ class Server {
   const config::Config& cf;
 
   void clear_fd(int fd) throw();
+
  private:
   // Member functions
   int listen(const config::Listen& l, SockVector& serv_socks);  // throwable
