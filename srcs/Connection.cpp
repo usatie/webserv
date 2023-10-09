@@ -179,7 +179,7 @@ static bool is_valid_decoded_path(std::string const &path) {
   return true;
 }
 
-static bool deconde_parcent(std::string &path) {
+static bool decode_percent(std::string &path) {
   std::string dst;
   for (size_t i = 0; i < path.size();) {
     if (path[i] != '%') {
@@ -253,9 +253,9 @@ int Connection::parse_start_line() {
   }
 
   // Path must be starting with /
-  if (!is_valid_path(req.header.path) || !deconde_parcent(req.header.path) ||
-      !deconde_parcent(req.header.query) ||
-      !deconde_parcent(req.header.fragment) ||
+  if (!is_valid_path(req.header.path) || !decode_percent(req.header.path) ||
+      !decode_percent(req.header.query) ||
+      !decode_percent(req.header.fragment) ||
       !is_valid_decoded_path(req.header.path)) {
     Log::cinfo() << "Invalid path: " << req.header.path << std::endl;
     ErrorHandler::handle(*this, 400);
