@@ -16,10 +16,12 @@
 // This is throwable
 template <typename ConfigItem>
 static int internal_handle(Connection& conn, ConfigItem* cf) {  // throwable
+  const Request& req = conn.req;
+  Response& res = conn.res;
   // `upload_store` directive
   if (!cf->upload_store.configured) return ERR_405;
   // `client_max_body_size` directive
-  if (cf->client_max_body_size < conn.req.content_length) return ERR_413;
+  if (cf->client_max_body_size < req.content_length) return ERR_413;
   // Create directory
   // TODO: Check if directory exists when starting the server
   if (mkdir(cf->upload_store.c_str(), 0755) == -1) {
@@ -52,7 +54,7 @@ static int internal_handle(Connection& conn, ConfigItem* cf) {  // throwable
     return ERR_500;
   }
   // https://en.cppreference.com/w/cpp/io/basic_ostream/write
-  ofs.write(conn.req.body.c_str(), conn.req.body.size());  // does not throw
+  ofs.write(req.body.c_str(), req.body.size());  // does not throw
   if (ofs.bad()) {
     Log::fatal("ofs.write failed");
     // Close file and remove file
@@ -70,11 +72,11 @@ static int internal_handle(Connection& conn, ConfigItem* cf) {  // throwable
   // TODO: what if location is nested?
   // TODO: what if not aliased exactly the same as upload_store?
   // Question: Should we resolve the filepath location before saving the file?
-  conn.res.status_code = 201;
-  conn.res.location = conn.req.header.path + filename;
-  conn.res.content_type = "application/json";
-  conn.res.content_length = 18;
-  conn.res.content = "{\"success\":\"true\"}";
+  res.status_code = 201;
+  res.location = req.header.path + filename;
+  res.content_type = "application/json";
+  res.content_length = 18;
+  res.content = "{\"success\":\"true\"}";
   return SUCCESS;
 }
 
