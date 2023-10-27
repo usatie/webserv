@@ -71,5 +71,4 @@ void send_directory_listing(Connection& conn,
   conn.res.content_type = "text/html";
   conn.res.content_length = ss.str().length();
   conn.res.content = ss.str();
-  conn.client_socket->send_response(conn.res);
 }

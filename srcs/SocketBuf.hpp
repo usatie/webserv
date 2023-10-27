@@ -100,16 +100,14 @@ class SocketBuf {
   }
 
   // stream extraction operator
-  SocketBuf& operator>>(SocketBuf& dst) throw() {
+  SocketBuf& operator>>(std::string& dst) throw() {
     StreamCleaner _(rss, wss);
     if (bad()) {
       return *this;
     }
-    dst << rss.rdbuf();
-    if (rss.fail()) {
-      Log::fatal("dst << rss.rdbuf() failed");
-      setbadstate();
-    }
+    char buffer[4096];
+    while (rss.read(buffer, sizeof(buffer))) dst.append(buffer, sizeof(buffer));
+    if (rss.gcount() > 0) dst.append(buffer, rss.gcount());
     return *this;
   }
 };

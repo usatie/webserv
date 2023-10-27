@@ -59,14 +59,16 @@ const config::ErrorPage* find_error_page(const ConfigItem* cf,
 #define ERR_404 3
 #define ERR_500 4
 int try_error_page(Connection& conn, int status_code) {  // throwable
+  const Request& req = conn.req;
+  Response& res = conn.res;
   // 1. No context for error_page
-  if (!conn.req.loc_cf && !conn.req.srv_cf) {
+  if (!req.loc_cf && !req.srv_cf) {
     return -1;
   }
   // 2. Find error_page for status_code
   const config::ErrorPage* error_page;
-  error_page = find_error_page(conn.req.loc_cf, status_code);
-  if (!error_page) error_page = find_error_page(conn.req.srv_cf, status_code);
+  error_page = find_error_page(req.loc_cf, status_code);
+  if (!error_page) error_page = find_error_page(req.srv_cf, status_code);
   if (!error_page) return -1;
 
   // 3. Resolve path
@@ -76,9 +78,8 @@ int try_error_page(Connection& conn, int status_code) {  // throwable
   int ret;
   struct stat st;
   std::string path;
-  const config::Server* srv_cf = conn.req.srv_cf;
-  const config::Location* loc_cf =
-      select_loc_cf(conn.req.srv_cf, error_page->uri);
+  const config::Server* srv_cf = req.srv_cf;
+  const config::Location* loc_cf = select_loc_cf(req.srv_cf, error_page->uri);
   ret = resolve_path(srv_cf, loc_cf, error_page->uri, path, st);
 
   if (ret == ERR_500) {
@@ -91,10 +92,10 @@ int try_error_page(Connection& conn, int status_code) {  // throwable
     return 0;
   }
   //  4. Send error page
-  conn.res.status_code = status_code;
-  conn.res.content_type = "text/html";
-  conn.res.content_length = st.st_size;
-  conn.res.content_path = path;
+  res.status_code = status_code;
+  res.content_type = "text/html";
+  res.content_length = st.st_size;
+  res.content_path = path;
   return 0;
   // This causes an internal redirect to the specified uri with the client
   // request method changed to “GET” (for all methods other than “GET” and
@@ -113,14 +114,12 @@ int try_error_page(Connection& conn, int status_code) {  // throwable
 
 void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
   conn.client_socket->clear_sendbuf();
-  conn.res = Response();
   if (status_code == 400) {
     conn.res.keep_alive = false;
   }
   // Error Page by `error_page` directive
   if (!noredirect) {
     if (try_error_page(conn, status_code) == 0) {  // throwable
-      conn.client_socket->send_response(conn.res);
       return;
     }
   }
@@ -129,5 +128,4 @@ void ErrorHandler::handle(Connection& conn, int status_code, bool noredirect) {
   conn.res.content_type = "text/html";
   conn.res.content = default_error_page(status_code);
   conn.res.content_length = conn.res.content.length();
-  conn.client_socket->send_response(conn.res);
 }

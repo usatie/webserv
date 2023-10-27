@@ -179,7 +179,7 @@ static bool is_valid_decoded_path(std::string const &path) {
   return true;
 }
 
-static bool deconde_parcent(std::string &path) {
+static bool decode_percent(std::string &path) {
   std::string dst;
   for (size_t i = 0; i < path.size();) {
     if (path[i] != '%') {
@@ -253,9 +253,9 @@ int Connection::parse_start_line() {
   }
 
   // Path must be starting with /
-  if (!is_valid_path(req.header.path) || !deconde_parcent(req.header.path) ||
-      !deconde_parcent(req.header.query) ||
-      !deconde_parcent(req.header.fragment) ||
+  if (!is_valid_path(req.header.path) || !decode_percent(req.header.path) ||
+      !decode_percent(req.header.query) ||
+      !decode_percent(req.header.fragment) ||
       !is_valid_decoded_path(req.header.path)) {
     Log::cinfo() << "Invalid path: " << req.header.path << std::endl;
     ErrorHandler::handle(*this, 400);
@@ -266,7 +266,7 @@ int Connection::parse_start_line() {
   // Parse HTTP version
   // Before HTTP/1.0 (i.e. HTTP/0.9) does not have HTTP-Version
   if (parse_http_version(version, req.header.version) < 0 ||
-      req.header.version < Version(1, 0)) {
+      req.header.version < WSV_HTTP_VERSION_10) {
     Log::cinfo() << "Invalid HTTP version: " << version << std::endl;
     ErrorHandler::handle(*this, 400);
     handler = &Connection::response;
@@ -274,7 +274,7 @@ int Connection::parse_start_line() {
   }
 
   // Validate HTTP version (Only 1.1 or later is supported)
-  if (Version(2, 0) <= req.header.version) {
+  if (WSV_HTTP_VERSION_20 <= req.header.version) {
     Log::cinfo() << "Unsupported HTTP version: " << version << std::endl;
     res.keep_alive = false;
     ErrorHandler::handle(*this, 505);
@@ -283,7 +283,7 @@ int Connection::parse_start_line() {
   }
 
   // Keep-Alive is default for HTTP/1.1 or later
-  if (Version(1, 1) <= req.header.version) {
+  if (WSV_HTTP_VERSION_11 <= req.header.version) {
     res.keep_alive = true;
   }
 
@@ -363,7 +363,7 @@ int Connection::read_header_fields() {  // throwable
 
 int Connection::parse_header_fields() {  // throwable
   // Host header is mandatory for HTTP/1.1 or later
-  if (Version(1, 1) <= req.header.version) {
+  if (WSV_HTTP_VERSION_11 <= req.header.version) {
     if (!util::contains(req.header.fields, "Host")) {
       Log::cinfo() << "Host header is missing" << std::endl;
       ErrorHandler::handle(*this, 400);
@@ -393,7 +393,7 @@ int Connection::parse_body() {  // throwable
   Log::debug("parse_body");
   Header::const_iterator it = req.header.fields.find("Transfer-Encoding");
   if (it != req.header.fields.end() && util::contains(it->second, "chunked")) {
-    if (req.header.version < Version(1, 1)) {
+    if (req.header.version < WSV_HTTP_VERSION_11) {
       Log::cinfo()
           << "Chunked encoding is not supported in HTTP/1.0.\n"
           << "A server or client that receives an HTTP/1.0 message containing "
@@ -737,6 +737,12 @@ int Connection::handle() {  // throwable
 }
 
 int Connection::response() throw() {
+  client_socket->send_response(res);
+  handler = &Connection::flush_response;
+  return WSV_AGAIN;
+}
+
+int Connection::flush_response() throw() {
   if (client_socket->isSendBufEmpty()) {
     if (client_socket->hasReceivedEof && client_socket->isRecvBufEmpty()) {
       Log::info(

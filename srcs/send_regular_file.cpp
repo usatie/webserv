@@ -23,5 +23,4 @@ void send_regular_file(Connection& conn, const std::string& path,
     conn.res.content_type = "text/plain";
   conn.res.content_length = content_length;
   conn.res.content_path = path;
-  conn.client_socket->send_response(conn.res);
 }

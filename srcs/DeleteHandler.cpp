@@ -7,25 +7,25 @@
 #include "ErrorHandler.hpp"
 
 void DeleteHandler::handle(Connection& conn) throw() {
-  (void)conn;
+  const Request& req = conn.req;
+  Response& res = conn.res;
   // 1. Get the path
   std::string path;
   // `root` and `alias` directive
-  if (!conn.req.loc_cf) {
+  if (!req.loc_cf) {
     // Server Root    : Append path to root
     Log::cdebug() << "Server Root" << std::endl;
-    path = conn.req.srv_cf->root + conn.req.header.path;
-  } else if (conn.req.loc_cf->alias.configured) {
+    path = req.srv_cf->root + req.header.path;
+  } else if (req.loc_cf->alias.configured) {
     // TODO: Question: What if parent location has alias?
     // TODO: What if location is nested?
     // Location Alias : Replace prefix with alias
-    Log::cdebug() << "Location Alias: " << conn.req.loc_cf->path << std::endl;
-    path = conn.req.loc_cf->alias +
-           conn.req.header.path.substr(conn.req.loc_cf->path.size());
+    Log::cdebug() << "Location Alias: " << req.loc_cf->path << std::endl;
+    path = req.loc_cf->alias + req.header.path.substr(req.loc_cf->path.size());
   } else {
     // Location Root  : Append path to root
-    Log::cdebug() << "Location Root: " << conn.req.loc_cf->path << std::endl;
-    path = conn.req.loc_cf->root + conn.req.header.path;
+    Log::cdebug() << "Location Root: " << req.loc_cf->path << std::endl;
+    path = req.loc_cf->root + req.header.path;
   }
   // 2. Check if the path exists
   struct stat st;
@@ -72,6 +72,5 @@ void DeleteHandler::handle(Connection& conn) throw() {
   }
 
   // 5. Send the response
-  conn.res.status_code = 204;
-  conn.client_socket->send_response(conn.res);
+  res.status_code = 204;
 }

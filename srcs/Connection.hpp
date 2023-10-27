@@ -198,6 +198,7 @@ class Connection {
   int handle_cgi_parse();  // throwable
 
   int response() throw();
+  int flush_response() throw();
 };
 
 #endif
