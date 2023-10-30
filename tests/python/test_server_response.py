@@ -214,10 +214,10 @@ if __name__ == '__main__':
 
     ## Slow test
     ### GET (with query string)
-    #test_get_request(path='/cgi/echo.py?foo=bar', status_code=200, content_type='text/plain', content=b'')
+    test_get_request(path='/cgi/echo.py?foo=bar', status_code=200, content_type='text/plain', content=b'')
     ### Server Error
-    #test_post_request(path='/cgi/infinite_loop.py', status_code=504, content_type='text/html', data=b'Hello, world!\n')
-    #test_get_request(path='/cgi/infinite_loop.py', status_code=504, content_type='text/html')
+    test_post_request(path='/cgi/infinite_loop.py', status_code=504, content_type='text/html', data=b'Hello, world!\n')
+    test_get_request(path='/cgi/infinite_loop.py', status_code=504, content_type='text/html')
 
     if err_cnt > 0:
         sys.stdout.write('\033[31m' + str(err_cnt) + '/' + str(cnt) + ' tests failed.\033[0m\n')
