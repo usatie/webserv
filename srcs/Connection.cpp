@@ -790,8 +790,6 @@ int Connection::kill_and_reap_cgi_process() throw() {
                   << std::endl;
     return -1;
   }
-  cgi_pid = -1;
-
   // Wait for CGI process to terminate
   pid_t ret;
   int exit_status;
@@ -812,6 +810,9 @@ int Connection::kill_and_reap_cgi_process() throw() {
     return -1;
   }
   Log::cdebug() << "waitpid(" << cgi_pid << ") returns " << ret << std::endl;
+  Log::cdebug() << "exit_status: " << exit_status << std::endl;
+  cgi_pid = -1;
+
   return exit_status;
 }
 
@@ -826,5 +827,5 @@ void Connection::handle_cgi_timeout() throw() {
     return;
   }
   ErrorHandler::handle(*this, 504);
-  handler = &Connection::response;
+  response();
 }
