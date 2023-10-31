@@ -226,16 +226,22 @@ int SocketBuf::flush() {
   Log::cdebug() << "sent buf: "
                 << std::string(buf, std::min(100, (int)wss.gcount())) << "\n";
 
-#ifdef LINUX
   ssize_t ret =
       ::send(socket->get_fd(), static_cast<void*>(buf), wss.gcount(), 0);
-#else
-  ssize_t ret = ::send(socket->get_fd(), static_cast<void*>(buf), wss.gcount(),
-                       SO_NOSIGPIPE);
-#endif
   if (ret < 0) {
     Log::cerror() << "send() failed, errno: " << errno
                   << ", error: " << strerror(errno) << "\n";
+    /* The Linux Programming Interface 63.1.2
+     *
+     * Nonblocking I/O is usually employed in conjunction with I/O models that
+     * provide edge-triggered notification of I/O events.
+     * 1. Multi process ( or thread ) model
+     * 2. Write a large block of data at once
+     * 3. Spurious readiness notification by select() and poll()
+    if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
+      return 0;
+    }
+    */
     // EINTR will not happen because we use NONBLOCK socket
     // EAGAIN will not happen because we use select() before send()
     // So, this error is probably broken pipe
@@ -261,6 +267,17 @@ int SocketBuf::fill() {  // throwable
   if (ret < 0) {
     Log::cerror() << "recv() failed, errno: " << errno
                   << ", error: " << strerror(errno) << "\n";
+    /* The Linux Programming Interface 63.1.2
+     *
+     * Nonblocking I/O is usually employed in conjunction with I/O models that
+     * provide edge-triggered notification of I/O events.
+     * 1. Multi process ( or thread ) model
+     * 2. Write a large block of data at once
+     * 3. Spurious readiness notification by select() and poll()
+    if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
+      return 0;
+    }
+    */
     return -1;
   }
   if (ret == 0) {
